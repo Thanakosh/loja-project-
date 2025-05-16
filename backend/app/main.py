@@ -2,6 +2,8 @@ from fastapi import FastAPI
 # Correção da importação: Use importação relativa
 from .api.v1.estoque import router as estoque_router # Supondo que seu APIRouter em estoque.py se chame 'router'
 from .api.v1.ocr import router as ocr_router
+from .api.v1.users import router as users_router
+from .api.v1.llm import router as llm_router
 
 app = FastAPI()
 
@@ -16,6 +18,17 @@ app.include_router(
     ocr_router,
     prefix="/api/v1/ocr",
     tags=["OCR"]
+)
+
+app.include_router(
+    users_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    llm_router,
+    prefix="/api/v1/llm",
+    tags=["LLM"]
 )
 
 @app.get("/ping", tags=["Health Check"]) # Adicionar tag para organização
