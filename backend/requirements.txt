@@ -18,3 +18,5 @@ pydantic==1.10.15
 WeasyPrint
 
 Jinja2
+easyocr
+torch
