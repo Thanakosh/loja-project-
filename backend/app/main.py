@@ -1,16 +1,23 @@
 from fastapi import FastAPI
-# Correção da importação: Use importação relativa
-from .api.v1.estoque import router as estoque_router # Supondo que seu APIRouter em estoque.py se chame 'router'
+from .api.v1.estoque import router as estoque_router
+from .api.v1.orcamentos import router as orcamentos_router # <--- ADICIONE ESTA LINHA
 
-app = FastAPI()
+app = FastAPI(title="Minha Loja API MVP") # Pode mudar o título se quiser
 
-# Inclua o router com um prefixo e tags (boas práticas)
+# Router de Estoque
 app.include_router(
     estoque_router,
-    prefix="/api/v1/estoque", # Define o prefixo da URL para todas as rotas de estoque
-    tags=["Estoque"]          # Agrupa as rotas de estoque na documentação do Swagger
+    prefix="/api/v1/estoque",
+    tags=["Estoque"]
 )
 
-@app.get("/ping", tags=["Health Check"]) # Adicionar tag para organização
+# Router de Orçamentos  <--- ADICIONE ESTE BLOCO INTEIRO
+app.include_router(
+    orcamentos_router,
+    prefix="/api/v1/orcamentos",
+    tags=["Orçamentos"]
+)
+
+@app.get("/ping", tags=["Health Check"])
 def ping():
     return "pong"

@@ -14,3 +14,7 @@ python-dotenv==1.0.1
 
 # Pydantic 1 ou 2 — escolha uma versão; exemplo:
 pydantic==1.10.15
+
+WeasyPrint
+
+Jinja2

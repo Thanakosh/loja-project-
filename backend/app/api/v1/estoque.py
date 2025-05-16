@@ -6,7 +6,7 @@ from ...models.estoque import Estoque as EstoqueModel
 # Correção na importação e uso do schema de leitura:
 from ...schemas.estoque import EstoqueCreate, EstoqueRead # Importa EstoqueRead diretamente
 
-router = APIRouter(tags=["estoque"])
+router = APIRouter()
 
 @router.post("/", response_model=EstoqueRead) # Usa EstoqueRead
 def criar_estoque(item: EstoqueCreate, db: Session = Depends(get_db)):

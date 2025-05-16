@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Orçamento - {{ empresa_nome or "Sua Empresa" }}</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h1, h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .total { font-weight: bold; }
+        .footer { margin-top: 30px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <h1>Orçamento</h1>
+    <p><strong>Data:</strong> {{ data_emissao }}</p>
+    {% if orcamento.cliente_nome %}
+        <p><strong>Cliente:</strong> {{ orcamento.cliente_nome }}</p>
+    {% endif %}
+    {% if orcamento.cliente_contato %}
+        <p><strong>Contato:</strong> {{ orcamento.cliente_contato }}</p>
+    {% endif %}
+    {% if orcamento_id %}
+        <p><strong>Orçamento Nº:</strong> {{ orcamento_id }}</p>
+    {% endif %}&lt;h2&gt;Itens do Orçamento&lt;/h2&gt;
+&lt;table&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;Item&lt;/th&gt;
+            &lt;th&gt;Produto&lt;/th&gt;
+            &lt;th&gt;Qtd.&lt;/th&gt;
+            &lt;th&gt;Preço Unit.&lt;/th&gt;
+            &lt;th&gt;Subtotal&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+        {% for item in itens_orcamento %}
+        &lt;tr&gt;
+            &lt;td&gt;{{ loop.index }}&lt;/td&gt;
+            &lt;td&gt;{{ item.nome_produto }}&lt;/td&gt;
+            &lt;td&gt;{{ item.quantidade }}&lt;/td&gt;
+            &lt;td&gt;R$ {{ "%.2f"|format(item.preco_unitario|float) }}&lt;/td&gt;
+            &lt;td&gt;R$ {{ "%.2f"|format(item.subtotal|float) }}&lt;/td&gt;
+        &lt;/tr&gt;
+        {% endfor %}
+    &lt;/tbody&gt;
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;td colspan="4" class="total" style="text-align:right;"&gt;VALOR TOTAL:&lt;/td&gt;
+            &lt;td class="total"&gt;R$ {{ "%.2f"|format(valor_total|float) }}&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+&lt;/table&gt;
+
+&lt;div class="footer"&gt;
+    &lt;p&gt;Obrigado pela preferência!&lt;/p&gt;
+    &lt;p&gt;{{ empresa_nome or "Nome da Sua Empresa" }} - {{ empresa_contato or "Seu Contato" }}&lt;/p&gt;
+&lt;/div&gt;</body>
+</html>
