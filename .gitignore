@@ -54,3 +54,7 @@ data/
 .env
 data/
 data/
+.venv/
+   data/
+   **/__pycache__/
+   *.pyc
