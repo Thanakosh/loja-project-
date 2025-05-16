@@ -1,9 +1,14 @@
 from pydantic import BaseSettings
+
+
 class Settings(BaseSettings):
-    postgres_db: str = 'loja'
-    postgres_user: str = 'loja'
-    postgres_password: str = 'loja'
-    jwt_secret: str = 'changeme'
+    database_url: str
+    jwt_secret: str = "changeme"
+    whatsapp_token: str | None = None
+    openai_key: str | None = None
+
     class Config:
-        env_file = '.env'
+        env_file = ".env"
+
+
 settings = Settings()
