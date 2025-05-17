@@ -6,9 +6,10 @@ from app.api.v1.users import router as users_router
 from app.api.v1.llm import router as llm_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.schemas.llm import LLMRequest, LLMResponse
+from .core.config import settings
 
 app = FastAPI(
-    title="Loja API",
+    title=settings.project_name,
     description="API para gerenciamento de loja",
     version="1.0.0"
 )
@@ -16,7 +17,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +53,10 @@ app.include_router(
     prefix="/api/v1/orcamentos",
     tags=["Orcamentos"]
 )
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Loja API"}
 
 @app.get("/ping", tags=["Health Check"])
 def health_check():

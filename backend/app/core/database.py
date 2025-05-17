@@ -8,7 +8,7 @@ from .config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SQLALCHEMY_DATABASE_URL = settings.database_url
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
 try:
     engine = create_engine(
@@ -18,7 +18,7 @@ try:
         max_overflow=10,
         pool_timeout=30,
         pool_pre_ping=True,
-        echo=settings.sqlalchemy_echo
+        echo=settings.SQLALCHEMY_ECHO
     )
     logger.info("Database engine created successfully")
 except Exception as e:
