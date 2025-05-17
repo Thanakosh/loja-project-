@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any
 
 from ...core.database import get_db
-from ...core.security import create_access_token, verify_password, get_password_hash
+from ...core.security import create_access_token, verify_password, get_password_hash, get_current_user
 from ...core.config import settings
 from ...models.user import User
 from ...schemas.user import UserCreate, UserUpdate, User as UserSchema
@@ -36,7 +36,7 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
@@ -55,7 +55,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
-        is_superuser=user.is_superuser
+        is_superuser=False
     )
     db.add(db_user)
     db.commit()

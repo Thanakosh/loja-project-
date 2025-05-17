@@ -8,10 +8,9 @@ try:
 except ImportError:
     ollama = None
 
-router = APIRouter(tags=["LLM"])
+from ...core.config import settings
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OPEN_INTERPRETER_URL = os.getenv("OPEN_INTERPRETER_URL", "http://localhost:4000/v1/chat/completions")
+router = APIRouter(tags=["LLM"])
 
 @router.post("/ollama", response_model=LLMResponse)
 def chat_ollama(req: LLMRequest):
@@ -32,7 +31,7 @@ def chat_open_interpreter(req: LLMRequest):
         "messages": [{"role": "user", "content": req.prompt}]
     }
     try:
-        r = requests.post(OPEN_INTERPRETER_URL, json=payload, timeout=60)
+        r = requests.post(settings.OPEN_INTERPRETER_URL, json=payload, timeout=60)
         r.raise_for_status()
         data = r.json()
         # Compatível com OpenAI/Interpreter API

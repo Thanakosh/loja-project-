@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     # Optional configurations
     WHATSAPP_TOKEN: Optional[str] = None
     OPENAI_KEY: Optional[str] = None
+    OLLAMA_URL: str = "http://localhost:11434"
+    OPEN_INTERPRETER_URL: str = "http://localhost:4000/v1/chat/completions"
 
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
