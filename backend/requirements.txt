@@ -1,21 +1,30 @@
+# FastAPI and Server
 fastapi==0.110.3
 uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+email-validator>=1.1.0,<2.1.0
 
-# ORM + migrações
-SQLAlchemy==2.0.30          # já contém o "sqlalchemy" correto
-alembic==1.13.1             # ← adicionado
-
-# Postgres driver
+# Database
+SQLAlchemy==2.0.30
+alembic==1.13.1
 psycopg2-binary==2.9.9
+asyncpg==0.29.0
 
-# Segurança / env
+# Security
 python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 python-dotenv==1.0.1
-
-# Pydantic 1 ou 2 — escolha uma versão; exemplo:
-pydantic==1.10.15
-
 fastapi-users[sqlalchemy2]==12.1.2
 
+# Data Validation
+pydantic==1.10.15
+pydantic-settings==2.2.1
+
+# AI and ML
 ollama==0.1.6
+easyocr==1.7.1
+
+# Utilities
 requests==2.31.0
+python-magic==0.4.27
+Pillow==10.2.0

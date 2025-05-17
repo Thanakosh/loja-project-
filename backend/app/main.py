@@ -1,17 +1,32 @@
 from fastapi import FastAPI
-# Correção da importação: Use importação relativa
-from .api.v1.estoque import router as estoque_router # Supondo que seu APIRouter em estoque.py se chame 'router'
-from .api.v1.ocr import router as ocr_router
-from .api.v1.users import router as users_router
-from .api.v1.llm import router as llm_router
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.estoque import router as estoque_router
+from app.api.v1.ocr import router as ocr_router
+from app.api.v1.users import router as users_router
+from app.api.v1.llm import router as llm_router
+from app.api.v1.orcamento import router as orcamento_router
+from app.schemas.llm import LLMRequest, LLMResponse
 
-app = FastAPI()
+app = FastAPI(
+    title="Loja API",
+    description="API para gerenciamento de loja",
+    version="1.0.0"
+)
 
-# Inclua o router com um prefixo e tags (boas práticas)
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# API Routes
 app.include_router(
     estoque_router,
-    prefix="/api/v1/estoque", # Define o prefixo da URL para todas as rotas de estoque
-    tags=["Estoque"]          # Agrupa as rotas de estoque na documentação do Swagger
+    prefix="/api/v1/estoque",
+    tags=["Estoque"]
 )
 
 app.include_router(
@@ -22,7 +37,8 @@ app.include_router(
 
 app.include_router(
     users_router,
-    prefix="/api/v1",
+    prefix="/api/v1/users",
+    tags=["Users"]
 )
 
 app.include_router(
@@ -31,6 +47,15 @@ app.include_router(
     tags=["LLM"]
 )
 
-@app.get("/ping", tags=["Health Check"]) # Adicionar tag para organização
-def ping():
-    return "pong"
+app.include_router(
+    orcamento_router,
+    prefix="/api/v1/orcamentos",
+    tags=["Orcamentos"]
+)
+
+@app.get("/ping", tags=["Health Check"])
+def health_check():
+    """
+    Health check endpoint to verify if the API is running.
+    """
+    return {"status": "healthy", "message": "pong"}
