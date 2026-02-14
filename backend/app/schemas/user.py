@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 
 class UserBase(BaseModel):
@@ -16,14 +16,12 @@ class UserUpdate(UserBase):
 class User(UserBase):
     id: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserInDBBase(UserBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserInDB(UserInDBBase):
-    hashed_password: str 
+    hashed_password: str

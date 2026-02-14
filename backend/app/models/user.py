@@ -1,15 +1,21 @@
-from sqlalchemy import Boolean, Column, String
+from sqlalchemy import Boolean, Column, String, Integer
 from sqlalchemy.orm import relationship
 
 from ..core.database import Base
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "user"
 
-    id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
-    is_verified = Column(Boolean, default=False, nullable=False) 
+    is_verified = Column(Boolean, default=False, nullable=False)
+    
+    # Relacionamentos
+    transacoes_estoque = relationship("TransacaoEstoque", back_populates="usuario")
+    
+    def __repr__(self):
+        return f"<User(id={self.id}, email='{self.email}')>"

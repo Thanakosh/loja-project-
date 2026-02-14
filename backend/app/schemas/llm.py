@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class LLMRequest(BaseModel):
@@ -7,4 +7,6 @@ class LLMRequest(BaseModel):
 
 class LLMResponse(BaseModel):
     response: str
-    model: Optional[str] = None 
+    model: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)

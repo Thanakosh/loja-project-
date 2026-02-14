@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 
@@ -14,5 +14,5 @@ class OrcamentoCreate(OrcamentoBase):
 
 class OrcamentoRead(OrcamentoBase):
     id: int
-    class Config:
-        orm_mode = True 
+    
+    model_config = ConfigDict(from_attributes=True)

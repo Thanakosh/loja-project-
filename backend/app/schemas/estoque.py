@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class EstoqueBase(BaseModel):
     nome: str
@@ -10,5 +10,4 @@ class EstoqueCreate(EstoqueBase):
 class EstoqueRead(EstoqueBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

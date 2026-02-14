@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, PostgresDsn, validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, PostgresDsn
 from typing import Optional
 import secrets
 
@@ -28,15 +29,18 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list = ["*"]
 
-    @validator("DATABASE_URL", pre=True)
+    @field_validator("DATABASE_URL")
+    @classmethod
     def validate_database_url(cls, v: str) -> str:
         if not v:
             raise ValueError("DATABASE URL is required")
         return v
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 
 settings = Settings()
