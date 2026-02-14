@@ -4,6 +4,7 @@ from ...core.database import get_db
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
 from ...models.user import User
+from ...models.transacao_estoque import TransacaoEstoque, TipoTransacao
 from ...schemas.produto import ProdutoCreate, ProdutoRead
 from typing import List
 
@@ -16,10 +17,28 @@ def criar_produto(
     current_user: User = Depends(get_current_active_user)
 ):
     """Cria um novo produto (requer autenticação)"""
-    db_produto = Produto(**produto.model_dump())
+    # Extrair quantidade_inicial do schema antes de criar o modelo Produto
+    produto_dict = produto.model_dump()
+    quantidade_inicial = produto_dict.pop("quantidade_inicial", 0)
+    
+    db_produto = Produto(**produto_dict)
     db.add(db_produto)
     db.commit()
     db.refresh(db_produto)
+    
+    # Se houver quantidade inicial, criar uma transação de estoque
+    if quantidade_inicial > 0:
+        transacao = TransacaoEstoque(
+            produto_id=db_produto.id,
+            tipo=TipoTransacao.ENTRADA,
+            quantidade=quantidade_inicial,
+            motivo="Estoque inicial",
+            usuario_id=current_user.id
+        )
+        db.add(transacao)
+        db.commit()
+        db.refresh(db_produto) # Atualizar para refletir estoque calculado
+        
     return db_produto
 
 @router.get("/", response_model=List[ProdutoRead])
@@ -55,7 +74,11 @@ def atualizar_produto(
     db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not db_produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
-    for key, value in produto.model_dump().items():
+    
+    produto_dict = produto.model_dump()
+    produto_dict.pop("quantidade_inicial", None) # Não atualizamos estoque por aqui
+    
+    for key, value in produto_dict.items():
         setattr(db_produto, key, value)
     db.commit()
     db.refresh(db_produto)

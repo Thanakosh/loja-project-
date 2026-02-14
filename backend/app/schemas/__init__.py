@@ -1,1 +1,27 @@
-from .user import UserRead, UserCreate, UserUpdate
+from .user import User, UserCreate, UserUpdate
+from .produto import ProdutoRead, ProdutoCreate, ProdutoUpdate
+from .estoque import EstoqueRead, EstoqueCreate
+from .orcamento import OrcamentoRead, OrcamentoCreate
+from .ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
+from .llm import LLMRequest, LLMResponse
+from .transacao_estoque import TransacaoEstoqueRead, TransacaoEstoqueCreate
+
+__all__ = [
+    "User",
+    "UserCreate",
+    "UserUpdate",
+    "ProdutoRead",
+    "ProdutoCreate",
+    "ProdutoUpdate",
+    "EstoqueRead",
+    "EstoqueCreate",
+    "OrcamentoRead",
+    "OrcamentoCreate",
+    "OCRResponse",
+    "OCRTaskResponse",
+    "OCRTaskStatus",
+    "LLMRequest",
+    "LLMResponse",
+    "TransacaoEstoqueRead",
+    "TransacaoEstoqueCreate"
+]

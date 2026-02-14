@@ -2,22 +2,29 @@ from logging.config import fileConfig
 import os
 import sys
 from alembic import context
-from sqlalchemy import pool # Adicionado para run_migrations_online do template original
+from sqlalchemy import pool
 
-# Adiciona o diretório /code ao path para encontrar 'backend'
-sys.path.insert(0, '/code')
+# Adiciona o diretório raiz ao path para encontrar o pacote 'app'
+# O projeto está estruturado como backend/app
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 
-# Importa Base e engine de backend.app.core.database
-# e os modelos que o Alembic precisa conhecer
-from backend.app.core.database import Base, engine, settings # settings também é útil aqui
-from backend.app.models import estoque # Certifique-se que este model existe e Base está nele
+# Importa Base e engine de app.core.database
+try:
+    from app.core.database import Base, engine
+    from app.core.config import settings
+    # Importar todos os modelos para que o Alembic os reconheça
+    from app.models import User, Produto, Estoque, Orcamento, TransacaoEstoque
+except ImportError as e:
+    print(f"Erro ao importar módulos: {e}")
+    print(f"PYTHONPATH: {sys.path}")
+    raise
 
 config = context.config
 
 # Use a URL do banco de dados das configurações do projeto
-# Isso substitui a necessidade de sqlalchemy.url no alembic.ini
-if settings.database_url:
-    config.set_main_option('sqlalchemy.url', settings.database_url)
+if settings.DATABASE_URL:
+    config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -25,17 +32,6 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -48,21 +44,15 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    # usa o engine importado do projeto
+    # No SQLite, não podemos usar pool.NullPool com a mesma facilidade em alguns casos,
+    # mas o engine já está configurado no app.core.database
     connectable = engine
 
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            poolclass=pool.NullPool, # Adicionado do template original
-            compare_type=True, # Adicionado para melhor detecção de tipos
+            compare_type=True,
         )
 
         with context.begin_transaction():

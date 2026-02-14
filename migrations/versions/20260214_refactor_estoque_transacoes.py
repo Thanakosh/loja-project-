@@ -25,7 +25,7 @@ def upgrade():
         sa.Column('quantidade', sa.Integer(), nullable=False),
         sa.Column('motivo', sa.String(), nullable=True),
         sa.Column('usuario_id', sa.Integer(), nullable=True),
-        sa.Column('data_transacao', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
+        sa.Column('data_transacao', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.ForeignKeyConstraint(['produto_id'], ['produto.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['usuario_id'], ['user.id'], ondelete='SET NULL'),
         sa.PrimaryKeyConstraint('id')
@@ -35,7 +35,7 @@ def upgrade():
     op.create_index('ix_transacao_estoque_data', 'transacao_estoque', ['data_transacao'])
     
     # Adicionar novos campos ao produto
-    op.add_column('produto', sa.Column('ativo', sa.Boolean(), nullable=False, server_default='true'))
+    op.add_column('produto', sa.Column('ativo', sa.Boolean(), nullable=False, server_default='1'))
     op.add_column('produto', sa.Column('estoque_minimo', sa.Integer(), nullable=False, server_default='0'))
     op.create_index('ix_produto_nome', 'produto', ['nome'])
     op.create_index('ix_produto_codigo_ncm', 'produto', ['codigo_ncm'])
