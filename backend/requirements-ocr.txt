@@ -1,0 +1,5 @@
+easyocr>=1.7.1
+torch>=2.1.0
+torchvision>=0.16.0
+aiofiles>=23.2.1
+python-multipart>=0.0.6

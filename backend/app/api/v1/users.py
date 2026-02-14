@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Any
@@ -11,7 +11,6 @@ from ...models.user import User
 from ...schemas.user import UserCreate, UserUpdate, User as UserSchema
 
 router = APIRouter(tags=["users"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
@@ -67,19 +66,3 @@ async def read_users_me(
     current_user: User = Depends(get_current_user)
 ):
     return current_user
-
-# router.include_router(
-#     fastapi_users.get_auth_router(auth_backend),
-#     prefix="/auth/jwt",
-#     tags=["auth"],
-# )
-# router.include_router(
-#     fastapi_users.get_register_router(UserRead, UserCreate),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-# router.include_router(
-#     fastapi_users.get_users_router(UserRead, UserUpdate),
-#     prefix="/users",
-#     tags=["users"],
-# ) 

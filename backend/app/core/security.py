@@ -11,7 +11,15 @@ from .database import get_db
 from ..models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Padronizado para o endpoint real de token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
+
+# Esquema para autenticação opcional (auto_error=False)
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/users/token",
+    auto_error=False
+)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -60,14 +68,21 @@ async def get_current_active_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Dependency opcional para endpoints que podem funcionar com ou sem autenticação
+# Dependency opcional corrigida para não disparar erro automático
 async def get_current_user_optional(
-    token: Optional[str] = Depends(oauth2_scheme),
+    token: Optional[str] = Depends(oauth2_scheme_optional),
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     if token is None:
         return None
     try:
-        return await get_current_user(token, db)
-    except HTTPException:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+        )
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        user = db.query(User).filter(User.email == email).first()
+        return user
+    except (JWTError, Exception):
         return None

@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, PostgresDsn
-from typing import Optional
+from pydantic import field_validator, AnyHttpUrl
+from typing import Optional, List, Union
 import secrets
 
 
@@ -26,8 +26,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Loja API"
     DEBUG: bool = False
 
-    # CORS
-    CORS_ORIGINS: list = ["*"]
+    # CORS - Em produção, deve ser uma lista restrita de URLs
+    # Exemplo: ["http://localhost:3000", "https://meuapp.com"]
+    # Se for ["*"], allow_credentials deve ser False no main.py
+    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 
     @field_validator("DATABASE_URL")
     @classmethod
@@ -35,6 +37,15 @@ class Settings(BaseSettings):
         if not v:
             raise ValueError("DATABASE URL is required")
         return v
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
 
     model_config = SettingsConfigDict(
         env_file=".env",

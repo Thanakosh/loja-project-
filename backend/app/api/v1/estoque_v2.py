@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select, desc
 from typing import List, Optional
 
 from ...core.database import get_db
@@ -33,7 +33,9 @@ def criar_transacao_estoque(
     
     # Validar quantidade para saída
     if transacao.tipo == TipoTransacao.SAIDA:
-        estoque_atual = sum(t.quantidade for t in produto.transacoes)
+        estoque_atual = db.query(func.sum(TransacaoEstoque.quantidade))\
+            .filter(TransacaoEstoque.produto_id == transacao.produto_id).scalar() or 0
+        
         if abs(transacao.quantidade) > estoque_atual:
             raise HTTPException(
                 status_code=400, 
@@ -66,19 +68,21 @@ def obter_estoque_produto(
     if not produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     
-    # Obter última movimentação
-    ultima_transacao = db.query(TransacaoEstoque)\
-        .filter(TransacaoEstoque.produto_id == produto_id)\
-        .order_by(TransacaoEstoque.data_transacao.desc())\
-        .first()
+    # Obter estoque calculado e última movimentação em uma query
+    stats = db.query(
+        func.sum(TransacaoEstoque.quantidade).label("total"),
+        func.max(TransacaoEstoque.data_transacao).label("ultima")
+    ).filter(TransacaoEstoque.produto_id == produto_id).first()
+    
+    quantidade_atual = stats.total or 0
     
     return EstoqueAtual(
         produto_id=produto.id,
         nome_produto=produto.nome,
-        quantidade_atual=produto.estoque_atual,
+        quantidade_atual=quantidade_atual,
         estoque_minimo=produto.estoque_minimo,
-        estoque_baixo=produto.estoque_baixo,
-        ultima_movimentacao=ultima_transacao.data_transacao if ultima_transacao else None
+        estoque_baixo=quantidade_atual < produto.estoque_minimo,
+        ultima_movimentacao=stats.ultima
     )
 
 
@@ -90,39 +94,46 @@ def listar_estoque_completo(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Lista o estoque de todos os produtos.
-    
-    - **apenas_ativos**: Se True, lista apenas produtos ativos
-    - **apenas_baixo**: Se True, lista apenas produtos com estoque baixo
+    Lista o estoque de todos os produtos resolvendo o problema N+1.
+    Usa agregação SQL para trazer todos os dados em uma única query.
     """
-    query = db.query(Produto)
+    # Subquery para calcular estoque total por produto
+    estoque_subquery = db.query(
+        TransacaoEstoque.produto_id,
+        func.sum(TransacaoEstoque.quantidade).label("total_estoque"),
+        func.max(TransacaoEstoque.data_transacao).label("ultima_data")
+    ).group_by(TransacaoEstoque.produto_id).subquery()
+
+    # Query principal unindo Produto com a subquery de estoque
+    query = db.query(
+        Produto,
+        estoque_subquery.c.total_estoque,
+        estoque_subquery.c.ultima_data
+    ).outerjoin(
+        estoque_subquery, Produto.id == estoque_subquery.c.produto_id
+    )
     
     if apenas_ativos:
         query = query.filter(Produto.ativo == True)
     
-    produtos = query.all()
+    results = query.all()
     
     resultado = []
-    for produto in produtos:
-        # Obter última movimentação
-        ultima_transacao = db.query(TransacaoEstoque)\
-            .filter(TransacaoEstoque.produto_id == produto.id)\
-            .order_by(TransacaoEstoque.data_transacao.desc())\
-            .first()
+    for produto, total_estoque, ultima_data in results:
+        quantidade_atual = total_estoque or 0
+        estoque_baixo = quantidade_atual < produto.estoque_minimo
         
-        estoque = EstoqueAtual(
+        if apenas_baixo and not estoque_baixo:
+            continue
+            
+        resultado.append(EstoqueAtual(
             produto_id=produto.id,
             nome_produto=produto.nome,
-            quantidade_atual=produto.estoque_atual,
+            quantidade_atual=quantidade_atual,
             estoque_minimo=produto.estoque_minimo,
-            estoque_baixo=produto.estoque_baixo,
-            ultima_movimentacao=ultima_transacao.data_transacao if ultima_transacao else None
-        )
-        
-        if apenas_baixo and not estoque.estoque_baixo:
-            continue
-        
-        resultado.append(estoque)
+            estoque_baixo=estoque_baixo,
+            ultima_movimentacao=ultima_data
+        ))
     
     return resultado
 
@@ -135,10 +146,6 @@ def obter_historico_produto(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém o histórico de transações de um produto"""
-    produto = db.query(Produto).filter(Produto.id == produto_id).first()
-    if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
-    
     transacoes = db.query(TransacaoEstoque)\
         .filter(TransacaoEstoque.produto_id == produto_id)\
         .order_by(TransacaoEstoque.data_transacao.desc())\
@@ -154,22 +161,9 @@ def entrada_lote_produtos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """
-    Registra entrada em lote de múltiplos produtos.
-    Útil para processar notas fiscais completas.
-    """
+    """Registra entrada em lote de múltiplos produtos."""
     resultado = []
-    
     for transacao in transacoes:
-        # Verificar se o produto existe
-        produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
-        if not produto:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Produto ID {transacao.produto_id} não encontrado"
-            )
-        
-        # Criar transação
         db_transacao = TransacaoEstoque(
             **transacao.model_dump(),
             usuario_id=current_user.id
@@ -178,7 +172,6 @@ def entrada_lote_produtos(
         resultado.append(db_transacao)
     
     db.commit()
-    
     for t in resultado:
         db.refresh(t)
     

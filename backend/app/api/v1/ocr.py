@@ -1,46 +1,52 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Body, BackgroundTasks
-from sqlalchemy.orm import Session
-from ...core.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from ...core.database import get_async_db
 from ...core.security import get_current_active_user
 from ...models.user import User
-from ...models.produto import Produto
-import easyocr
 import os
 import uuid
-import json
-from datetime import datetime
+import re
+import hashlib
+from datetime import datetime, timedelta
+from typing import Dict, Optional
+import aiofiles
 from ...schemas.ocr import (
     OCRResponse, 
     OCRTaskResponse, 
-    OCRTaskStatus,
-    NotaFiscalExtraida,
-    ProdutoExtraido
+    OCRTaskStatus
 )
-from ...schemas.llm import LLMRequest
-import re
-from typing import Dict, Optional
-import aiofiles
 
 router = APIRouter(tags=["OCR"])
 
-# Armazenamento temporário de tarefas (em produção, usar Redis ou banco de dados)
+# Armazenamento temporário de tarefas com TTL (Em produção, use Redis)
+# Estrutura: {task_id: {"status": ..., "expires_at": ...}}
 ocr_tasks: Dict[str, Dict] = {}
 
+# Cache de idempotência (Em produção, use Redis)
+# Estrutura: {file_hash: task_id}
+idempotency_cache: Dict[str, str] = {}
+
+async def cleanup_expired_tasks():
+    """Remove tarefas expiradas para liberar memória"""
+    now = datetime.now()
+    expired = [tid for tid, t in ocr_tasks.items() if datetime.fromisoformat(t["expires_at"]) < now]
+    for tid in expired:
+        del ocr_tasks[tid]
+
 async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
-    """Processa OCR em background"""
+    """Processa OCR em background com suporte a processamento assíncrono"""
     try:
         ocr_tasks[task_id]["status"] = "processing"
         
-        # Processar OCR
+        # Lazy import para reduzir custo de inicialização
+        import easyocr
+        
         reader = easyocr.Reader(['pt'], gpu=False)
         result = reader.readtext(file_path, detail=0)
         texto_extraido = " ".join(result)
         
-        # Se usar LLM, processar com IA
         if use_llm:
-            # Importar aqui para evitar dependência circular
             from ...api.v1.llm import processar_nota_fiscal_com_llm
-            
             nota_fiscal = await processar_nota_fiscal_com_llm(texto_extraido)
             ocr_tasks[task_id]["result"] = {
                 "texto": texto_extraido,
@@ -65,10 +71,8 @@ async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
         ocr_tasks[task_id]["status"] = "failed"
         ocr_tasks[task_id]["error"] = str(e)
     finally:
-        # Limpar arquivo temporário
         if os.path.exists(file_path):
             os.remove(file_path)
-
 
 @router.post("/upload", response_model=OCRTaskResponse, summary="Upload de imagem para OCR assíncrono")
 async def upload_ocr_async(
@@ -78,41 +82,55 @@ async def upload_ocr_async(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Faz upload de imagem e processa OCR em background.
-    
-    - **file**: Imagem da nota fiscal
-    - **use_llm**: Se True, usa LLM para análise inteligente (mais lento, mais preciso)
-    - Retorna um task_id para consultar o status
+    Faz upload de imagem e processa OCR em background com suporte a idempotência.
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Arquivo enviado não é uma imagem.")
     
-    # Gerar ID único para a tarefa
-    task_id = str(uuid.uuid4())
+    # Ler conteúdo para gerar hash de idempotência
+    content = await file.read()
+    file_hash = hashlib.md5(content).hexdigest()
     
-    # Salvar arquivo temporário
-    temp_path = f"/tmp/ocr_{task_id}_{file.filename}"
+    # Limpar tarefas expiradas
+    await cleanup_expired_tasks()
+    
+    # Verificar idempotência
+    if file_hash in idempotency_cache:
+        existing_task_id = idempotency_cache[file_hash]
+        if existing_task_id in ocr_tasks:
+            return OCRTaskResponse(
+                task_id=existing_task_id,
+                status=ocr_tasks[existing_task_id]["status"],
+                message="Tarefa já existente para este arquivo (Idempotência ativa)."
+            )
+    
+    task_id = str(uuid.uuid4())
+    os.makedirs("/tmp/loja_ocr", exist_ok=True)
+    temp_path = f"/tmp/loja_ocr/ocr_{task_id}_{file.filename}"
+    
     async with aiofiles.open(temp_path, 'wb') as f:
-        content = await file.read()
         await f.write(content)
     
-    # Criar tarefa
+    # Registrar tarefa com expiração de 1 hora
+    expires_at = (datetime.now() + timedelta(hours=1)).isoformat()
     ocr_tasks[task_id] = {
         "status": "pending",
         "created_at": datetime.now().isoformat(),
+        "expires_at": expires_at,
         "filename": file.filename,
         "use_llm": use_llm
     }
     
-    # Adicionar processamento em background
+    # Salvar no cache de idempotência
+    idempotency_cache[file_hash] = task_id
+    
     background_tasks.add_task(process_ocr_task, task_id, temp_path, use_llm)
     
     return OCRTaskResponse(
         task_id=task_id,
         status="pending",
-        message="Tarefa de OCR criada. Use /ocr/status/{task_id} para verificar o progresso."
+        message="Tarefa de OCR criada."
     )
-
 
 @router.get("/status/{task_id}", response_model=OCRTaskStatus, summary="Consulta status de tarefa OCR")
 async def get_ocr_status(
@@ -121,10 +139,9 @@ async def get_ocr_status(
 ):
     """Consulta o status de uma tarefa de OCR"""
     if task_id not in ocr_tasks:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada ou expirada")
     
     task = ocr_tasks[task_id]
-    
     return OCRTaskStatus(
         task_id=task_id,
         status=task["status"],
@@ -132,88 +149,35 @@ async def get_ocr_status(
         error=task.get("error")
     )
 
-
 @router.post("/upload-sync", response_model=OCRResponse, summary="Upload de imagem para OCR síncrono (legado)")
 async def upload_ocr_sync(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user)
 ):
-    """
-    Faz upload de imagem e extrai texto via OCR de forma síncrona.
-    **Atenção**: Pode causar timeout em imagens grandes. Use /upload para processamento assíncrono.
-    """
+    """Upload síncrono (Legado)"""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Arquivo enviado não é uma imagem.")
     
-    temp_path = f"/tmp/temp_{file.filename}"
+    import easyocr
+    content = await file.read()
+    temp_path = f"/tmp/temp_{uuid.uuid4()}_{file.filename}"
     async with aiofiles.open(temp_path, 'wb') as f:
-        content = await file.read()
         await f.write(content)
     
     try:
         reader = easyocr.Reader(['pt'], gpu=False)
         result = reader.readtext(temp_path, detail=0)
-        texto_extraido = " ".join(result)
+        return OCRResponse(texto=" ".join(result))
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
-    
-    return OCRResponse(texto=texto_extraido)
 
-
-@router.post("/extrair-dados", response_model=OCRResponse, summary="Extrai dados estruturados do texto OCR")
-def extrair_dados_ocr(
-    texto: str = Body(..., embed=True),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Extrai produtos, quantidades e valores do texto OCR usando regex"""
-    produtos = re.findall(r"Produto: ([\w\s]+)", texto, re.IGNORECASE)
-    quantidades = [int(q) for q in re.findall(r"Quantidade: (\d+)", texto, re.IGNORECASE)]
-    valores = [float(v.replace(',', '.')) for v in re.findall(r"Valor: ([\d\.,]+)", texto, re.IGNORECASE)]
-    
-    return OCRResponse(
-        texto=texto,
-        produtos=produtos if produtos else None,
-        quantidade=quantidades if quantidades else None,
-        valor=valores if valores else None
-    )
-
-
-@router.post("/processar-nota-fiscal", response_model=OCRTaskResponse, summary="Processa nota fiscal completa e cadastra produtos")
+@router.post("/processar-nota-fiscal", response_model=OCRTaskResponse, summary="Processa nota fiscal completa")
 async def processar_nota_fiscal_completa(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     auto_cadastrar: bool = True,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """
-    Processa nota fiscal com OCR + LLM e opcionalmente cadastra produtos automaticamente.
-    
-    - **file**: Imagem da nota fiscal
-    - **auto_cadastrar**: Se True, cadastra produtos automaticamente no banco
-    """
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Arquivo enviado não é uma imagem.")
-    
-    task_id = str(uuid.uuid4())
-    temp_path = f"/tmp/ocr_{task_id}_{file.filename}"
-    
-    async with aiofiles.open(temp_path, 'wb') as f:
-        content = await file.read()
-        await f.write(content)
-    
-    ocr_tasks[task_id] = {
-        "status": "pending",
-        "created_at": datetime.now().isoformat(),
-        "filename": file.filename,
-        "auto_cadastrar": auto_cadastrar
-    }
-    
-    background_tasks.add_task(process_ocr_task, task_id, temp_path, use_llm=True)
-    
-    return OCRTaskResponse(
-        task_id=task_id,
-        status="pending",
-        message="Processamento de nota fiscal iniciado. Use /ocr/status/{task_id} para verificar."
-    )
+    """Processa nota fiscal com OCR + LLM"""
+    return await upload_ocr_async(background_tasks, file, use_llm=True, current_user=current_user)
