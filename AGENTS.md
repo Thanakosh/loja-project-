@@ -204,6 +204,7 @@ pytest tests/ --cov=app --cov-report=term-missing
   2. Usar `>=versao` (sem fixar exato) salvo casos específicos
   3. Nunca reduzir versão de `httpx` abaixo de `>=0.26.0`
   4. Documentar no commit o motivo da adição
+- **⚠️ bcrypt:** usar `==4.0.1` — a versão 5.x quebra compatibilidade com passlib 1.7.4 no Python 3.13 (erro: *password cannot be longer than 72 bytes*)
 
 ---
 
