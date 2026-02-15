@@ -8,6 +8,42 @@ def test_oauth_optional_uses_auto_error_false():
     assert oauth2_scheme_optional.auto_error is False
 
 
+def test_oauth_token_url_is_standardized():
+    from app.core.security import oauth2_scheme, oauth2_scheme_optional
+
+    expected_token_url = "/api/v1/users/token"
+    assert oauth2_scheme.model.flows.password.tokenUrl == expected_token_url
+    assert oauth2_scheme_optional.model.flows.password.tokenUrl == expected_token_url
+
+
+def test_cors_wildcard_is_blocked_in_production_environment():
+    from pydantic import ValidationError
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(
+            DATABASE_URL="sqlite:///:memory:",
+            JWT_SECRET="test-secret-key-with-minimum-length-ok",
+            ENVIRONMENT="production",
+            CORS_ORIGINS=["*"],
+        )
+
+    assert "CORS_ORIGINS não pode conter '*' em staging/production" in str(exc_info.value)
+
+
+def test_cors_wildcard_is_allowed_in_development_environment():
+    from app.core.config import Settings
+
+    settings = Settings(
+        DATABASE_URL="sqlite:///:memory:",
+        JWT_SECRET="test-secret-key-with-minimum-length-ok",
+        ENVIRONMENT="development",
+        CORS_ORIGINS=["*"],
+    )
+
+    assert settings.CORS_ORIGINS == ["*"]
+
+
 def test_async_infrastructure_is_available():
     from app.core import database
 
