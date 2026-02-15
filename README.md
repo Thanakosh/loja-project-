@@ -3,8 +3,8 @@
 Sistema de Gerenciamento Comercial Inteligente focado em automação, IA e produtividade para pequenos e médios negócios.
 
 [![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](CHANGELOG.md)
-[![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-teal.svg)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-teal.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 
 ---
@@ -26,13 +26,18 @@ O **Loja Project** é uma solução de backend robusta desenvolvida com **FastAP
 ## 🛠️ Tecnologias Principais
 
 ### Backend
-- **Framework:** Python 3.11+ | FastAPI 0.104+ | Pydantic v2
+- **Framework:** Python 3.12+ | FastAPI 0.109+ | Pydantic v2
 - **Servidor:** Uvicorn com suporte assíncrono
 
 ### Banco de Dados
 - **ORM:** SQLAlchemy 2.0 (async)
 - **SGBD:** PostgreSQL
 - **Migrações:** Alembic
+
+### Frontend (React + Electron)
+- **UI:** React 18+ com TailwindCSS
+- **Desktop:** Electron
+- **Build Tool:** Vite
 
 ### Inteligência Artificial
 - **OCR:** EasyOCR (português)
@@ -94,7 +99,7 @@ O **Loja Project** é uma solução de backend robusta desenvolvida com **FastAP
 
 ### Pré-requisitos
 
-- Python 3.11+
+- Python 3.12+
 - PostgreSQL 14+
 - (Opcional) Ollama para LLM local
 
