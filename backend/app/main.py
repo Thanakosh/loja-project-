@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+import uuid
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.v1.estoque import router as estoque_router
 from app.api.v1.estoque_v2 import router as estoque_v2_router
@@ -10,12 +14,88 @@ from app.api.v1.produto import router as produto_router
 from app.api.v1.users import router as users_router
 
 from .core.config import settings
+from .core.exceptions import BusinessException
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API para gerenciamento de loja com OCR e IA",
     version="2.0.0"
 )
+
+
+@app.middleware("http")
+async def add_trace_id_to_request(request: Request, call_next):
+    request.state.trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = request.state.trace_id
+    return response
+
+
+def _error_response(
+    *,
+    request: Request,
+    status_code: int,
+    code: str,
+    message: str,
+    details=None,
+) -> JSONResponse:
+    trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "code": code,
+            "message": message,
+            "details": details,
+            "trace_id": trace_id,
+        },
+    )
+
+
+@app.exception_handler(BusinessException)
+async def business_exception_handler(request: Request, exc: BusinessException):
+    return _error_response(
+        request=request,
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.message,
+        details=exc.details,
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    message = detail if isinstance(detail, str) else "Erro HTTP"
+    return _error_response(
+        request=request,
+        status_code=exc.status_code,
+        code="http_error",
+        message=message,
+        details=detail,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return _error_response(
+        request=request,
+        status_code=422,
+        code="validation_error",
+        message="Dados de requisição inválidos",
+        details=exc.errors(),
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return _error_response(
+        request=request,
+        status_code=500,
+        code="internal_server_error",
+        message="Erro interno do servidor",
+        details=None,
+    )
+
 
 # Se CORS_ORIGINS for ["*"], allow_credentials DEVE ser False
 allow_credentials = "*" not in settings.CORS_ORIGINS

@@ -1,10 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from ...core.database import get_db
+from ...core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
 from ...models.transacao_estoque import TipoTransacao, TransacaoEstoque
@@ -26,16 +27,19 @@ def criar_transacao_estoque(
     """
     produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
     if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
 
     if transacao.tipo == TipoTransacao.SAIDA:
         estoque_atual = db.query(func.sum(TransacaoEstoque.quantidade))\
             .filter(TransacaoEstoque.produto_id == transacao.produto_id).scalar() or 0
 
         if abs(transacao.quantidade) > estoque_atual:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Estoque insuficiente. Disponível: {estoque_atual}, Solicitado: {abs(transacao.quantidade)}"
+            raise EstoqueInsuficienteError(
+                details={
+                    "disponivel": estoque_atual,
+                    "solicitado": abs(transacao.quantidade),
+                    "produto_id": transacao.produto_id,
+                }
             )
         if transacao.quantidade > 0:
             transacao.quantidade = -transacao.quantidade
@@ -60,7 +64,7 @@ def obter_estoque_produto(
     """Obtém o estoque atual de um produto específico"""
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
 
     stats = db.query(
         func.sum(TransacaoEstoque.quantidade).label("total"),
@@ -142,7 +146,7 @@ def obter_historico_produto(
     """Obtém o histórico de transações de um produto"""
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
 
     transacoes = db.query(TransacaoEstoque)\
         .filter(TransacaoEstoque.produto_id == produto_id)\
@@ -165,10 +169,7 @@ def entrada_lote_produtos(
     for transacao in transacoes:
         produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
         if not produto:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Produto ID {transacao.produto_id} não encontrado"
-            )
+            raise ProdutoNaoEncontradoError(details={"produto_id": transacao.produto_id})
 
         db_transacao = TransacaoEstoque(
             **transacao.model_dump(),
