@@ -154,8 +154,34 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - Manter instalação mínima para API base
 
 ---
-
-## Plano sugerido de execução (6 semanas)
+ 
+ ## 🛒 Módulos de Negócio (Pendentes)
+ 
+ - [ ] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
+ - [ ] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
+ - [ ] **Categorias Hierárquicas:** Ex: Fios > Cabo 2.5mm²
+ - [ ] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
+ - [ ] **Unidades de Medida:** Venda por metro ou unidade
+ - [ ] **PDV (Ponto de Venda):** Registro de venda com baixa automática
+ - [ ] **Orçamentos:** Criação e conversão automática em venda
+ - [ ] **Financeiro:** Controle de caixa diário (abertura/fechamento)
+ - [ ] **Relatórios:** Estoque baixo, Vendas por período
+ 
+ ---
+ 
+ ## 🖥️ Frontend (Telas Planejadas)
+ 
+ - [ ] **Login:** Autenticação segura
+ - [ ] **Dashboard:** Resumo do dia (vendas, alertas)
+ - [ ] **PDV:** Interface ágil para caixa
+ - [ ] **Cadastros:** Grids para Produtos, Fornecedores, Clientes
+ - [ ] **Estoque:** Consulta rápida e movimentação
+ - [ ] **Orçamentos:** Editor de orçamentos
+ - [ ] **Relatórios:** Visualização de dados
+ 
+ ---
+ 
+ ## Plano sugerido de execução (6 semanas)
 
 1. **Semanas 1-2:** testes críticos + segurança (auth/CORS/segredos) + erro global
 2. **Semana 3:** performance estoque + paginação consistente
