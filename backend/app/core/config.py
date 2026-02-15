@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     fastapi_users_secret: str = secrets.token_urlsafe(32)
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Optional configurations
     WHATSAPP_TOKEN: Optional[str] = None

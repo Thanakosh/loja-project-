@@ -80,3 +80,63 @@ class TestUserAuth:
         """Testa endpoint /me sem token retorna 401."""
         response = client.get("/api/v1/users/me")
         assert response.status_code == 401
+
+    def test_fluxo_refresh_token(self, client: TestClient):
+        """Testa login, refresh e logout."""
+        # 1. Login
+        client.post(
+            "/api/v1/users/register",
+            json={
+                "email": "refresh@teste.com",
+                "password": "Senha123!",
+                "full_name": "Refresh Test",
+            },
+        )
+        response = client.post(
+            "/api/v1/users/token",
+            data={
+                "username": "refresh@teste.com",
+                "password": "Senha123!",
+            },
+        )
+        data = response.json()
+        access_token_1 = data["access_token"]
+        refresh_token_1 = data["refresh_token"]
+        assert access_token_1
+        assert refresh_token_1
+
+        # 2. Refresh (Rotação)
+        response = client.post(
+            "/api/v1/users/refresh",
+            json={"refresh_token": refresh_token_1},
+        )
+        assert response.status_code == 200
+        data_refresh = response.json()
+        access_token_2 = data_refresh["access_token"]
+        refresh_token_2 = data_refresh["refresh_token"]
+
+        assert access_token_2
+        assert refresh_token_2
+        assert access_token_1 != access_token_2
+        assert refresh_token_1 != refresh_token_2
+
+        # 3. Tentar usar token antigo (deve falhar - revogado)
+        response = client.post(
+            "/api/v1/users/refresh",
+            json={"refresh_token": refresh_token_1},
+        )
+        assert response.status_code == 401  # Revogado
+
+        # 4. Logout
+        # Precisa estar autenticado com access token válido
+        headers = {"Authorization": f"Bearer {access_token_2}"}
+        response = client.post("/api/v1/users/logout", headers=headers)
+        assert response.status_code == 200
+
+        # 5. Tentar usar refresh token 2 após logout (deve falhar - revogado globalmente)
+        response = client.post(
+            "/api/v1/users/refresh",
+            json={"refresh_token": refresh_token_2},
+        )
+        assert response.status_code == 401
+

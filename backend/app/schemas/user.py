@@ -25,3 +25,16 @@ class UserInDBBase(UserBase):
 
 class UserInDB(UserInDBBase):
     hashed_password: str
+
+
+class TokenResponse(BaseModel):
+    """Resposta de autenticação com access e refresh tokens."""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int  # segundos até expiração do access token
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request para renovar tokens."""
+    refresh_token: str
