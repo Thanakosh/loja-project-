@@ -181,13 +181,21 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  
  ---
  
- ## Plano sugerido de execução (6 semanas)
+ ## Plano sugerido de execução (6 passos)
 
-1. **Semanas 1-2:** testes críticos + segurança (auth/CORS/segredos) + erro global
-2. **Semana 3:** performance estoque + paginação consistente
-3. **Semana 4:** rate limiting + logging estruturado
-4. **Semana 5:** docker compose + split de dependências
-5. **Semana 6:** desenho técnico de OCR em fila + refresh token + política de versionamento API
+1. **Passo 1 e passo 2:** testes críticos + segurança (auth/CORS/segredos) + erro global
+2. **Passo 3:** performance estoque + paginação consistente
+3. **Passo 4:** rate limiting + logging estruturado
+4. **Passo 5:** docker compose + split de dependências
+5. **Passo 6:** desenho técnico de OCR em fila + refresh token + política de versionamento API
+
+---
+
+## Status de execução (início das melhorias)
+
+- ✅ **Documentação atualizada:** plano convertido para passos (passo 1, passo 2, etc.).
+- 🚧 **Em andamento:** criação de gate de CI para rodar testes críticos de backend a cada push/PR.
+- 🎯 **Próximo incremento:** expandir suíte de testes críticos para cobrir OCR assíncrono com cenário de erro e recuperação.
 
 ---
 
