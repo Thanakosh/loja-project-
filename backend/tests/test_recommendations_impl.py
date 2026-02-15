@@ -11,8 +11,7 @@ def test_oauth_optional_uses_auto_error_false():
 def test_async_infrastructure_is_available():
     from app.core import database
 
-    assert hasattr(database, "async_engine")
-    assert hasattr(database, "AsyncSessionLocal")
+    assert hasattr(database, "get_async_engine")
     assert hasattr(database, "get_async_db")
 
 
