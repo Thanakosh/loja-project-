@@ -1,20 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from datetime import timedelta
-from typing import Any
 
-from ...core.database import get_db
-from ...core.security import create_access_token, verify_password, get_password_hash, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
 from ...core.config import settings
+from ...core.database import get_db
+from ...core.security import create_access_token, get_current_user, get_password_hash, verify_password
 from ...models.user import User
-from ...schemas.user import UserCreate, UserUpdate, User as UserSchema
+from ...schemas.user import User as UserSchema
+from ...schemas.user import UserCreate
 
 router = APIRouter(tags=["users"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
+
 
 def authenticate_user(db: Session, email: str, password: str):
     user = get_user_by_email(db, email)
@@ -23,6 +25,7 @@ def authenticate_user(db: Session, email: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
 
 @router.post("/token")
 async def login_for_access_token(
@@ -36,11 +39,13 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 @router.post("/register", response_model=UserSchema)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -62,24 +67,9 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+
 @router.get("/me", response_model=UserSchema)
 async def read_users_me(
     current_user: User = Depends(get_current_user)
 ):
     return current_user
-
-# router.include_router(
-#     fastapi_users.get_auth_router(auth_backend),
-#     prefix="/auth/jwt",
-#     tags=["auth"],
-# )
-# router.include_router(
-#     fastapi_users.get_register_router(UserRead, UserCreate),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-# router.include_router(
-#     fastapi_users.get_users_router(UserRead, UserUpdate),
-#     prefix="/users",
-#     tags=["users"],
-# ) 

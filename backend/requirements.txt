@@ -20,11 +20,8 @@ fastapi-users[sqlalchemy]>=12.1.2,<13.0.0
 pydantic>=2.5.0,<3.0.0
 pydantic-settings>=2.0.0,<3.0.0
 
-# AI and ML
+# AI integrations (lightweight)
 ollama==0.1.6
-easyocr==1.7.1
-torch>=2.0.0
-torchvision>=0.15.0
 
 # Utilities
 requests==2.31.0

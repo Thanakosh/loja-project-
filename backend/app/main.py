@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1.estoque import router as estoque_router
 from app.api.v1.estoque_v2 import router as estoque_v2_router
-from app.api.v1.ocr import router as ocr_router
-from app.api.v1.users import router as users_router
 from app.api.v1.llm import router as llm_router
+from app.api.v1.ocr import router as ocr_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.api.v1.produto import router as produto_router
+from app.api.v1.users import router as users_router
+
 from .core.config import settings
 
 app = FastAPI(
@@ -15,16 +17,16 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS
+allow_credentials = "*" not in settings.CORS_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# API Routes
 app.include_router(
     users_router,
     prefix="/api/v1/users",
@@ -67,6 +69,7 @@ app.include_router(
     tags=["Orcamentos"]
 )
 
+
 @app.get("/")
 async def root():
     return {
@@ -79,6 +82,7 @@ async def root():
             "API RESTful completa"
         ]
     }
+
 
 @app.get("/ping", tags=["Health Check"])
 def health_check():

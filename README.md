@@ -121,6 +121,12 @@ cd backend
 pip install -r requirements.txt
 ```
 
+Se for usar OCR (upload de imagens), instale também o pacote opcional de OCR/ML:
+
+```bash
+pip install -r requirements-ocr.txt
+```
+
 ### 4. Configurar Variáveis de Ambiente
 
 Crie um arquivo `.env` na raiz do projeto:
