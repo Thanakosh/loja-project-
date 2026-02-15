@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Loja API"
     DEBUG: bool = False
 
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+
     # CORS - Em produção, deve ser uma lista restrita de URLs
     # Se for ["*"], allow_credentials deve ser False no main.py
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
