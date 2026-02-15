@@ -21,7 +21,13 @@ class TestOrcamentoCRUD:
     def test_listar_orcamentos(self, client: TestClient, auth_headers: dict):
         response = client.get("/api/v1/orcamentos/", headers=auth_headers)
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "pages" in data
+        assert isinstance(data["items"], list)
 
     def test_buscar_orcamento_inexistente(self, client: TestClient, auth_headers: dict):
         response = client.get("/api/v1/orcamentos/99999", headers=auth_headers)

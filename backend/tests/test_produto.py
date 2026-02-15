@@ -37,7 +37,13 @@ class TestProdutoCRUD:
         """Testa listagem de produtos."""
         response = client.get("/api/v1/produtos/", headers=auth_headers)
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "pages" in data
+        assert isinstance(data["items"], list)
 
     def test_buscar_produto_inexistente(self, client: TestClient, auth_headers: dict):
         """Testa busca de produto que não existe."""

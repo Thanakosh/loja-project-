@@ -1,3 +1,4 @@
+from math import ceil
 from typing import List
 
 from fastapi import APIRouter, Depends, Query
@@ -6,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
+from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
 from ...models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ...models.user import User
+from ...schemas.pagination import PaginatedResponse
 from ...schemas.transacao_estoque import EstoqueAtual, TransacaoEstoqueCreate, TransacaoEstoqueRead
 
 router = APIRouter(tags=["Estoque V2"])
@@ -83,8 +86,10 @@ def obter_estoque_produto(
     )
 
 
-@router.get("/", response_model=List[EstoqueAtual])
+@router.get("/", response_model=PaginatedResponse[EstoqueAtual])
 def listar_estoque_completo(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     apenas_ativos: bool = True,
     apenas_baixo: bool = False,
     db: Session = Depends(get_db),
@@ -141,28 +146,38 @@ def listar_estoque_completo(
             )
         )
 
-    return resultado
+    total = len(resultado)
+    pages = ceil(total / page_size) if page_size > 0 else 0
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    return {
+        "items": resultado[start:end],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
 
 
-@router.get("/historico/{produto_id}", response_model=List[TransacaoEstoqueRead])
+@router.get("/historico/{produto_id}", response_model=PaginatedResponse[TransacaoEstoqueRead])
 def obter_historico_produto(
     produto_id: int,
-    limite: int = Query(50, ge=1, le=500),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Obtém o histórico de transações de um produto"""
+    """Obtém o histórico de transações de um produto com paginação"""
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
         raise ProdutoNaoEncontradoError()
 
-    transacoes = db.query(TransacaoEstoque)\
+    query = db.query(TransacaoEstoque)\
         .filter(TransacaoEstoque.produto_id == produto_id)\
-        .order_by(TransacaoEstoque.data_transacao.desc())\
-        .limit(limite)\
-        .all()
+        .order_by(TransacaoEstoque.data_transacao.desc())
 
-    return transacoes
+    return paginate(query, page=page, page_size=page_size)
 
 
 @router.post("/entrada-lote", response_model=List[TransacaoEstoqueRead])

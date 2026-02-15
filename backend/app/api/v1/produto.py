@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from ...core.database import get_db
+from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
 from ...models.user import User
 from ...models.transacao_estoque import TransacaoEstoque, TipoTransacao
+from ...schemas.pagination import PaginatedResponse
 from ...schemas.produto import ProdutoCreate, ProdutoRead
-from typing import List
 
 router = APIRouter(tags=["Produto"])
 
@@ -41,19 +42,19 @@ def criar_produto(
         
     return db_produto
 
-@router.get("/", response_model=List[ProdutoRead])
+@router.get("/", response_model=PaginatedResponse[ProdutoRead])
 def listar_produtos(
-    skip: int = 0, 
-    limit: int = 100, 
+    page: int = Query(1, ge=1, description="Número da página"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     incluir_inativos: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Lista todos os produtos (requer autenticação)"""
+    """Lista todos os produtos com paginação (requer autenticação)"""
     query = db.query(Produto)
     if not incluir_inativos:
-        query = query.filter(Produto.ativo == True)
-    return query.offset(skip).limit(limit).all()
+        query = query.filter(Produto.ativo.is_(True))
+    return paginate(query, page=page, page_size=page_size)
 
 @router.get("/{produto_id}", response_model=ProdutoRead)
 def buscar_produto(

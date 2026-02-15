@@ -4,6 +4,7 @@ from .estoque import EstoqueRead, EstoqueCreate
 from .orcamento import OrcamentoRead, OrcamentoCreate
 from .ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
 from .llm import LLMRequest, LLMResponse
+from .pagination import PaginatedResponse
 from .transacao_estoque import TransacaoEstoqueRead, TransacaoEstoqueCreate
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "OCRTaskStatus",
     "LLMRequest",
     "LLMResponse",
+    "PaginatedResponse",
     "TransacaoEstoqueRead",
     "TransacaoEstoqueCreate",
 ]
