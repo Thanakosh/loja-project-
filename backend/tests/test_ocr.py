@@ -1,44 +1,23 @@
-import pytest
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 
 
-async def _auth_headers(client: AsyncClient) -> dict[str, str]:
-    register_payload = {
-        "email": "ocr-test@example.com",
-        "password": "testpassword123",
-        "full_name": "OCR Test",
-    }
-    await client.post("/api/v1/users/register", json=register_payload)
+def test_ocr_upload_imagem_invalida(client: TestClient, auth_headers: dict[str, str], monkeypatch):
+    monkeypatch.setattr("app.api.v1.ocr.importlib.util.find_spec", lambda _: object())
 
-    login_data = {"username": register_payload["email"], "password": register_payload["password"]}
-    response = await client.post("/api/v1/users/token", data=login_data)
-    assert response.status_code == 200
-
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.mark.anyio
-async def test_ocr_upload_imagem_invalida(client: AsyncClient):
-    headers = await _auth_headers(client)
-
-    response = await client.post(
+    response = client.post(
         "/api/v1/ocr/upload",
         files={"file": ("arquivo.txt", b"nao sou imagem", "text/plain")},
-        headers=headers,
+        headers=auth_headers,
     )
-    # OCR sem dependências instaladas retorna 500 antes da validação de formato
-    assert response.status_code in {400, 500}
+    assert response.status_code == 400
 
 
-@pytest.mark.anyio
-async def test_extrair_dados_ocr(client: AsyncClient):
-    headers = await _auth_headers(client)
+def test_extrair_dados_ocr(client: TestClient, auth_headers: dict[str, str]):
     texto = "Produto: Caneta, Quantidade: 10, Valor: 2.50\nProduto: Lápis, Quantidade: 5, Valor: 1.20"
-    response = await client.post(
+    response = client.post(
         "/api/v1/ocr/extrair-dados",
         json={"texto": texto},
-        headers=headers,
+        headers=auth_headers,
     )
 
     assert response.status_code == 200

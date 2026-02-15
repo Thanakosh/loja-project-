@@ -3,9 +3,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -18,11 +17,12 @@ os.environ.setdefault("DATABASE_URL", "postgresql://user:password@localhost:5432
 os.environ.setdefault("JWT_SECRET", "test-secret-key")
 
 from app.core.database import Base, get_db
+from app.core.security import get_password_hash
 from app.main import app
+from app.models.user import User
 
-# Banco de testes em memória, compartilhado entre conexões síncronas/assíncronas
-TEST_DB_SYNC_URL = "sqlite:///file:memdb1?mode=memory&cache=shared&uri=true"
-TEST_DB_ASYNC_URL = "sqlite+aiosqlite:///file:memdb1?mode=memory&cache=shared&uri=true"
+# Banco de testes em memória (SQLite)
+TEST_DB_SYNC_URL = "sqlite:///:memory:"
 
 sync_engine = create_engine(
     TEST_DB_SYNC_URL,
@@ -31,13 +31,9 @@ sync_engine = create_engine(
 )
 TestSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
-async_engine = create_async_engine(TEST_DB_ASYNC_URL, poolclass=StaticPool)
-AsyncTestingSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False)
-
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database() -> None:
-    Base.metadata.drop_all(bind=sync_engine)
     Base.metadata.create_all(bind=sync_engine)
     yield
     Base.metadata.drop_all(bind=sync_engine)
@@ -56,23 +52,37 @@ def db_session(setup_test_database) -> Session:
         connection.close()
 
 
-@pytest.fixture(scope="session")
-def anyio_backend() -> str:
-    return "asyncio"
+@pytest.fixture(scope="function")
+def client(db_session: Session):
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="function")
-async def client(db_session: Session):
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+def test_user(db_session: Session) -> User:
+    user = User(
+        email="test@example.com",
+        hashed_password=get_password_hash("testpassword123"),
+        full_name="Test User",
+        is_active=True,
+        is_superuser=False,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
-    app.dependency_overrides[get_db] = override_get_db
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as test_client:
-        yield test_client
+@pytest.fixture(scope="function")
+def auth_headers(client: TestClient, test_user: User) -> dict[str, str]:
+    login_data = {"username": test_user.email, "password": "testpassword123"}
+    response = client.post("/api/v1/users/token", data=login_data)
+    assert response.status_code == 200
 
-    app.dependency_overrides.clear()
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
