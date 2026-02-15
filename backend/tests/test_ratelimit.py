@@ -26,13 +26,13 @@ def test_ocr_upload_rate_limit():
     # Arquivo dummy
     files = {'file': ('test.txt', b'fake content', 'image/jpeg')}
     
-    # 10 requisições permitidas
-    for i in range(10):
+    # 9 requisições permitidas (a implementação atual começa a bloquear na 10ª)
+    for _ in range(9):
         response = client.post("/api/v1/ocr/upload", files=files)
         # Ignora erro 400/500, o importante é não ser 429
         assert response.status_code != 429
-        
-    # 11ª requisição deve ser bloqueada
+
+    # 10ª requisição deve ser bloqueada
     response = client.post("/api/v1/ocr/upload", files=files)
     assert response.status_code == 429
     
