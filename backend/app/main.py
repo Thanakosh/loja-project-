@@ -1,5 +1,6 @@
-import uuid
+import contextvars
 import logging
+import uuid
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -18,8 +19,12 @@ from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
 from .core.exceptions import BusinessException
+from .core.logging_config import setup_logging
 
+setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
 logger = logging.getLogger(__name__)
+
+_trace_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -42,9 +47,34 @@ async def startup_warnings():
 
 @app.middleware("http")
 async def add_trace_id_to_request(request: Request, call_next):
-    request.state.trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
-    response = await call_next(request)
-    response.headers["X-Trace-Id"] = request.state.trace_id
+    trace_id = request.headers.get("X-Trace-Id") or str(uuid.uuid4())
+    request.state.trace_id = trace_id
+    token = _trace_id_ctx.set(trace_id)
+
+    logger.info(
+        "Request iniciada",
+        extra={
+            "trace_id": trace_id,
+            "method": request.method,
+            "path": str(request.url.path),
+        },
+    )
+
+    try:
+        response = await call_next(request)
+    finally:
+        _trace_id_ctx.reset(token)
+
+    response.headers["X-Trace-Id"] = trace_id
+    logger.info(
+        "Request concluída",
+        extra={
+            "trace_id": trace_id,
+            "method": request.method,
+            "path": str(request.url.path),
+            "status_code": response.status_code,
+        },
+    )
     return response
 
 
