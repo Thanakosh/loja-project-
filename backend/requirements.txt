@@ -30,3 +30,4 @@ requests==2.31.0
 Pillow==10.2.0
 httpx>=0.26.0
 aiofiles>=23.2.0
+slowapi>=0.1.9

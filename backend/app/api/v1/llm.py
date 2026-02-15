@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ...core.limiter import limiter
 from ...schemas.llm import LLMRequest, LLMResponse
 from ...schemas.ocr import NotaFiscalExtraida, ProdutoExtraido
 import os
@@ -17,7 +18,8 @@ from ...core.config import settings
 router = APIRouter(tags=["LLM"])
 
 @router.post("/ollama", response_model=LLMResponse)
-def chat_ollama(req: LLMRequest):
+@limiter.limit("20/minute")
+def chat_ollama(request: Request, req: LLMRequest):
     """Chat com modelo local Ollama"""
     if not ollama:
         raise HTTPException(status_code=500, detail="Ollama não está instalado no backend.")
@@ -29,7 +31,8 @@ def chat_ollama(req: LLMRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao consultar Ollama: {e}")
 
 @router.post("/open-interpreter", response_model=LLMResponse)
-def chat_open_interpreter(req: LLMRequest):
+@limiter.limit("20/minute")
+def chat_open_interpreter(request: Request, req: LLMRequest):
     """Chat com Open Interpreter"""
     model = req.model or "openinterpreter/o1"
     payload = {
@@ -145,7 +148,8 @@ async def _usar_open_interpreter(prompt: str) -> str:
 
 
 @router.post("/analisar-nota-fiscal", response_model=NotaFiscalExtraida)
-async def analisar_nota_fiscal_endpoint(req: LLMRequest):
+@limiter.limit("20/minute")
+async def analisar_nota_fiscal_endpoint(request: Request, req: LLMRequest):
     """
     Endpoint para analisar texto de nota fiscal usando LLM.
     O texto deve ser o resultado do OCR.

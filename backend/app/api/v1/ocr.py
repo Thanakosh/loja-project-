@@ -7,13 +7,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import aiofiles
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.security import get_current_active_user
 from ...models.user import User
 from ...schemas.ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
+from ...core.limiter import limiter
 
 router = APIRouter(tags=["OCR"])
 
@@ -100,8 +101,11 @@ async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
             os.remove(file_path)
 
 
+
 @router.post("/upload", response_model=OCRTaskResponse, summary="Upload de imagem para OCR assíncrono")
+@limiter.limit("10/minute")
 async def upload_ocr_async(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     use_llm: bool = False,
@@ -223,7 +227,9 @@ def extrair_dados_ocr(
 
 
 @router.post("/processar-nota-fiscal", response_model=OCRTaskResponse, summary="Processa nota fiscal completa")
+@limiter.limit("5/minute")
 async def processar_nota_fiscal_completa(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     auto_cadastrar: bool = True,
