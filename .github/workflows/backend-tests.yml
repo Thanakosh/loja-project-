@@ -33,4 +33,9 @@ jobs:
 
       - name: Run critical test suite
         run: |
-          pytest tests/test_users.py tests/test_estoque_v2.py tests/test_ocr.py -v
+          pytest \
+            tests/test_users.py \
+            tests/test_estoque_v2.py \
+            tests/test_ocr.py::test_ocr_upload_async_erro_e_recuperacao \
+            tests/test_ocr.py::test_ocr_status_task_inexistente_retorna_404 \
+            -v
