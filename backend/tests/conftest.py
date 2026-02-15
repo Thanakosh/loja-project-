@@ -21,7 +21,7 @@ from app.core.security import get_password_hash
 from app.main import app
 from app.models.user import User
 
-# Banco de testes em memória (somente SQLite)
+# Banco de testes em memória (SQLite)
 TEST_DB_SYNC_URL = "sqlite:///:memory:"
 
 sync_engine = create_engine(
