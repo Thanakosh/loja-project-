@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
@@ -96,9 +96,10 @@ def listar_estoque_completo(
     - **apenas_ativos**: Se True, lista apenas produtos ativos
     - **apenas_baixo**: Se True, lista apenas produtos com estoque baixo
     """
-    sub_ultima_data = (
+    sub_estoque = (
         db.query(
             TransacaoEstoque.produto_id.label("produto_id"),
+            func.coalesce(func.sum(TransacaoEstoque.quantidade), 0).label("quantidade_atual"),
             func.max(TransacaoEstoque.data_transacao).label("ultima_data"),
         )
         .group_by(TransacaoEstoque.produto_id)
@@ -106,9 +107,14 @@ def listar_estoque_completo(
     )
 
     query = (
-        db.query(Produto, sub_ultima_data.c.ultima_data)
-        .outerjoin(sub_ultima_data, sub_ultima_data.c.produto_id == Produto.id)
-        .options(selectinload(Produto.transacoes))
+        db.query(
+            Produto.id,
+            Produto.nome,
+            Produto.estoque_minimo,
+            func.coalesce(sub_estoque.c.quantidade_atual, 0).label("quantidade_atual"),
+            sub_estoque.c.ultima_data,
+        )
+        .outerjoin(sub_estoque, sub_estoque.c.produto_id == Produto.id)
     )
 
     if apenas_ativos:
@@ -117,21 +123,23 @@ def listar_estoque_completo(
     rows = query.all()
 
     resultado: List[EstoqueAtual] = []
-    for produto, ultima_data in rows:
-        quantidade_atual = produto.estoque_atual
-        estoque = EstoqueAtual(
-            produto_id=produto.id,
-            nome_produto=produto.nome,
-            quantidade_atual=quantidade_atual,
-            estoque_minimo=produto.estoque_minimo,
-            estoque_baixo=produto.estoque_baixo,
-            ultima_movimentacao=ultima_data,
-        )
+    for row in rows:
+        quantidade_atual = row.quantidade_atual
+        estoque_baixo = quantidade_atual <= row.estoque_minimo
 
-        if apenas_baixo and not estoque.estoque_baixo:
+        if apenas_baixo and not estoque_baixo:
             continue
 
-        resultado.append(estoque)
+        resultado.append(
+            EstoqueAtual(
+                produto_id=row.id,
+                nome_produto=row.nome,
+                quantidade_atual=quantidade_atual,
+                estoque_minimo=row.estoque_minimo,
+                estoque_baixo=estoque_baixo,
+                ultima_movimentacao=row.ultima_data,
+            )
+        )
 
     return resultado
 
