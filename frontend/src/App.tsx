@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import Layout from './components/Layout'
 import { PrivateRoute } from './components/PrivateRoute'
 import Clientes from './pages/Clientes'
 import Dashboard from './pages/Dashboard'
@@ -13,9 +14,11 @@ import Relatorios from './pages/Relatorios'
 
 const App = () => {
   return (
-    <main className="min-h-screen bg-slate-100 p-6 text-slate-900">
-      <Routes>
-        <Route element={<PrivateRoute />}>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+
+      <Route element={<PrivateRoute />}>
+        <Route element={<Layout />}>
           <Route path="/" element={<Navigate replace to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pdv" element={<PDV />} />
@@ -26,11 +29,10 @@ const App = () => {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/relatorios" element={<Relatorios />} />
         </Route>
+      </Route>
 
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate replace to="/" />} />
-      </Routes>
-    </main>
+      <Route path="*" element={<Navigate replace to="/" />} />
+    </Routes>
   )
 }
 
