@@ -109,7 +109,13 @@ class TestEstoqueV2:
         """Testa listagem completa de estoque."""
         resp = client.get("/api/v2/estoque/", headers=auth_headers)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        data = resp.json()
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "pages" in data
+        assert isinstance(data["items"], list)
 
     def test_historico_transacoes(self, client: TestClient, auth_headers: dict):
         """Testa consulta do histórico de transações."""
@@ -129,7 +135,9 @@ class TestEstoqueV2:
 
         resp = client.get(f"/api/v2/estoque/historico/{produto_id}", headers=auth_headers)
         assert resp.status_code == 200
-        assert len(resp.json()) == 3
+        data = resp.json()
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
 
     def test_entrada_lote(self, client: TestClient, auth_headers: dict):
         """Testa entrada em lote de múltiplos produtos."""

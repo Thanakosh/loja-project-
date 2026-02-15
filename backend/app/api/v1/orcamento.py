@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ...core.database import get_db
+from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.orcamento import Orcamento
 from ...models.user import User
+from ...schemas.pagination import PaginatedResponse
 from ...schemas.orcamento import OrcamentoCreate, OrcamentoRead
-from typing import List
 
 router = APIRouter(tags=["Orcamento"])
 
@@ -22,13 +23,15 @@ def criar_orcamento(
     db.refresh(db_orcamento)
     return db_orcamento
 
-@router.get("/", response_model=List[OrcamentoRead])
+@router.get("/", response_model=PaginatedResponse[OrcamentoRead])
 def listar_orcamentos(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Lista todos os orçamentos (requer autenticação)"""
-    return db.query(Orcamento).all()
+    """Lista todos os orçamentos com paginação (requer autenticação)"""
+    return paginate(db.query(Orcamento), page=page, page_size=page_size)
 
 @router.get("/{orcamento_id}", response_model=OrcamentoRead)
 def buscar_orcamento(
