@@ -6,7 +6,7 @@ scope: raiz do projeto
 branch: chore/docker-setup
 commit_message: "chore(infra): adiciona Dockerfile e docker-compose.yml"
 estimated_effort: 20 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-004: Criar Dockerfile e docker-compose.yml
@@ -177,3 +177,7 @@ POSTGRES_DB=loja_db
 - Ollama está comentado por padrão (é opcional)
 - Em produção, remover `--reload` do uvicorn e usar `gunicorn`
 - NÃO commitar `.env`, apenas `.env.example`
+
+## Atualização de status
+- ✅ `Dockerfile` e `docker-compose.yml` já versionados na raiz
+- ✅ Tarefa mantida como referência de operação e onboarding

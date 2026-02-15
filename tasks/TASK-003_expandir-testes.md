@@ -6,7 +6,7 @@ scope: backend/tests/
 branch: test/expandir-cobertura
 commit_message: "test(backend): adiciona testes para produto, users e orcamento"
 estimated_effort: 30 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-003: Expandir cobertura de testes automatizados
@@ -407,3 +407,7 @@ class TestEstoqueV2:
 - Os testes devem ser **isolados** (cada test class limpa o estado)
 - Seguir estilo do projeto: pytest + TestClient do FastAPI
 - Consultar `AGENTS.md` para padrões de testes
+
+## Atualização de status
+- ✅ Arquivos de teste críticos já presentes no repositório
+- ✅ Escopo da tarefa atendido com cobertura de produto, users, orcamento e estoque_v2

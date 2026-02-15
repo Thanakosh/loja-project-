@@ -14,7 +14,7 @@ recomendacao_ref: "#5 — Otimização de performance no estoque (N+1) — fase 
 # TASK-010: Benchmark de performance — endpoint de estoque
 
 ## Contexto
-A TASK-005 corrigiu o problema N+1 no endpoint `GET /api/v2/estoque/` substituindo `selectinload` + cálculo Python por uma query agregada com `SUM()` + `GROUP BY`. A correção foi mergeada, mas **não temos métricas concretas** que comprovem a melhoria.
+A TASK-005 corrigiu o problema N+1 no endpoint `GET /api/v2/estoque/` substituindo `selectinload` + cálculo Python por uma query agregada com `SUM()` + `GROUP BY`. A correção foi concluída, mas **ainda faltam métricas concretas** que comprovem a melhoria.
 
 **Objetivo:** Criar um benchmark automatizado que:
 1. Popule o banco com dados realistas (100+ produtos, 10.000+ transações)
