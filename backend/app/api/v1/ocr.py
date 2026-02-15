@@ -14,6 +14,7 @@ from ...core.database import get_db
 from ...core.security import get_current_active_user
 from ...models.user import User
 from ...schemas.ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
+from ...core.config import settings
 from ...core.limiter import limiter
 
 router = APIRouter(tags=["OCR"])
@@ -103,7 +104,7 @@ async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
 
 
 @router.post("/upload", response_model=OCRTaskResponse, summary="Upload de imagem para OCR assíncrono")
-@limiter.limit("10/minute")
+@limiter.limit(settings.RATE_LIMIT_OCR)
 async def upload_ocr_async(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -227,7 +228,7 @@ def extrair_dados_ocr(
 
 
 @router.post("/processar-nota-fiscal", response_model=OCRTaskResponse, summary="Processa nota fiscal completa")
-@limiter.limit("5/minute")
+@limiter.limit(settings.RATE_LIMIT_OCR)
 async def processar_nota_fiscal_completa(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -237,4 +238,10 @@ async def processar_nota_fiscal_completa(
     current_user: User = Depends(get_current_active_user),
 ):
     """Processa nota fiscal com OCR + LLM"""
-    return await upload_ocr_async(background_tasks, file, use_llm=True, current_user=current_user)
+    return await upload_ocr_async(
+        request=request,
+        background_tasks=background_tasks,
+        file=file,
+        use_llm=True,
+        current_user=current_user,
+    )

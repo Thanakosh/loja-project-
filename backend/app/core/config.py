@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
 
+    # Rate Limiting
+    RATE_LIMIT_OCR: str = "10/hour"
+    RATE_LIMIT_LLM: str = "30/hour"
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+
     # CORS - Em produção, deve ser uma lista restrita de URLs
     # Se for ["*"], allow_credentials deve ser False no main.py
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

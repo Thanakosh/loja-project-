@@ -145,13 +145,22 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return _error_response(
+    retry_after = None
+    if hasattr(exc, "headers") and isinstance(exc.headers, dict):
+        retry_after = exc.headers.get("Retry-After") or exc.headers.get("retry-after")
+    if retry_after is None and hasattr(exc, "detail"):
+        retry_after = str(exc.detail)
+
+    response = _error_response(
         request=request,
         status_code=429,
         code="rate_limit_exceeded",
         message="Limite de requisições excedido",
         details=f"Tente novamente em {exc.detail}" if hasattr(exc, "detail") else "Muitas requisições",
     )
+    if retry_after is not None:
+        response.headers["Retry-After"] = str(retry_after)
+    return response
 # Se CORS_ORIGINS for ["*"], allow_credentials DEVE ser False
 allow_credentials = "*" not in settings.CORS_ORIGINS
 
