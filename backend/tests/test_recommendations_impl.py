@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def test_oauth_optional_uses_auto_error_false():
@@ -25,7 +25,7 @@ def test_ocr_task_cleanup_and_hash():
     task_id = "task-expired"
     ocr.ocr_tasks[task_id] = {
         "status": "completed",
-        "expires_at": (datetime.utcnow() - timedelta(minutes=1)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
         "hash": file_hash,
     }
     ocr.ocr_task_index_by_hash[file_hash] = task_id

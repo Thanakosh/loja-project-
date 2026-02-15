@@ -3,7 +3,7 @@ import importlib.util
 import os
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import aiofiles
@@ -24,7 +24,7 @@ ocr_task_index_by_hash: Dict[str, str] = {}
 
 
 def _cleanup_expired_tasks() -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired_ids = [
         task_id
         for task_id, task in ocr_tasks.items()
@@ -38,7 +38,7 @@ def _cleanup_expired_tasks() -> None:
 
 
 def _task_expiration_timestamp() -> str:
-    return (datetime.utcnow() + timedelta(minutes=TASK_TTL_MINUTES)).isoformat()
+    return (datetime.now(timezone.utc) + timedelta(minutes=TASK_TTL_MINUTES)).isoformat()
 
 
 def _build_file_hash(content: bytes) -> str:
@@ -140,7 +140,7 @@ async def upload_ocr_async(
 
     ocr_tasks[task_id] = {
         "status": "pending",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": _task_expiration_timestamp(),
         "filename": file.filename,
         "use_llm": use_llm,

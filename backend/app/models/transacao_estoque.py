@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 from ..core.database import Base
 
@@ -25,7 +25,7 @@ class TransacaoEstoque(Base):
     quantidade = Column(Integer, nullable=False)  # Positivo para entrada, negativo para saída
     motivo = Column(String, nullable=True)  # Ex: "Venda", "Compra", "Ajuste de inventário"
     usuario_id = Column(Integer, ForeignKey("user.id"), nullable=True)  # Quem fez a transação
-    data_transacao = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    data_transacao = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     
     # Relacionamentos
     produto = relationship("Produto", back_populates="transacoes")
