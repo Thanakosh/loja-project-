@@ -12,6 +12,8 @@ from app.api.v1.ocr import router as ocr_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.api.v1.produto import router as produto_router
 from app.api.v1.users import router as users_router
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
 from .core.exceptions import BusinessException
@@ -21,6 +23,8 @@ app = FastAPI(
     description="API para gerenciamento de loja com OCR e IA",
     version="2.0.0"
 )
+
+app.state.limiter = limiter
 
 
 @app.middleware("http")
@@ -96,7 +100,15 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         details=None,
     )
 
-
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return _error_response(
+        request=request,
+        status_code=429,
+        code="rate_limit_exceeded",
+        message="Limite de requisições excedido",
+        details=f"Tente novamente em {exc.detail}" if hasattr(exc, "detail") else "Muitas requisições",
+    )
 # Se CORS_ORIGINS for ["*"], allow_credentials DEVE ser False
 allow_credentials = "*" not in settings.CORS_ORIGINS
 
