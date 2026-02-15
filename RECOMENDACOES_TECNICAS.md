@@ -195,7 +195,8 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 
 - ✅ **Documentação atualizada:** plano convertido para passos (passo 1, passo 2, etc.).
 - 🚧 **Em andamento:** criação de gate de CI para rodar testes críticos de backend a cada push/PR.
-- 🎯 **Próximo incremento:** expandir suíte de testes críticos para cobrir OCR assíncrono com cenário de erro e recuperação.
+- ✅ **Incremento concluído:** suíte de testes críticos expandida para cobrir OCR assíncrono com cenário de erro e recuperação.
+- 🎯 **Próximo incremento:** incluir no gate de CI os novos cenários críticos de OCR assíncrono.
 
 ---
 

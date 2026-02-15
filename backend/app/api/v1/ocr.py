@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import aiofiles
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile, Request, Response
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -107,6 +107,7 @@ async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
 @limiter.limit(settings.RATE_LIMIT_OCR)
 async def upload_ocr_async(
     request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     use_llm: bool = False,
@@ -231,6 +232,7 @@ def extrair_dados_ocr(
 @limiter.limit(settings.RATE_LIMIT_OCR)
 async def processar_nota_fiscal_completa(
     request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     auto_cadastrar: bool = True,
@@ -240,6 +242,7 @@ async def processar_nota_fiscal_completa(
     """Processa nota fiscal com OCR + LLM"""
     return await upload_ocr_async(
         request=request,
+        response=response,
         background_tasks=background_tasks,
         file=file,
         use_llm=True,
