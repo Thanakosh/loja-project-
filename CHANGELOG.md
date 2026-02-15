@@ -2,6 +2,16 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [Unreleased]
+
+### 📝 Documentação
+- Plano técnico em `RECOMENDACOES_TECNICAS.md` atualizado de semanas para passos, com status inicial da execução das melhorias.
+
+### 🔧 Infraestrutura
+- Adicionado workflow de CI (`.github/workflows/backend-tests.yml`) para rodar testes críticos de backend (auth, estoque v2 e OCR) em push/PR.
+
+---
+
 ## [2.0.0] - 2026-02-14
 
 ### 🎉 Principais Mudanças
