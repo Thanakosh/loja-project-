@@ -2,6 +2,14 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [Unreleased]
+
+### 🐛 Correções
+
+- Padroniza tratamento global de erros com handlers para `HTTPException`, `RequestValidationError` e exceções genéricas, com formato único `{code, message, details, trace_id}`.
+- Mapeia erros de negócio de estoque v2 (`produto não encontrado`, `estoque insuficiente`) para códigos semânticos consistentes.
+- Adiciona testes de contrato do payload de erro em `backend/tests/test_errors.py`.
+
 ## [2.0.0] - 2026-02-14
 
 ### 🎉 Principais Mudanças
