@@ -6,7 +6,7 @@ scope: backend/ (3 arquivos, 5 ocorrências)
 branch: fix/datetime-utcnow
 commit_message: "fix(backend): substitui datetime.utcnow() por datetime.now(timezone.utc)"
 estimated_effort: 10 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-001: Corrigir `datetime.utcnow()` depreciado
@@ -78,3 +78,7 @@ return (datetime.now(timezone.utc) + timedelta(...)).isoformat()  # linha 42
 ## Referências
 - [Python 3.12 changelog](https://docs.python.org/3.12/whatsnew/3.12.html)
 - `AGENTS.md` — padrões do projeto
+
+## Atualização de status
+- ✅ Implementação presente no código atual (`datetime.now(timezone.utc)` nos pontos mapeados)
+- ✅ Busca por `utcnow` no diretório `backend/` sem ocorrências

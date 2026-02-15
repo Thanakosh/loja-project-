@@ -6,7 +6,7 @@ scope: backend/app/api/v1/estoque_v2.py
 branch: perf/estoque-n1-query
 commit_message: "perf(estoque): elimina N+1 na listagem com query agregada"
 estimated_effort: 30 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-005: Otimizar query N+1 no endpoint de listagem de estoque
@@ -165,3 +165,7 @@ def listar_estoque_completo(
 - NÃO alterar o model `Produto.estoque_atual` (property) — endpoints individuais podem usá-lo
 - O `selectinload` pode ser mantido no import se outros endpoints o usarem
 - Consultar `AGENTS.md` para padrões do projeto
+
+## Atualização de status
+- ✅ Endpoint de listagem com abordagem agregada em banco (`SUM`/`GROUP BY` + `JOIN`)
+- ✅ Benchmark detalhado permanece no escopo da `TASK-010`
