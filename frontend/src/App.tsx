@@ -1,27 +1,26 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './components/Layout';
+import { Navigate, Route, Routes } from 'react-router-dom'
 
-// Placeholder components for pages
-const Dashboard = () => <div className="p-4 bg-white rounded-lg shadow">Dashboard Content</div>;
-const PDV = () => <div className="p-4 bg-white rounded-lg shadow">PDV Content</div>;
-const Produtos = () => <div className="p-4 bg-white rounded-lg shadow">Produtos Content</div>;
-const Estoque = () => <div className="p-4 bg-white rounded-lg shadow">Estoque Content</div>;
-const Orcamentos = () => <div className="p-4 bg-white rounded-lg shadow">Orçamentos Content</div>;
-const Fornecedores = () => <div className="p-4 bg-white rounded-lg shadow">Fornecedores Content</div>;
-const Clientes = () => <div className="p-4 bg-white rounded-lg shadow">Clientes Content</div>;
-const Relatorios = () => <div className="p-4 bg-white rounded-lg shadow">Relatórios Content</div>;
-const Login = () => <div className="min-h-screen flex items-center justify-center bg-gray-100">Login Page</div>;
+import { PrivateRoute } from './components/PrivateRoute'
+import Layout from './components/Layout'
+import Clientes from './pages/Clientes'
+import Dashboard from './pages/Dashboard'
+import Estoque from './pages/Estoque'
+import Fornecedores from './pages/Fornecedores'
+import Login from './pages/Login'
+import Orcamentos from './pages/Orcamentos'
+import PDV from './pages/PDV'
+import Produtos from './pages/Produtos'
+import Relatorios from './pages/Relatorios'
 
-function App() {
+const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
 
-        {/* Protected Routes Wrapper */}
+      <Route element={<PrivateRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate replace to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pdv" element={<PDV />} />
           <Route path="/produtos" element={<Produtos />} />
@@ -31,12 +30,11 @@ function App() {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/relatorios" element={<Relatorios />} />
         </Route>
+      </Route>
 
-        {/* Catch all redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+      <Route path="*" element={<Navigate replace to="/" />} />
+    </Routes>
+  )
 }
 
-export default App;
+export default App

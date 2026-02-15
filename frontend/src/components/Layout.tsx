@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+
+import { removeToken } from '../utils/auth'
 
 const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -7,9 +9,8 @@ const Layout = () => {
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        // TODO: Implement removeToken logic here
-        console.log('Logging out...');
-        navigate('/login');
+        removeToken()
+        navigate('/login')
     };
 
     const menuItems = [
