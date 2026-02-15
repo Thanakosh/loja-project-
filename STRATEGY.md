@@ -25,8 +25,25 @@ Este documento detalha o planejamento estratégico para a evolução do sistema,
 - **Docker Optimization:** Refinar o `Dockerfile` para builds multi-estágio, reduzindo o tamanho da imagem final.
 - **Scripts de Automação:** Substituir scripts `.ps1` por um `Makefile` unificado para facilitar o setup em qualquer sistema operacional.
 
-## 4. Roadmap de Implementação
-1. **Fase 1:** Atualização de dependências e refatoração do core (Modelos/Schemas).
-2. **Fase 2:** Otimização do módulo OCR e integração assíncrona.
-3. **Fase 3:** Implementação do módulo de comunicação (WhatsApp/Email).
-4. **Fase 4:** Dashboard gerencial e Inteligência de Compras.
+## 4. Roadmap de Produto (ERP)
+1. **Fase 1: Fundação do Frontend (Desktop/Web)**
+   - Desenvolvimento do app React + Electron + Vite
+   - Configuração do TailwindCSS e Design System
+   - Integração básica com backend FastAPI existente (login/dashboard)
+
+2. **Fase 2: Core Business (Gestão Comercial)**
+   - Cadastro completo de Fornecedores e Clientes
+   - Gestão de Produtos avançada:
+     - Categorias hierárquicas
+     - Múltiplos preços (custo, atacado, varejo)
+     - Unidades de medida (metro, unidade, kg)
+
+3. **Fase 3: Operação de Loja (PDV)**
+   - Frente de Caixa (PDV) com baixa automática
+   - Controle de Caixa (abertura/fechamento)
+   - Orçamentos com conversão para venda
+
+4. **Fase 4: Expansão e Fiscal**
+   - Emissão de NF-e / NFC-e
+   - Contas a Pagar e Receber
+   - Integração WhatsApp para orçamentos e notificações

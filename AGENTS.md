@@ -24,6 +24,7 @@ loja-project-/
 ├── checkpoints/           # Snapshots de estado do projeto
 ├── docs/                  # Documentação
 ├── AGENTS.md              # ← Este arquivo (leia sempre primeiro)
+├── frontend/              # (Novo) Aplicação Desktop/Web React + Electron
 ├── CHANGELOG.md           # Histórico de versões
 ├── STRATEGY.md            # Direção técnica de longo prazo
 └── RECOMENDACOES_TECNICAS.md  # Backlog técnico priorizado
@@ -43,6 +44,22 @@ loja-project-/
 | ollama (client)  | >=0.4.7       | Compatível com httpx>=0.26.0        |
 | httpx            | >=0.26.0      | Não reduzir esta versão             |
 
+## 🎨 Stack Frontend (Novo)
+
+| Tecnologia       | Versão        | Finalidade                          |
+|------------------|---------------|-------------------------------------|
+| React            | 18+           | Interface de usuário (UI)           |
+| Electron         | Latest        | Desktop App (Windows/Linux)         |
+| Vite             | Latest        | Build tool e Dev Server             |
+| TailwindCSS      | 3.4+          | Estilização (obrigatório)           |
+| React Query      | Latest        | State management server-side        |
+| Shadcn/ui        | Latest        | (Recomendado) Componentes UI        |
+
+**⚠️ Regra de Ouro do Frontend:**
+> **NUNCA DUPLICAR REGRAS DE NEGÓCIO NO FRONTEND.**
+> O frontend deve ser apenas uma camada de visualização e interação.
+> Cálculos de impostos, validações complexas e regras de estoque ficam **exclusivamente no Backend**.
+
 ---
 
 ## 🚦 Regras de Branch
@@ -53,7 +70,8 @@ loja-project-/
 | `codex/<descricao-curta>`           | Tarefas do OpenAI Codex                    | Codex             |
 | `cursor/<descricao-curta>`          | Tarefas do Cursor                          | Cursor            |
 | `claude/<descricao-curta>`          | Tarefas do Claude                          | Claude            |
-| `feature/<descricao-curta>`         | Novas funcionalidades manuais              | Humano            |
+| `frontend/<descricao-curta>`        | Features de UI (React/Electron)            | Qualquer agente   |
+| `feature/<descricao-curta>`         | Novas funcionalidades (Backend/Geral)      | Humano            |
 | `fix/<descricao-curta>`             | Correções de bugs                          | Qualquer agente   |
 
 **Regras:**
