@@ -18,7 +18,7 @@ from ...core.config import settings
 router = APIRouter(tags=["LLM"])
 
 @router.post("/ollama", response_model=LLMResponse)
-@limiter.limit("20/minute")
+@limiter.limit(settings.RATE_LIMIT_LLM)
 def chat_ollama(request: Request, req: LLMRequest):
     """Chat com modelo local Ollama"""
     if not ollama:
@@ -31,7 +31,7 @@ def chat_ollama(request: Request, req: LLMRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao consultar Ollama: {e}")
 
 @router.post("/open-interpreter", response_model=LLMResponse)
-@limiter.limit("20/minute")
+@limiter.limit(settings.RATE_LIMIT_LLM)
 def chat_open_interpreter(request: Request, req: LLMRequest):
     """Chat com Open Interpreter"""
     model = req.model or "openinterpreter/o1"
@@ -148,7 +148,7 @@ async def _usar_open_interpreter(prompt: str) -> str:
 
 
 @router.post("/analisar-nota-fiscal", response_model=NotaFiscalExtraida)
-@limiter.limit("20/minute")
+@limiter.limit(settings.RATE_LIMIT_LLM)
 async def analisar_nota_fiscal_endpoint(request: Request, req: LLMRequest):
     """
     Endpoint para analisar texto de nota fiscal usando LLM.
