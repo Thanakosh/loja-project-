@@ -45,11 +45,15 @@ def criar_produto(
 def listar_produtos(
     skip: int = 0, 
     limit: int = 100, 
+    incluir_inativos: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """Lista todos os produtos (requer autenticação)"""
-    return db.query(Produto).offset(skip).limit(limit).all()
+    query = db.query(Produto)
+    if not incluir_inativos:
+        query = query.filter(Produto.ativo == True)
+    return query.offset(skip).limit(limit).all()
 
 @router.get("/{produto_id}", response_model=ProdutoRead)
 def buscar_produto(
@@ -90,10 +94,33 @@ def deletar_produto(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Deleta um produto (requer autenticação)"""
+    """Desativa um produto via soft delete (requer autenticação)"""
     db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not db_produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
-    db.delete(db_produto)
+
+    if not db_produto.ativo:
+        raise HTTPException(status_code=400, detail="Produto já está desativado")
+
+    db_produto.ativo = False
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "message": "Produto desativado com sucesso"}
+
+
+@router.post("/{produto_id}/reativar", response_model=ProdutoRead)
+def reativar_produto(
+    produto_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Reativa um produto desativado (requer autenticação)"""
+    db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
+    if not db_produto:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    if db_produto.ativo:
+        raise HTTPException(status_code=400, detail="Produto já está ativo")
+
+    db_produto.ativo = True
+    db.commit()
+    db.refresh(db_produto)
+    return db_produto
