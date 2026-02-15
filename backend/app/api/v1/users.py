@@ -36,7 +36,7 @@ async def login_for_access_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Email ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -53,7 +53,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(
             status_code=400,
-            detail="Email already registered"
+            detail="Email já cadastrado"
         )
     hashed_password = get_password_hash(user.password)
     db_user = User(
