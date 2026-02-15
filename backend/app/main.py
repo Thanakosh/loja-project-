@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1.estoque import router as estoque_router
 from app.api.v1.estoque_v2 import router as estoque_v2_router
-from app.api.v1.ocr import router as ocr_router
-from app.api.v1.users import router as users_router
 from app.api.v1.llm import router as llm_router
+from app.api.v1.ocr import router as ocr_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.api.v1.produto import router as produto_router
+from app.api.v1.users import router as users_router
+
 from .core.config import settings
 
 app = FastAPI(
@@ -15,59 +17,25 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS
 # Se CORS_ORIGINS for ["*"], allow_credentials DEVE ser False
-allow_all = "*" in settings.CORS_ORIGINS
+allow_credentials = "*" not in settings.CORS_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=not allow_all, # Não permite credenciais com wildcard
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# API Routes
-app.include_router(
-    users_router,
-    prefix="/api/v1/users",
-    tags=["Users"]
-)
+app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(estoque_router, prefix="/api/v1/estoque", tags=["Estoque (Legado)"])
+app.include_router(estoque_v2_router, prefix="/api/v2/estoque", tags=["Estoque V2"])
+app.include_router(produto_router, prefix="/api/v1/produtos", tags=["Produtos"])
+app.include_router(ocr_router, prefix="/api/v1/ocr", tags=["OCR"])
+app.include_router(llm_router, prefix="/api/v1/llm", tags=["LLM"])
+app.include_router(orcamento_router, prefix="/api/v1/orcamentos", tags=["Orcamentos"])
 
-app.include_router(
-    estoque_router,
-    prefix="/api/v1/estoque",
-    tags=["Estoque (Legado)"]
-)
-
-app.include_router(
-    estoque_v2_router,
-    prefix="/api/v2/estoque",
-    tags=["Estoque V2"]
-)
-
-app.include_router(
-    produto_router,
-    prefix="/api/v1/produtos",
-    tags=["Produtos"]
-)
-
-app.include_router(
-    ocr_router,
-    prefix="/api/v1/ocr",
-    tags=["OCR"]
-)
-
-app.include_router(
-    llm_router,
-    prefix="/api/v1/llm",
-    tags=["LLM"]
-)
-
-app.include_router(
-    orcamento_router,
-    prefix="/api/v1/orcamentos",
-    tags=["Orcamentos"]
-)
 
 @app.get("/")
 async def root():
@@ -81,6 +49,7 @@ async def root():
             "API RESTful completa"
         ]
     }
+
 
 @app.get("/ping", tags=["Health Check"])
 def health_check():

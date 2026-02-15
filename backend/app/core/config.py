@@ -1,7 +1,8 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, AnyHttpUrl
-from typing import Optional, List, Union
 import secrets
+from typing import Optional, List, Union
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -27,7 +28,6 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS - Em produção, deve ser uma lista restrita de URLs
-    # Exemplo: ["http://localhost:3000", "https://meuapp.com"]
     # Se for ["*"], allow_credentials deve ser False no main.py
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 

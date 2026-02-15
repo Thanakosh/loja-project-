@@ -1,5 +1,7 @@
+# OCR and ML stack (instalar separado do core)
+# pip install -r requirements-ocr.txt
 easyocr>=1.7.1
-torch>=2.1.0
-torchvision>=0.16.0
+torch>=2.0.0
+torchvision>=0.15.0
 aiofiles>=23.2.1
 python-multipart>=0.0.6

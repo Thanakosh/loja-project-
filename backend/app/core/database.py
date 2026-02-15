@@ -1,75 +1,78 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import QueuePool, StaticPool
 import logging
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import QueuePool
+
 from .config import settings
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+ASYNC_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# --- Configuração Síncrona (Para compatibilidade e Migrações) ---
-connect_args = {}
-if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-    poolclass = StaticPool
-else:
-    poolclass = QueuePool
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    echo=settings.SQLALCHEMY_ECHO,
-    connect_args=connect_args,
-    poolclass=poolclass if not SQLALCHEMY_DATABASE_URL.startswith("sqlite") else StaticPool
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    except Exception as e:
-        logger.error(f"Database session error: {str(e)}")
-        db.rollback()
-        raise
-    finally:
-        db.close()
+try:
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_pre_ping=True,
+        echo=settings.SQLALCHEMY_ECHO,
+    )
+    logger.info("Database engine created successfully")
+except Exception as exc:
+    logger.error(f"Error creating database engine: {str(exc)}")
+    raise
 
+try:
+    async_engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        pool_pre_ping=True,
+        echo=settings.SQLALCHEMY_ECHO,
+    )
+    logger.info("Async database engine created successfully")
+except Exception as exc:
+    logger.error(f"Error creating async database engine: {str(exc)}")
+    raise
 
-# --- Configuração Assíncrona (Nova Arquitetura) ---
-# Converte a URL para o driver async se necessário
-ASYNC_DATABASE_URL = SQLALCHEMY_DATABASE_URL
-if ASYNC_DATABASE_URL.startswith("postgresql://"):
-    ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-elif ASYNC_DATABASE_URL.startswith("sqlite://"):
-    ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
-
-async_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=settings.SQLALCHEMY_ECHO,
-    connect_args=connect_args if ASYNC_DATABASE_URL.startswith("sqlite") else {}
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
 )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
     expire_on_commit=False,
-    autoflush=False
 )
 
+
+def get_db():
+    """Dependency for getting sync DB session."""
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception as exc:
+        logger.error(f"Database session error: {str(exc)}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 async def get_async_db():
-    async with AsyncSessionLocal() as session:
+    """Dependency for getting async DB session."""
+    async with AsyncSessionLocal() as db:
         try:
-            yield session
-            await session.commit()
-        except Exception as e:
-            logger.error(f"Async database session error: {str(e)}")
-            await session.rollback()
+            yield db
+        except Exception as exc:
+            logger.error(f"Async database session error: {str(exc)}")
+            await db.rollback()
             raise
-        finally:
-            await session.close()

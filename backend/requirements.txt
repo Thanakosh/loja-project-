@@ -22,8 +22,8 @@ bcrypt==4.0.1
 pydantic>=2.6.4
 pydantic-settings>=2.2.1
 
-# AI and ML (Core Client)
-ollama==0.1.6
+# AI integrations (lightweight)
+ollama>=0.4.7
 
 # Utilities
 requests==2.31.0

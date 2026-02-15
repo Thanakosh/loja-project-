@@ -23,5 +23,5 @@ __all__ = [
     "LLMRequest",
     "LLMResponse",
     "TransacaoEstoqueRead",
-    "TransacaoEstoqueCreate"
+    "TransacaoEstoqueCreate",
 ]

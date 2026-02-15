@@ -1,61 +1,50 @@
-sss
-.env
-sss
-.env
-sss
-.env
 # Python
 *.pyc
-pycache/
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+__pycache__/
 *.egg-info/
 dist/
 build/
 *.whl
+.Python
 
-Node
+# Ambientes virtuais
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
+!.env.example
+
+# Banco de dados local
+*.db
+*.sqlite
+data/
+
+# Node
 node_modules/
 npm-debug.log
 yarn-error.log
 package-lock.json
 yarn.lock
 
-Docker
+# Docker
 *.dockerignore
-Dockerfile
-docker-compose.yml
 *.tar.gz
 *.tar
 
-IDE
+# IDEs
 .vscode/
 .idea/
 *.sublime-workspace
 *.sublime-project
 *.code-workspace
 
-
-# Pastas vazias
-empty/
-
-# Arquivos .env
-!.env.example
-data/
-
-data/
-data/
-.env
-data/
-data/
-.venv/
-   data/
-   **/__pycache__/
-   *.pyc
-.env
+# OS
+.DS_Store
+Thumbs.db
