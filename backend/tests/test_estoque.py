@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_auth_and_stock_flow(client: AsyncClient):
     # 1. Registrar usuário
     reg_data = {

@@ -14,7 +14,7 @@ class UserUpdate(UserBase):
     password: Optional[str] = None
 
 class User(UserBase):
-    id: str
+    id: int
 
     model_config = ConfigDict(from_attributes=True)
 
