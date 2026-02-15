@@ -75,3 +75,18 @@ def test_ocr_upload_async_erro_e_recuperacao(client: TestClient, auth_headers: d
     second_status_data = second_status.json()
     assert second_status_data["status"] == "completed"
     assert "Caneta" in second_status_data["result"]["texto"]
+
+
+def test_ocr_status_task_inexistente_retorna_404(client: TestClient, auth_headers: dict[str, str], monkeypatch):
+    from app.api.v1 import ocr as ocr_module
+
+    monkeypatch.setattr("app.api.v1.ocr.importlib.util.find_spec", lambda _: object())
+    ocr_module.ocr_tasks.clear()
+    ocr_module.ocr_task_index_by_hash.clear()
+
+    response = client.get("/api/v1/ocr/status/task-inexistente", headers=auth_headers)
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "http_error"
+    assert body["message"] == "Tarefa não encontrada ou expirada"

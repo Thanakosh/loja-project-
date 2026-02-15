@@ -194,9 +194,10 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 ## Status de execução (início das melhorias)
 
 - ✅ **Documentação atualizada:** plano convertido para passos (passo 1, passo 2, etc.).
-- 🚧 **Em andamento:** criação de gate de CI para rodar testes críticos de backend a cada push/PR.
+- ✅ **Incremento concluído:** gate de CI configurado para rodar testes críticos de backend a cada push/PR.
 - ✅ **Incremento concluído:** suíte de testes críticos expandida para cobrir OCR assíncrono com cenário de erro e recuperação.
-- 🎯 **Próximo incremento:** incluir no gate de CI os novos cenários críticos de OCR assíncrono.
+- ✅ **Incremento concluído:** gate de CI atualizado com cenários críticos de OCR assíncrono (erro/recuperação e status de tarefa inexistente).
+- 🎯 **Próximo incremento:** evoluir o Passo 2 com validações automatizadas para CORS por ambiente e tokenUrl padronizado.
 
 ---
 
