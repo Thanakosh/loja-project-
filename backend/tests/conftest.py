@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 
 # Variáveis mínimas para inicialização dos módulos durante os testes
 os.environ.setdefault("DATABASE_URL", "postgresql://user:password@localhost:5432/loja_db")
-os.environ.setdefault("JWT_SECRET", "test-secret-key")
+os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
 
 from app.core.database import Base, get_db
 from app.core.security import get_password_hash

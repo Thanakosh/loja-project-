@@ -1,4 +1,5 @@
 import uuid
+import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +19,8 @@ from slowapi.errors import RateLimitExceeded
 from .core.config import settings
 from .core.exceptions import BusinessException
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API para gerenciamento de loja com OCR e IA",
@@ -25,6 +28,16 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
+
+
+@app.on_event("startup")
+async def startup_warnings():
+    """Warnings de segurança no startup da aplicação."""
+    if "*" in settings.CORS_ORIGINS:
+        logger.warning(
+            "CORS wildcard ativo — não usar em produção"
+        )
+    logger.info(f"Loja API v2.0 iniciada | DEBUG={settings.DEBUG}")
 
 
 @app.middleware("http")

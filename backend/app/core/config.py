@@ -1,8 +1,11 @@
 import secrets
+import logging
 from typing import Optional, List, Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -35,7 +38,27 @@ class Settings(BaseSettings):
     @classmethod
     def validate_database_url(cls, v: str) -> str:
         if not v:
-            raise ValueError("DATABASE URL is required")
+            raise ValueError("DATABASE_URL is required")
+        return v
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Valida que o JWT_SECRET é suficientemente seguro."""
+        if not v or len(v) < 16:
+            raise ValueError(
+                "JWT_SECRET deve ter pelo menos 16 caracteres. "
+                "Gere um com: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+        insecure_values = [
+            "secret", "password", "123456", "change-me",
+            "sua_chave_secreta", "jwt_secret", "mysecret",
+        ]
+        if v.lower() in insecure_values:
+            raise ValueError(
+                f"JWT_SECRET com valor '{v}' é inseguro. "
+                "Use um valor aleatório forte."
+            )
         return v
 
     @field_validator("CORS_ORIGINS", mode="before")
@@ -55,3 +78,16 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Warnings de configuração no startup
+if "*" in settings.CORS_ORIGINS:
+    logger.warning(
+        "⚠️  CORS_ORIGINS contém wildcard '*'. "
+        "Isso é aceitável em desenvolvimento, mas NUNCA em produção. "
+        "Configure uma lista restrita de origens para ambientes de produção."
+    )
+
+if settings.DEBUG:
+    logger.warning(
+        "⚠️  DEBUG=True está ativo. Desative em produção."
+    )
