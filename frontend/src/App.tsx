@@ -11,6 +11,7 @@ import Orcamentos from './pages/Orcamentos'
 import PDV from './pages/PDV'
 import Produtos from './pages/Produtos'
 import Relatorios from './pages/Relatorios'
+import Vendas from './pages/Vendas'
 
 const App = () => {
   return (
@@ -22,6 +23,7 @@ const App = () => {
           <Route path="/" element={<Navigate replace to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pdv" element={<PDV />} />
+          <Route path="/vendas" element={<Vendas />} />
           <Route path="/produtos" element={<Produtos />} />
           <Route path="/estoque" element={<Estoque />} />
           <Route path="/orcamentos" element={<Orcamentos />} />

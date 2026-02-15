@@ -16,6 +16,7 @@ const Layout = () => {
     const menuItems = [
         { name: 'Dashboard', path: '/dashboard', icon: '📊' },
         { name: 'PDV', path: '/pdv', icon: '🛒' },
+        { name: 'Vendas', path: '/vendas', icon: '🧾' },
         { name: 'Produtos', path: '/produtos', icon: '📦' },
         { name: 'Estoque', path: '/estoque', icon: '🏭' },
         { name: 'Orçamentos', path: '/orcamentos', icon: '💰' },

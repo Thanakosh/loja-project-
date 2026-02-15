@@ -1,0 +1,28 @@
+from typing import Optional
+from pydantic import BaseModel
+
+class ClienteBase(BaseModel):
+    nome: str
+    cpf_cnpj: Optional[str] = None
+    endereco: Optional[str] = None
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
+    cep: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+    observacao: Optional[str] = None
+    inscricao_estadual: Optional[str] = None
+
+class ClienteCreate(ClienteBase):
+    codigo_legado: Optional[int] = None
+
+class ClienteUpdate(ClienteBase):
+    pass
+
+class ClienteRead(ClienteBase):
+    id: int
+    codigo_legado: Optional[int] = None
+    ativo: bool
+
+    class Config:
+        from_attributes = True
