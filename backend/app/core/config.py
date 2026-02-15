@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "Loja API"
     DEBUG: bool = False
+    ENVIRONMENT: str = "development"
 
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -79,6 +80,29 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+
+    @field_validator("ENVIRONMENT")
+    @classmethod
+    def validate_environment(cls, v: str) -> str:
+        normalized = v.lower().strip()
+        allowed = {"development", "staging", "production", "test"}
+        if normalized not in allowed:
+            raise ValueError(
+                "ENVIRONMENT deve ser um de: development, staging, production ou test"
+            )
+        return normalized
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins_by_environment(cls, v: List[str], info):
+        environment = (info.data.get("ENVIRONMENT") or "development").lower()
+
+        if environment in {"staging", "production"} and "*" in v:
+            raise ValueError(
+                "CORS_ORIGINS não pode conter '*' em staging/production. "
+                "Defina uma lista restrita de origens confiáveis."
+            )
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env",

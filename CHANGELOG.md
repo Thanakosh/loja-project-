@@ -4,6 +4,12 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ## [Unreleased]
 
+### ✅ Testes
+- Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
+
+### 🔒 Segurança
+- Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
+
 ### 📝 Documentação
 - Plano técnico em `RECOMENDACOES_TECNICAS.md` atualizado de semanas para passos, com status inicial da execução das melhorias.
 
@@ -90,6 +96,12 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - **Validação de tokens**: JWT com expiração configurável
 - **Auditoria**: Registro de usuário em todas as transações
 - **CORS atualizado**: Configuração mais restritiva recomendada
+
+### ✅ Testes
+- Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
+
+### 🔒 Segurança
+- Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
 ### 📝 Documentação
 

@@ -197,7 +197,8 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** gate de CI configurado para rodar testes críticos de backend a cada push/PR.
 - ✅ **Incremento concluído:** suíte de testes críticos expandida para cobrir OCR assíncrono com cenário de erro e recuperação.
 - ✅ **Incremento concluído:** gate de CI atualizado com cenários críticos de OCR assíncrono (erro/recuperação e status de tarefa inexistente).
-- 🎯 **Próximo incremento:** evoluir o Passo 2 com validações automatizadas para CORS por ambiente e tokenUrl padronizado.
+- ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
+- 🎯 **Próximo incremento:** avançar no Passo 2 com fortalecimento da gestão de segredos e revisão de `.gitignore`/`.env.example`.
 
 ---
 
