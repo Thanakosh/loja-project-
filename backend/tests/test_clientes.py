@@ -55,8 +55,6 @@ def test_update_cliente(client, db_session, auth_headers):
     assert data['cidade'] == 'Belo Horizonte'
     assert data['uf'] == 'MG'
     assert data['codigo_legado'] == 77
-
-
 def test_create_cliente_requer_autenticacao(client):
     response = client.post('/api/v1/clientes/', json={'nome': 'Sem Auth'})
     assert response.status_code == 401
