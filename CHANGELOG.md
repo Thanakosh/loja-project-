@@ -19,10 +19,12 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 - Tratamento centralizado de erros consolidado em módulo dedicado, incluindo padronização de respostas para exceções HTTP do Starlette (como 404/405) com `code`, `message`, `details` e `trace_id`.
 - Ajustado handler de `HTTPException` da API para manter `code="http_error"` em erros de rota (ex.: status OCR inexistente), preservando compatibilidade com clientes e testes existentes.
+- `.gitignore` reforçado para ignorar variações de arquivos `.env` e o banco local `test.db`, reduzindo risco de versionamento acidental de segredos e artefatos locais.
 
 ### ✅ Testes
 - Adicionados testes automatizados para bloquear `JWT_SECRET` com valor de placeholder (ex.: `SUBSTITUA_POR_UMA_CHAVE_SEGURA`) durante validação de settings.
 - Adicionados testes automatizados para garantir formato padronizado de erro em rotas inexistentes (404) e método não permitido (405).
+- Adicionados testes para garantir proteção de `.env`/`test.db` no `.gitignore` e para validar orientações seguras no `.env.example`.
 
 ### 🔒 Segurança
 - Validação de `JWT_SECRET` fortalecida para rejeitar placeholders comuns e exigir segredo real no startup.

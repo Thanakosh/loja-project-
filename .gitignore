@@ -19,6 +19,7 @@ venv.bak/
 
 # Variáveis de ambiente (NUNCA commitar)
 .env
+.env.*
 !.env.example
 
 # Banco de dados local
@@ -26,6 +27,7 @@ venv.bak/
 *.db-shm
 *.db-wal
 *.sqlite
+test.db
 data/
 
 # Node
