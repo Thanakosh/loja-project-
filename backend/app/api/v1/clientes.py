@@ -1,10 +1,12 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_current_active_user
 from app.models.cliente import Cliente
+from app.models.user import User
 from app.schemas.cliente import ClienteRead, ClienteCreate, ClienteUpdate
 
 router = APIRouter()
@@ -19,7 +21,8 @@ def get_clientes(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_active_user),
 ):
     query = db.query(Cliente)
     if search:
@@ -34,7 +37,11 @@ def get_clientes(
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{cliente_id}", response_model=ClienteRead)
-def get_cliente(cliente_id: int, db: Session = Depends(get_db)):
+def get_cliente(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_active_user),
+):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -42,7 +49,11 @@ def get_cliente(cliente_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=ClienteRead, status_code=201)
-def create_cliente(cliente_in: ClienteCreate, db: Session = Depends(get_db)):
+def create_cliente(
+    cliente_in: ClienteCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_active_user),
+):
     codigo_legado = cliente_in.codigo_legado
 
     if codigo_legado is not None:
@@ -71,7 +82,12 @@ def create_cliente(cliente_in: ClienteCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{cliente_id}", response_model=ClienteRead)
-def update_cliente(cliente_id: int, cliente_in: ClienteUpdate, db: Session = Depends(get_db)):
+def update_cliente(
+    cliente_id: int,
+    cliente_in: ClienteUpdate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_active_user),
+):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")

@@ -15,6 +15,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
 ### 📝 Documentação
@@ -98,6 +99,7 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - **Campo `quantidade` em Produto**: Use `estoque_atual` (calculado)
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 
 - **Autenticação obrigatória**: Todos os endpoints de dados protegidos
 - **Validação de tokens**: JWT com expiração configurável
@@ -108,6 +110,7 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
 ### 📝 Documentação

@@ -1,7 +1,7 @@
 from app.models.cliente import Cliente
 
 
-def test_create_cliente_com_codigo_automatico(client, db_session):
+def test_create_cliente_com_codigo_automatico(client, db_session, auth_headers):
     existente = Cliente(codigo_legado=10, nome='Cliente Base', cpf_cnpj='12345678901')
     db_session.add(existente)
     db_session.commit()
@@ -14,7 +14,7 @@ def test_create_cliente_com_codigo_automatico(client, db_session):
         'uf': 'SP',
     }
 
-    response = client.post('/api/v1/clientes/', json=payload)
+    response = client.post('/api/v1/clientes/', json=payload, headers=auth_headers)
 
     assert response.status_code == 201
     data = response.json()
@@ -22,7 +22,7 @@ def test_create_cliente_com_codigo_automatico(client, db_session):
     assert data['codigo_legado'] == 11
 
 
-def test_update_cliente(client, db_session):
+def test_update_cliente(client, db_session, auth_headers):
     cliente = Cliente(
         codigo_legado=77,
         nome='Cliente Antigo',
@@ -47,7 +47,7 @@ def test_update_cliente(client, db_session):
         'observacao': None,
     }
 
-    response = client.put(f'/api/v1/clientes/{cliente.id}', json=payload)
+    response = client.put(f'/api/v1/clientes/{cliente.id}', json=payload, headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -55,3 +55,6 @@ def test_update_cliente(client, db_session):
     assert data['cidade'] == 'Belo Horizonte'
     assert data['uf'] == 'MG'
     assert data['codigo_legado'] == 77
+def test_create_cliente_requer_autenticacao(client):
+    response = client.post('/api/v1/clientes/', json={'nome': 'Sem Auth'})
+    assert response.status_code == 401
