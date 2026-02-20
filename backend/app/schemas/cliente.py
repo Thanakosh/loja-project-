@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class ClienteBase(BaseModel):
     nome: str
@@ -23,6 +23,4 @@ class ClienteRead(ClienteBase):
     id: int
     codigo_legado: Optional[int] = None
     ativo: bool
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

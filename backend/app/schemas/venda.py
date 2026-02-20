@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # --- Item de Venda ---
 class VendaItemBase(BaseModel):
@@ -16,9 +16,7 @@ class VendaItemBase(BaseModel):
 class VendaItemRead(VendaItemBase):
     id: int
     venda_id: int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Venda ---
 class VendaBase(BaseModel):
@@ -37,6 +35,4 @@ class VendaRead(VendaBase):
     numero_legado: int
     cancelada: bool
     itens: List[VendaItemRead] = []
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
