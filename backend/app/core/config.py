@@ -1,14 +1,16 @@
 import secrets
 import logging
-from typing import Optional, List, Union
+from typing import ClassVar, Optional, List, Union
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
+    DATABASE_URL_EXAMPLE_PLACEHOLDER: ClassVar[str] = "postgresql://usuario:senha@localhost:5432/loja_db"
+
     # Database
     DATABASE_URL: str
     SQLALCHEMY_ECHO: bool = False
@@ -50,7 +52,34 @@ class Settings(BaseSettings):
     def validate_database_url(cls, v: str) -> str:
         if not v:
             raise ValueError("DATABASE_URL is required")
+        if v.strip() == cls.DATABASE_URL_EXAMPLE_PLACEHOLDER:
+            raise ValueError(
+                "DATABASE_URL está usando o placeholder do .env.example. "
+                "Configure uma URL real para o ambiente."
+            )
         return v
+
+    @model_validator(mode="after")
+    def validate_database_runtime_safety(self):
+        environment = (self.ENVIRONMENT or "development").lower().strip()
+        database_url = (self.DATABASE_URL or "").strip().lower()
+
+        if (
+            environment in {"staging", "production"}
+            and "@localhost" in database_url
+        ):
+            raise ValueError(
+                "DATABASE_URL não pode apontar para localhost em staging/production. "
+                "Use o host real do banco do ambiente."
+            )
+
+        if environment == "production" and self.SQLALCHEMY_ECHO:
+            logger.warning(
+                "⚠️  SQLALCHEMY_ECHO=True em produção pode expor queries sensíveis nos logs. "
+                "Use apenas para diagnóstico temporário."
+            )
+
+        return self
 
     @field_validator("JWT_SECRET")
     @classmethod

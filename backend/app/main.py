@@ -39,10 +39,29 @@ register_exception_handlers(app)
 @app.on_event("startup")
 async def startup_warnings():
     """Warnings de segurança no startup da aplicação."""
+    environment = settings.ENVIRONMENT.lower()
+
     if "*" in settings.CORS_ORIGINS:
         logger.warning(
             "CORS wildcard ativo — não usar em produção"
         )
+
+    if environment == "production" and settings.DEBUG:
+        logger.warning(
+            "⚠️  DEBUG=True em produção detectado. Isso aumenta risco de exposição de informações sensíveis."
+        )
+
+    if environment == "production" and settings.LOG_LEVEL.upper() == "DEBUG":
+        logger.warning(
+            "⚠️  LOG_LEVEL=DEBUG em produção pode expor dados sensíveis e aumentar ruído operacional."
+        )
+
+    if environment in {"staging", "production"} and settings.ACCESS_TOKEN_EXPIRE_MINUTES > 60:
+        logger.warning(
+            "⚠️  ACCESS_TOKEN_EXPIRE_MINUTES acima de 60 em staging/production. "
+            "Considere reduzir a duração para diminuir impacto de comprometimento de token."
+        )
+
     logger.info(f"Loja API v2.0 iniciada | DEBUG={settings.DEBUG}")
 
 

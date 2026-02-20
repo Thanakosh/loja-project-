@@ -198,7 +198,8 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** suíte de testes críticos expandida para cobrir OCR assíncrono com cenário de erro e recuperação.
 - ✅ **Incremento concluído:** gate de CI atualizado com cenários críticos de OCR assíncrono (erro/recuperação e status de tarefa inexistente).
 - ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
-- 🎯 **Próximo incremento:** avançar no Passo 2 com fortalecimento da gestão de segredos e revisão de `.gitignore`/`.env.example`.
+- ✅ **Incremento concluído:** Passo 2 finalizado com fortalecimento da gestão de segredos, validações de startup e revisão de `.env.example`.
+- 🎯 **Próximo incremento:** iniciar Passo 3 com otimização de performance do estoque (N+1) e paginação consistente nos endpoints listáveis.
 
 ---
 

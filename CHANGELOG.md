@@ -15,6 +15,8 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Validação de `DATABASE_URL` fortalecida para bloquear placeholder do `.env.example` e impedir `localhost` em `staging/production`, com falha explícita no startup quando inválida.
+- Startup agora emite alertas adicionais para configuração insegura em produção (`DEBUG=True`, `LOG_LEVEL=DEBUG`, `ACCESS_TOKEN_EXPIRE_MINUTES > 60`) e para `SQLALCHEMY_ECHO=True` em produção.
 - Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 - Tratamento centralizado de erros consolidado em módulo dedicado, incluindo padronização de respostas para exceções HTTP do Starlette (como 404/405) com `code`, `message`, `details` e `trace_id`.
