@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class MovimentacaoEstoqueBase(BaseModel):
     data: date
@@ -20,5 +20,4 @@ class MovimentacaoEstoqueBase(BaseModel):
 class MovimentacaoEstoqueRead(MovimentacaoEstoqueBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
