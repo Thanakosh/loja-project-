@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
+from ...core.config import settings
 from ...core.database import get_db
+from ...core.limiter import limiter
 from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.orcamento import Orcamento
@@ -11,7 +13,10 @@ from ...schemas.orcamento import OrcamentoCreate, OrcamentoRead
 router = APIRouter(tags=["Orcamento"])
 
 @router.post("/", response_model=OrcamentoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def criar_orcamento(
+    request: Request,
+    response: Response,
     orcamento: OrcamentoCreate, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -24,7 +29,10 @@ def criar_orcamento(
     return db_orcamento
 
 @router.get("/", response_model=PaginatedResponse[OrcamentoRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def listar_orcamentos(
+    request: Request,
+    response: Response,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -34,7 +42,10 @@ def listar_orcamentos(
     return paginate(db.query(Orcamento), page=page, page_size=page_size)
 
 @router.get("/{orcamento_id}", response_model=OrcamentoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def buscar_orcamento(
+    request: Request,
+    response: Response,
     orcamento_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -46,7 +57,10 @@ def buscar_orcamento(
     return orcamento
 
 @router.put("/{orcamento_id}", response_model=OrcamentoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def atualizar_orcamento(
+    request: Request,
+    response: Response,
     orcamento_id: int, 
     orcamento: OrcamentoCreate, 
     db: Session = Depends(get_db),
@@ -63,7 +77,10 @@ def atualizar_orcamento(
     return db_orcamento
 
 @router.delete("/{orcamento_id}")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def deletar_orcamento(
+    request: Request,
+    response: Response,
     orcamento_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)

@@ -185,8 +185,8 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 
 1. **Passo 1 e passo 2:** testes críticos + segurança (auth/CORS/segredos) + erro global
 2. **Passo 3:** performance estoque + paginação consistente
-3. **Passo 4:** rate limiting + logging estruturado
-4. **Passo 5:** docker compose + split de dependências
+3. **Passo 4:** ✅ rate limiting + logging estruturado
+4. **Passo 5:** docker compose + split de dependências OCR/ML
 5. **Passo 6:** desenho técnico de OCR em fila + refresh token + política de versionamento API
 
 ---
@@ -199,7 +199,8 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** gate de CI atualizado com cenários críticos de OCR assíncrono (erro/recuperação e status de tarefa inexistente).
 - ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
 - ✅ **Incremento concluído:** Passo 2 finalizado com fortalecimento da gestão de segredos, validações de startup e revisão de `.env.example`.
-- 🎯 **Próximo incremento:** iniciar Passo 3 com otimização de performance do estoque (N+1) e paginação consistente nos endpoints listáveis.
+- ✅ **Incremento concluído:** Passo 4 finalizado com rate limiting consistente em toda a API e logging estruturado observável em eventos críticos.
+- 🎯 **Próximo incremento:** Passo 5 — Docker Compose para desenvolvimento + split de dependências OCR/ML.
 
 ---
 

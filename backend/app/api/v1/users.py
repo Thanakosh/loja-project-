@@ -1,12 +1,11 @@
-from datetime import timedelta
-from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import get_db
+from ...core.limiter import limiter
 from ...core.security import (
     authenticate_user,
     create_token_pair,
@@ -24,6 +23,7 @@ from ...schemas.user import (
 )
 
 router = APIRouter(tags=["users"])
+logger = logging.getLogger(__name__)
 
 
 def get_user_by_email(db: Session, email: str):
@@ -31,12 +31,17 @@ def get_user_by_email(db: Session, email: str):
 
 
 @router.post("/token", response_model=TokenResponse)
+@limiter.limit("20/minute")
 async def login_for_access_token(
+    request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    trace_id = getattr(request.state, "trace_id", "")
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.warning("Tentativa de login inválida", extra={"trace_id": trace_id})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
@@ -45,6 +50,7 @@ async def login_for_access_token(
 
     # Aqui a mágica acontece: access + refresh
     access_token, refresh_token = create_token_pair(db, user)
+    logger.info("Login bem-sucedido", extra={"user_id": user.id, "trace_id": trace_id})
     
     return TokenResponse(
         access_token=access_token,
@@ -55,7 +61,10 @@ async def login_for_access_token(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def refresh_access_token(
+    request: Request,
+    response: Response,
     body: RefreshTokenRequest,
     db: Session = Depends(get_db)
 ):
@@ -85,7 +94,10 @@ async def refresh_access_token(
 
 
 @router.post("/logout")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def logout(
+    request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -98,7 +110,14 @@ async def logout(
 
 
 @router.post("/register", response_model=UserSchema)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def register_user(
+    request: Request,
+    response: Response,
+    user: UserCreate,
+    db: Session = Depends(get_db),
+):
+    trace_id = getattr(request.state, "trace_id", "")
     db_user = get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(
@@ -115,11 +134,15 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    logger.info("Usuário criado", extra={"user_id": db_user.id, "trace_id": trace_id})
     return db_user
 
 
 @router.get("/me", response_model=UserSchema)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def read_users_me(
+    request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user)
 ):
     return current_user

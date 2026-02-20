@@ -1,9 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.security import get_current_active_user
 from app.models.cliente import Cliente
 from app.models.user import User
@@ -17,7 +19,10 @@ def _next_codigo_legado(db: Session) -> int:
     return (ultimo_codigo or 0) + 1
 
 @router.get("/", response_model=List[ClienteRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def get_clientes(
+    request: Request,
+    response: Response,
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
@@ -37,7 +42,10 @@ def get_clientes(
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{cliente_id}", response_model=ClienteRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def get_cliente(
+    request: Request,
+    response: Response,
     cliente_id: int,
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_active_user),
@@ -49,7 +57,10 @@ def get_cliente(
 
 
 @router.post("/", response_model=ClienteRead, status_code=201)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def create_cliente(
+    request: Request,
+    response: Response,
     cliente_in: ClienteCreate,
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_active_user),
@@ -82,7 +93,10 @@ def create_cliente(
 
 
 @router.put("/{cliente_id}", response_model=ClienteRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def update_cliente(
+    request: Request,
+    response: Response,
     cliente_id: int,
     cliente_in: ClienteUpdate,
     db: Session = Depends(get_db),

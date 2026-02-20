@@ -9,12 +9,14 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - API de clientes agora possui endpoints de criação (`POST /api/v1/clientes/`) e atualização (`PUT /api/v1/clientes/{cliente_id}`), com geração automática de `codigo_legado` quando não informado.
 
 ### ✅ Testes
+- Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validação de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), além de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criação e atualização de clientes na API (`backend/tests/test_clientes.py`).
 
 ### ✅ Testes
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Rate limiting aplicado de forma consistente nos endpoints de usuários, produtos, clientes, vendas, movimentação, orçamentos e estoque v2; autenticação (`/api/v1/users/token` e `/api/v1/users/register`) com limite restritivo de `20/minute` contra brute force.
 - Validação de `DATABASE_URL` fortalecida para bloquear placeholder do `.env.example` e impedir `localhost` em `staging/production`, com falha explícita no startup quando inválida.
 - Startup agora emite alertas adicionais para configuração insegura em produção (`DEBUG=True`, `LOG_LEVEL=DEBUG`, `ACCESS_TOKEN_EXPIRE_MINUTES > 60`) e para `SQLALCHEMY_ECHO=True` em produção.
 - Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.

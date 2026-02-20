@@ -1,12 +1,15 @@
+import logging
 from math import ceil
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ...core.config import settings
 from ...core.database import get_db
 from ...core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
+from ...core.limiter import limiter
 from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
@@ -16,10 +19,14 @@ from ...schemas.pagination import PaginatedResponse
 from ...schemas.transacao_estoque import EstoqueAtual, TransacaoEstoqueCreate, TransacaoEstoqueRead
 
 router = APIRouter(tags=["Estoque V2"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/transacao", response_model=TransacaoEstoqueRead)
+@limiter.limit(settings.RATE_LIMIT_OCR)
 def criar_transacao_estoque(
+    request: Request,
+    response: Response,
     transacao: TransacaoEstoqueCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -28,6 +35,7 @@ def criar_transacao_estoque(
     Cria uma nova transação de estoque (entrada, saída, ajuste ou devolução).
     O estoque é atualizado automaticamente.
     """
+    trace_id = getattr(request.state, "trace_id", "")
     produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
     if not produto:
         raise ProdutoNaoEncontradoError()
@@ -37,6 +45,15 @@ def criar_transacao_estoque(
             .filter(TransacaoEstoque.produto_id == transacao.produto_id).scalar() or 0
 
         if abs(transacao.quantidade) > estoque_atual:
+            logger.warning(
+                "Estoque insuficiente",
+                extra={
+                    "produto_id": transacao.produto_id,
+                    "disponivel": estoque_atual,
+                    "solicitado": abs(transacao.quantidade),
+                    "trace_id": trace_id,
+                },
+            )
             raise EstoqueInsuficienteError(
                 details={
                     "disponivel": estoque_atual,
@@ -55,11 +72,25 @@ def criar_transacao_estoque(
     db.commit()
     db.refresh(db_transacao)
 
+    logger.info(
+        "Transação de estoque criada",
+        extra={
+            "tipo": db_transacao.tipo.value if hasattr(db_transacao.tipo, "value") else db_transacao.tipo,
+            "produto_id": db_transacao.produto_id,
+            "quantidade": db_transacao.quantidade,
+            "usuario_id": current_user.id,
+            "trace_id": trace_id,
+        },
+    )
+
     return db_transacao
 
 
 @router.get("/produto/{produto_id}", response_model=EstoqueAtual)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def obter_estoque_produto(
+    request: Request,
+    response: Response,
     produto_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -87,7 +118,10 @@ def obter_estoque_produto(
 
 
 @router.get("/", response_model=PaginatedResponse[EstoqueAtual])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def listar_estoque_completo(
+    request: Request,
+    response: Response,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     apenas_ativos: bool = True,
@@ -161,7 +195,10 @@ def listar_estoque_completo(
 
 
 @router.get("/historico/{produto_id}", response_model=PaginatedResponse[TransacaoEstoqueRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def obter_historico_produto(
+    request: Request,
+    response: Response,
     produto_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
@@ -181,7 +218,10 @@ def obter_historico_produto(
 
 
 @router.post("/entrada-lote", response_model=List[TransacaoEstoqueRead])
+@limiter.limit(settings.RATE_LIMIT_OCR)
 def entrada_lote_produtos(
+    request: Request,
+    response: Response,
     transacoes: List[TransacaoEstoqueCreate],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)

@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, File
 from sqlalchemy.orm import Session
+from ...core.config import settings
 from ...core.database import get_db
+from ...core.limiter import limiter
 from ...core.pagination import paginate
 from ...core.security import get_current_active_user
 from ...models.produto import Produto
@@ -12,7 +14,10 @@ from ...schemas.produto import ProdutoCreate, ProdutoRead
 router = APIRouter(tags=["Produto"])
 
 @router.post("/", response_model=ProdutoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def criar_produto(
+    request: Request,
+    response: Response,
     produto: ProdutoCreate, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -43,7 +48,10 @@ def criar_produto(
     return db_produto
 
 @router.get("/", response_model=PaginatedResponse[ProdutoRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def listar_produtos(
+    request: Request,
+    response: Response,
     page: int = Query(1, ge=1, description="Número da página"),
     page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     incluir_inativos: bool = False,
@@ -57,7 +65,10 @@ def listar_produtos(
     return paginate(query, page=page, page_size=page_size)
 
 @router.get("/{produto_id}", response_model=ProdutoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def buscar_produto(
+    request: Request,
+    response: Response,
     produto_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -69,7 +80,10 @@ def buscar_produto(
     return produto
 
 @router.put("/{produto_id}", response_model=ProdutoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def atualizar_produto(
+    request: Request,
+    response: Response,
     produto_id: int, 
     produto: ProdutoCreate, 
     db: Session = Depends(get_db),
@@ -90,7 +104,10 @@ def atualizar_produto(
     return db_produto
 
 @router.delete("/{produto_id}")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def deletar_produto(
+    request: Request,
+    response: Response,
     produto_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -109,7 +126,10 @@ def deletar_produto(
 
 
 @router.post("/{produto_id}/reativar", response_model=ProdutoRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def reativar_produto(
+    request: Request,
+    response: Response,
     produto_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
