@@ -18,6 +18,12 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
+### ✅ Testes
+- Adicionados testes automatizados para bloquear `JWT_SECRET` com valor de placeholder (ex.: `SUBSTITUA_POR_UMA_CHAVE_SEGURA`) durante validação de settings.
+
+### 🔒 Segurança
+- Validação de `JWT_SECRET` fortalecida para rejeitar placeholders comuns e exigir segredo real no startup.
+
 ### 📝 Documentação
 - Plano técnico em `RECOMENDACOES_TECNICAS.md` atualizado de semanas para passos, com status inicial da execução das melhorias.
 

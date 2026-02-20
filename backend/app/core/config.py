@@ -65,10 +65,22 @@ class Settings(BaseSettings):
             "secret", "password", "123456", "change-me",
             "sua_chave_secreta", "jwt_secret", "mysecret",
         ]
-        if v.lower() in insecure_values:
+        normalized = v.lower().strip()
+
+        if normalized in insecure_values:
             raise ValueError(
                 f"JWT_SECRET com valor '{v}' é inseguro. "
                 "Use um valor aleatório forte."
+            )
+
+        placeholder_markers = [
+            "substitua", "placeholder", "example", "exemplo", "change_this",
+            "your_secret", "jwt-secret-here", "insira", "coloque_aqui",
+        ]
+        if any(marker in normalized for marker in placeholder_markers):
+            raise ValueError(
+                "JWT_SECRET parece ser um placeholder. "
+                "Defina uma chave real e aleatória para o ambiente."
             )
         return v
 
