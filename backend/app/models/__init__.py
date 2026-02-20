@@ -7,3 +7,5 @@ from .venda import Venda, VendaItem
 from .conta_receber import ContaReceber
 from .movimentacao_estoque import MovimentacaoEstoque
 from .nota_fiscal import NotaFiscal, NotaFiscalItem
+
+from .fornecedor import Fornecedor

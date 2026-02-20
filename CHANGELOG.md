@@ -5,6 +5,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### ✨ Adicionado
+- Módulo completo de Fornecedores com CRUD, validação de CNPJ, soft delete, busca e relacionamento FK opcional com Produto.
 - Cadastro de clientes expandido com criação e edição pelo frontend (modal), incluindo integração com React Query e validação básica de CPF/CNPJ.
 - API de clientes agora possui endpoints de criação (`POST /api/v1/clientes/`) e atualização (`PUT /api/v1/clientes/{cliente_id}`), com geração automática de `codigo_legado` quando não informado.
 
@@ -37,6 +38,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Plano técnico em `RECOMENDACOES_TECNICAS.md` atualizado de semanas para passos, com status inicial da execução das melhorias.
 
 ### 🔧 Infraestrutura
+- Split de requirements core/ocr (`backend/requirements.txt` e `backend/requirements-ocr.txt`).
 - Adicionado workflow de CI (`.github/workflows/backend-tests.yml`) para rodar testes críticos de backend (auth, estoque v2 e OCR) em push/PR.
 
 ---
@@ -145,6 +147,7 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - **Validação de estoque**: Agora verifica disponibilidade antes de saída
 
 ### 🔧 Infraestrutura
+- Split de requirements core/ocr (`backend/requirements.txt` e `backend/requirements-ocr.txt`).
 
 - **Migrações Alembic**: Nova migração `refactor_estoque_v2`
 - **Índices de banco**: Otimização de queries

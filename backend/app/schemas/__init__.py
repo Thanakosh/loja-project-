@@ -6,6 +6,7 @@ from .ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
 from .llm import LLMRequest, LLMResponse
 from .pagination import PaginatedResponse
 from .transacao_estoque import TransacaoEstoqueRead, TransacaoEstoqueCreate
+from .fornecedor import FornecedorRead, FornecedorCreate, FornecedorUpdate
 
 __all__ = [
     "User",
@@ -26,4 +27,7 @@ __all__ = [
     "PaginatedResponse",
     "TransacaoEstoqueRead",
     "TransacaoEstoqueCreate",
+    "FornecedorRead",
+    "FornecedorCreate",
+    "FornecedorUpdate",
 ]

@@ -157,7 +157,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  
  ## 🛒 Módulos de Negócio (Pendentes)
  
- - [ ] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
+ - [x] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
  - [ ] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
  - [ ] **Categorias Hierárquicas:** Ex: Fios > Cabo 2.5mm²
  - [ ] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
@@ -200,7 +200,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
 - ✅ **Incremento concluído:** Passo 2 finalizado com fortalecimento da gestão de segredos, validações de startup e revisão de `.env.example`.
 - ✅ **Incremento concluído:** Passo 4 finalizado com rate limiting consistente em toda a API e logging estruturado observável em eventos críticos.
-- 🎯 **Próximo incremento:** Passo 5 — Docker Compose para desenvolvimento + split de dependências OCR/ML.
+- 🎯 **Próximo incremento:** módulo de PDV (Ponto de Venda).
 
 ---
 
