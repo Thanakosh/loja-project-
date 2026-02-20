@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 
 def test_oauth_optional_uses_auto_error_false():
@@ -103,3 +104,23 @@ def test_ocr_dependency_validation(monkeypatch):
         ocr._ensure_ocr_dependencies()
 
     assert "Dependências de OCR não instaladas" in exc_info.value.detail
+
+
+def test_env_example_has_no_real_secrets_and_uses_safe_guidance():
+    env_example = Path(__file__).resolve().parents[2] / ".env.example"
+    content = env_example.read_text(encoding="utf-8")
+
+    assert "NUNCA deve ser commitado" in content
+    assert "JWT_SECRET=SUBSTITUA_POR_UMA_CHAVE_SEGURA" in content
+    assert "OPENAI_KEY=" in content
+    assert "WHATSAPP_TOKEN=" in content
+
+
+def test_gitignore_protects_env_and_local_test_database():
+    gitignore = Path(__file__).resolve().parents[2] / ".gitignore"
+    content = gitignore.read_text(encoding="utf-8")
+
+    assert "\n.env\n" in content
+    assert "\n.env.*\n" in content
+    assert "\n!.env.example\n" in content
+    assert "\ntest.db\n" in content
