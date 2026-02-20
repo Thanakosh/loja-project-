@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,6 +8,11 @@ from app.models.cliente import Cliente
 from app.schemas.cliente import ClienteRead, ClienteCreate, ClienteUpdate
 
 router = APIRouter()
+
+
+def _next_codigo_legado(db: Session) -> int:
+    ultimo_codigo = db.query(func.max(Cliente.codigo_legado)).scalar()
+    return (ultimo_codigo or 0) + 1
 
 @router.get("/", response_model=List[ClienteRead])
 def get_clientes(
@@ -33,4 +38,53 @@ def get_cliente(cliente_id: int, db: Session = Depends(get_db)):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    return cliente
+
+
+@router.post("/", response_model=ClienteRead, status_code=201)
+def create_cliente(cliente_in: ClienteCreate, db: Session = Depends(get_db)):
+    codigo_legado = cliente_in.codigo_legado
+
+    if codigo_legado is not None:
+        codigo_existente = db.query(Cliente).filter(Cliente.codigo_legado == codigo_legado).first()
+        if codigo_existente:
+            raise HTTPException(status_code=400, detail="Código legado já cadastrado")
+    else:
+        codigo_legado = _next_codigo_legado(db)
+
+    cliente = Cliente(
+        codigo_legado=codigo_legado,
+        nome=cliente_in.nome,
+        cpf_cnpj=cliente_in.cpf_cnpj,
+        endereco=cliente_in.endereco,
+        cidade=cliente_in.cidade,
+        uf=cliente_in.uf,
+        cep=cliente_in.cep,
+        telefone=cliente_in.telefone,
+        inscricao_estadual=cliente_in.inscricao_estadual,
+    )
+
+    db.add(cliente)
+    db.commit()
+    db.refresh(cliente)
+    return cliente
+
+
+@router.put("/{cliente_id}", response_model=ClienteRead)
+def update_cliente(cliente_id: int, cliente_in: ClienteUpdate, db: Session = Depends(get_db)):
+    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    cliente.nome = cliente_in.nome
+    cliente.cpf_cnpj = cliente_in.cpf_cnpj
+    cliente.endereco = cliente_in.endereco
+    cliente.cidade = cliente_in.cidade
+    cliente.uf = cliente_in.uf
+    cliente.cep = cliente_in.cep
+    cliente.telefone = cliente_in.telefone
+    cliente.inscricao_estadual = cliente_in.inscricao_estadual
+
+    db.commit()
+    db.refresh(cliente)
     return cliente
