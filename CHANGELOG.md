@@ -4,10 +4,18 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ## [Unreleased]
 
+### ✨ Adicionado
+- Cadastro de clientes expandido com criação e edição pelo frontend (modal), incluindo integração com React Query e validação básica de CPF/CNPJ.
+- API de clientes agora possui endpoints de criação (`POST /api/v1/clientes/`) e atualização (`PUT /api/v1/clientes/{cliente_id}`), com geração automática de `codigo_legado` quando não informado.
+
+### ✅ Testes
+- Adicionados testes automatizados para criação e atualização de clientes na API (`backend/tests/test_clientes.py`).
+
 ### ✅ Testes
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
 ### 📝 Documentação
@@ -91,6 +99,7 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - **Campo `quantidade` em Produto**: Use `estoque_atual` (calculado)
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 
 - **Autenticação obrigatória**: Todos os endpoints de dados protegidos
 - **Validação de tokens**: JWT com expiração configurável
@@ -101,6 +110,7 @@ Esta é uma atualização major com mudanças significativas na arquitetura e fu
 - Adicionados testes automatizados para validar `tokenUrl` padronizado em `/api/v1/users/token` e política de CORS por ambiente (bloqueio de wildcard em `staging/production`).
 
 ### 🔒 Segurança
+- Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
 
 ### 📝 Documentação

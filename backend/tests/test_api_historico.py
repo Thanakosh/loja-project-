@@ -4,21 +4,21 @@ from app.models.cliente import Cliente
 from app.models.venda import Venda, VendaItem
 from app.models.movimentacao_estoque import MovimentacaoEstoque
 
-def test_get_clientes(client, db_session: Session):
+def test_get_clientes(client, db_session: Session, auth_headers):
     # Setup
     c = Cliente(nome="Teste API", cpf_cnpj="12345678900", codigo_legado=9999)
     db_session.add(c)
     db_session.commit()
 
     # Test List
-    response = client.get("/api/v1/clientes/?search=Teste")
+    response = client.get("/api/v1/clientes/?search=Teste", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
     assert data[0]["nome"] == "Teste API"
 
     # Test Get by ID
-    response = client.get(f"/api/v1/clientes/{c.id}")
+    response = client.get(f"/api/v1/clientes/{c.id}", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["id"] == c.id
 
