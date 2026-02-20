@@ -47,3 +47,23 @@ def test_estoque_insuficiente_retorna_formato_padrao(client: TestClient, auth_he
     assert data["message"] == "Estoque insuficiente"
     assert data["details"]["disponivel"] == 2
     assert data["details"]["solicitado"] == 10
+
+
+def test_rota_inexistente_retorna_formato_padrao(client: TestClient):
+    response = client.get("/rota-que-nao-existe")
+
+    assert response.status_code == 404
+    data = response.json()
+    _assert_error_shape(data)
+    assert data["code"] == "resource_not_found"
+    assert data["message"] == "Not Found"
+
+
+def test_metodo_nao_permitido_retorna_formato_padrao(client: TestClient):
+    response = client.put("/ping")
+
+    assert response.status_code == 405
+    data = response.json()
+    _assert_error_shape(data)
+    assert data["code"] == "method_not_allowed"
+    assert data["message"] == "Method Not Allowed"
