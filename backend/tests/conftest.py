@@ -17,6 +17,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
 
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
 from app.core.security import get_password_hash
 from app.main import app
 from app.models.user import User
@@ -31,6 +32,14 @@ sync_engine = create_engine(
 )
 TestSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
+
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_limiter_storage() -> None:
+    storage = getattr(limiter.limiter, "storage", None) or getattr(limiter.limiter, "_storage", None)
+    if storage and hasattr(storage, "reset"):
+        storage.reset()
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database() -> None:
