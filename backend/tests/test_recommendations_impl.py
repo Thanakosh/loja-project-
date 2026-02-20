@@ -44,6 +44,21 @@ def test_cors_wildcard_is_allowed_in_development_environment():
     assert settings.CORS_ORIGINS == ["*"]
 
 
+def test_jwt_secret_placeholder_is_blocked():
+    from pydantic import ValidationError
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(
+            DATABASE_URL="sqlite:///:memory:",
+            JWT_SECRET="SUBSTITUA_POR_UMA_CHAVE_SEGURA",
+            ENVIRONMENT="development",
+            CORS_ORIGINS=["http://localhost:3000"],
+        )
+
+    assert "JWT_SECRET parece ser um placeholder" in str(exc_info.value)
+
+
 def test_async_infrastructure_is_available():
     from app.core import database
 
