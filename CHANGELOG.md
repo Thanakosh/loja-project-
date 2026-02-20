@@ -17,9 +17,11 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ### 🔒 Segurança
 - Endpoints de clientes (`/api/v1/clientes`) agora exigem autenticação JWT também para listagem, criação, consulta e edição, alinhando o módulo com os demais recursos protegidos da API.
 - Configuração agora valida `ENVIRONMENT` e impede `CORS_ORIGINS=["*"]` em `staging/production` durante a carga das settings.
+- `.gitignore` reforçado para ignorar variações de arquivos `.env` e o banco local `test.db`, reduzindo risco de versionamento acidental de segredos e artefatos locais.
 
 ### ✅ Testes
 - Adicionados testes automatizados para bloquear `JWT_SECRET` com valor de placeholder (ex.: `SUBSTITUA_POR_UMA_CHAVE_SEGURA`) durante validação de settings.
+- Adicionados testes para garantir proteção de `.env`/`test.db` no `.gitignore` e para validar orientações seguras no `.env.example`.
 
 ### 🔒 Segurança
 - Validação de `JWT_SECRET` fortalecida para rejeitar placeholders comuns e exigir segredo real no startup.
