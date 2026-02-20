@@ -72,7 +72,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _build_error_response(
             request=request,
             status_code=exc.status_code,
-            code=_http_error_code(exc.status_code),
+            code="http_error",
             message=_extract_message(detail),
             details=detail,
         )
