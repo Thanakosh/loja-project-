@@ -55,6 +55,7 @@ def listar_produtos(
     page: int = Query(1, ge=1, description="Número da página"),
     page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     incluir_inativos: bool = False,
+    search: str = Query(None, description="Buscar por nome do produto"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -62,6 +63,8 @@ def listar_produtos(
     query = db.query(Produto)
     if not incluir_inativos:
         query = query.filter(Produto.ativo.is_(True))
+    if search:
+        query = query.filter(Produto.nome.ilike(f"%{search}%"))
     return paginate(query, page=page, page_size=page_size)
 
 @router.get("/{produto_id}", response_model=ProdutoRead)

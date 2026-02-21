@@ -61,3 +61,10 @@ analyze_dbf.py
 dbf_analysis.txt
 test_users_output.txt
 branches_list.txt
+
+check_db.py
+backend/add_stock_test.py
+backend/create_user.py
+frontend/eslint-report.json
+git_status.txt
+status.txt
