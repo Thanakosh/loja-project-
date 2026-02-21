@@ -1,7 +1,16 @@
+import axios from 'axios'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
+import { getToken } from '../utils/auth'
+
+const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') })
+apiV2.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
 interface Venda {
   total?: number | string | null
@@ -119,9 +128,7 @@ const Dashboard = () => {
   const estoqueAlertasQuery = useQuery({
     queryKey: ['dashboard', 'estoque-alertas'],
     queryFn: async () => {
-      const response = await api.get('/estoque/alertas', {
-        baseURL: 'http://localhost:8000/api/v2'
-      })
+      const response = await apiV2.get('/estoque/alertas')
 
       return Array.isArray(response.data) ? (response.data as EstoqueAlerta[]) : []
     },
