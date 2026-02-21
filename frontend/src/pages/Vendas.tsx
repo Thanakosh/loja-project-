@@ -164,7 +164,7 @@ const Vendas = () => {
                             vendas.map((venda) => (
                                 <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{new Date(venda.data).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">{venda.numero_legado}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{venda.numero_legado}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">{PAYMENT_LABELS[venda.forma_pagamento] ?? 'Não informado'}</td>
                                     <td className="px-6 py-4 text-sm">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${venda.cancelada ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'}`}>
@@ -216,11 +216,11 @@ const Vendas = () => {
             {selectedVenda && (
                 <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
                     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6 border-b border-gray-300 dark:border-gray-600 pb-3">
+                        <div className="flex justify-between items-center mb-6 border-b pb-3">
                             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
                                 Detalhes da Venda {selectedVenda.numero_legado ? `#${selectedVenda.numero_legado}` : `(ID: ${selectedVenda.id})`}
                             </h2>
-                            <button onClick={() => setSelectedVenda(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
+                            <button onClick={() => setSelectedVenda(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -229,11 +229,11 @@ const Vendas = () => {
 
                         <div className="mb-6 grid grid-cols-2 gap-4">
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Data da Venda</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Data da Venda</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{new Date(selectedVenda.data).toLocaleString()}</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Total</p>
                                 <p className="font-medium text-green-600 text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedVenda.total)}</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
@@ -277,10 +277,10 @@ const Vendas = () => {
                                     {selectedVenda.itens && selectedVenda.itens.length > 0 ? (
                                         selectedVenda.itens.map((item, idx) => (
                                             <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{item.nome_produto}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-300 text-center">{item.quantidade}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-300 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{item.nome_produto}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500 text-center">{item.quantidade}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 font-medium text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}</td>
                                             </tr>
                                         ))
                                     ) : (
