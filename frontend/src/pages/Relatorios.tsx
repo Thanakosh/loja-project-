@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
 
 import api from '../services/api'
+import { getToken } from '../utils/auth'
 
 interface Venda {
   id: number
@@ -11,17 +13,28 @@ interface Venda {
   forma_pagamento?: number | string | null
 }
 
-interface Produto {
-  id: number
-  nome: string
-  estoque_atual?: number | null
-  estoque_minimo?: number | null
-  estoque_baixo?: boolean
+interface EstoqueItem {
+  produto_id: number
+  nome_produto: string
+  quantidade_atual: number
+  estoque_minimo: number
 }
 
-interface PaginatedProdutosResponse {
-  items?: Produto[]
+interface PaginatedEstoqueResponse {
+  items?: EstoqueItem[]
 }
+
+interface Cliente {
+  id: number
+  nome: string
+}
+
+const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') })
+apiV2.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -47,8 +60,8 @@ const PAYMENT_METHODS: Record<number, string> = {
   2: 'Cartão de Débito',
   3: 'Cartão de Crédito',
   4: 'Pix',
-  5: 'Transferência',
-  6: 'Boleto'
+  5: 'Boleto',
+  6: 'A Prazo'
 }
 
 const getPaymentMethodLabel = (paymentMethod: number | string | null | undefined) => {
@@ -104,24 +117,46 @@ const Relatorios = () => {
   const estoqueBaixoQuery = useQuery({
     queryKey: ['relatorios', 'estoque-baixo'],
     queryFn: async () => {
-      const response = await api.get('/produtos/', {
+      const response = await apiV2.get('/estoque/', {
         params: {
-          estoque_baixo: true,
+          apenas_baixo: true,
           page: 1,
           page_size: 200
         }
       })
 
-      const responseData = response.data as PaginatedProdutosResponse | Produto[]
-      const produtos = Array.isArray(responseData) ? responseData : (responseData.items ?? [])
+      const responseData = response.data as PaginatedEstoqueResponse
+      return responseData.items ?? []
+    }
+  })
 
-      return produtos.filter((produto) => {
-        if (produto.estoque_baixo) return true
+  const clientesIds = useMemo(() => {
+    const vendas = vendasPeriodoQuery.data ?? []
+    const uniqueIds = new Set<number>()
 
-        const estoqueAtual = produto.estoque_atual ?? 0
-        const estoqueMinimo = produto.estoque_minimo ?? 0
-        return estoqueAtual < estoqueMinimo
-      })
+    vendas.forEach((venda) => {
+      if (venda.cliente_id) uniqueIds.add(venda.cliente_id)
+    })
+
+    return Array.from(uniqueIds)
+  }, [vendasPeriodoQuery.data])
+
+  const clientesMapQuery = useQuery({
+    queryKey: ['relatorios', 'clientes-map', clientesIds],
+    enabled: clientesIds.length > 0,
+    queryFn: async () => {
+      const responses = await Promise.allSettled(
+        clientesIds.map((clienteId) => api.get(`/clientes/${clienteId}`))
+      )
+
+      return responses.reduce<Record<number, string>>((acc, response) => {
+        if (response.status === 'fulfilled') {
+          const cliente = response.value.data as Cliente
+          acc[cliente.id] = cliente.nome
+        }
+
+        return acc
+      }, {})
     }
   })
 
@@ -235,7 +270,9 @@ const Relatorios = () => {
                   <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{formatDate(venda.data)}</td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
-                      {venda.cliente_id ? `Cliente #${venda.cliente_id}` : 'Não informado'}
+                      {venda.cliente_id
+                        ? (clientesMapQuery.data?.[venda.cliente_id] ?? `Cliente #${venda.cliente_id}`)
+                        : 'Não informado'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
                       {getPaymentMethodLabel(venda.forma_pagamento)}
@@ -277,11 +314,11 @@ const Relatorios = () => {
                   <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum produto com estoque baixo.</td>
                 </tr>
               ) : (
-                (estoqueBaixoQuery.data ?? []).map((produto) => (
-                  <tr key={produto.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">{produto.nome}</td>
-                    <td className="px-4 py-3 text-center text-sm text-red-600 dark:text-red-400">{produto.estoque_atual ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-200">{produto.estoque_minimo ?? 0}</td>
+                (estoqueBaixoQuery.data ?? []).map((item) => (
+                  <tr key={item.produto_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">{item.nome_produto}</td>
+                    <td className="px-4 py-3 text-center text-sm text-red-600 dark:text-red-400">{item.quantidade_atual}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-200">{item.estoque_minimo}</td>
                   </tr>
                 ))
               )}
