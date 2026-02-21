@@ -52,6 +52,9 @@ yarn.lock
 # OS
 .DS_Store
 Thumbs.db
+# Arquivos criados acidentalmente pelo Windows Explorer
+"Novo(a)*"
+"New *"
 
 # Arquivos temporários de análise
 analyze_dbf.py

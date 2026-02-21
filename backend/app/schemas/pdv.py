@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..core.enums import FormaPagamento
 from .venda import VendaItemRead
@@ -65,8 +65,27 @@ class VendaPDVRead(BaseModel):
     total: float
     desconto: float
     forma_pagamento: Optional[int] = None
+    forma_pagamento_label: Optional[str] = None
     cliente_id: Optional[int] = None
     itens: List[VendaItemRead] = []
     cancelada: bool
+
+    @model_validator(mode='after')
+    def populate_forma_pagamento_label(self):
+        from ..core.enums import FormaPagamento
+        labels = {
+            FormaPagamento.DINHEIRO: 'Dinheiro',
+            FormaPagamento.CARTAO_DEBITO: 'Cartão Débito',
+            FormaPagamento.CARTAO_CREDITO: 'Cartão Crédito',
+            FormaPagamento.PIX: 'PIX',
+            FormaPagamento.BOLETO: 'Boleto',
+            FormaPagamento.PRAZO: 'A Prazo',
+        }
+        if self.forma_pagamento is not None:
+            try:
+                self.forma_pagamento_label = labels.get(FormaPagamento(self.forma_pagamento))
+            except ValueError:
+                self.forma_pagamento_label = None
+        return self
 
     model_config = ConfigDict(from_attributes=True)

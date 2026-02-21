@@ -17,6 +17,19 @@ depends_on = None
 
 
 def upgrade():
+    # ATENÇÃO: A tabela original é renomeada para orcamento_backup.
+    # Se houver dados na tabela antiga que precisem ser migrados para o novo formato,
+    # execute manualmente após o upgrade:
+    #
+    #   INSERT INTO orcamento (id, cliente_id, cliente_nome, status, desconto_geral,
+    #       observacao, data_criacao, data_validade, criado_por)
+    #   SELECT id, cliente_id, cliente_nome,
+    #       COALESCE(status, 'aberto'), COALESCE(desconto, 0.0),
+    #       observacao, data_criacao, data_validade, NULL
+    #   FROM orcamento_backup;
+    #
+    # Após validar os dados migrados, a tabela orcamento_backup pode ser removida:
+    #   DROP TABLE orcamento_backup;
     op.rename_table("orcamento", "orcamento_backup")
 
     op.create_table(

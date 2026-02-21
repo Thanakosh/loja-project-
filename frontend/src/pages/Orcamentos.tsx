@@ -5,7 +5,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 
 type StatusOrcamento = 'aberto' | 'aprovado' | 'cancelado' | 'convertido'
-type FormaPagamento = 'dinheiro' | 'debito' | 'credito' | 'pix' | 'boleto' | 'crediario'
+
+// Enum espelhando backend/app/core/enums.py FormaPagamento (int)
+const FormaPagamento = {
+  DINHEIRO: 1,
+  CARTAO_DEBITO: 2,
+  CARTAO_CREDITO: 3,
+  PIX: 4,
+  BOLETO: 5,
+  PRAZO: 6
+} as const
+type FormaPagamentoValue = typeof FormaPagamento[keyof typeof FormaPagamento]
+
+const formaPagamentoLabel: Record<FormaPagamentoValue, string> = {
+  1: 'Dinheiro',
+  2: 'Cartão Débito',
+  3: 'Cartão Crédito',
+  4: 'PIX',
+  5: 'Boleto',
+  6: 'A Prazo'
+}
 
 interface OrcamentoItem {
   id: number
@@ -136,15 +155,25 @@ const Orcamentos = () => {
     }
   })
 
+  const [convertModal, setConvertModal] = useState<{ orcamentoId: number } | null>(null)
+  const [convertForm, setConvertForm] = useState<{ forma_pagamento: FormaPagamentoValue; parcelas: number }>({
+    forma_pagamento: FormaPagamento.PIX,
+    parcelas: 1
+  })
+
   const convertMutation = useMutation({
-    mutationFn: async (orcamentoId: number) => {
+    mutationFn: async ({ orcamentoId, forma_pagamento, parcelas }: { orcamentoId: number; forma_pagamento: FormaPagamentoValue; parcelas: number }) => {
       await api.post(`/orcamentos/${orcamentoId}/converter`, {
-        forma_pagamento: 'pix' as FormaPagamento,
-        parcelas: 1
+        forma_pagamento,
+        parcelas
       })
+    },
+    onError: () => {
+      alert('Erro ao converter orçamento. Verifique se os itens possuem produto vinculado e estoque disponível.')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
+      setConvertModal(null)
     }
   })
 
@@ -314,7 +343,10 @@ const Orcamentos = () => {
                         Cancelar
                       </button>
                       <button
-                        onClick={() => convertMutation.mutate(orcamento.id)}
+                        onClick={() => {
+                          setConvertForm({ forma_pagamento: FormaPagamento.PIX, parcelas: 1 })
+                          setConvertModal({ orcamentoId: orcamento.id })
+                        }}
                         disabled={(orcamento.status !== 'aberto' && orcamento.status !== 'aprovado') || convertMutation.isPending}
                         className="rounded border border-purple-200 px-2 py-1 text-xs font-medium text-purple-600 transition hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -348,6 +380,59 @@ const Orcamentos = () => {
           Próxima
         </button>
       </div>
+
+      {convertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-800">Converter em Venda</h2>
+              <button onClick={() => setConvertModal(null)} className="text-2xl text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-gray-700">Forma de Pagamento</span>
+                <select
+                  value={convertForm.forma_pagamento}
+                  onChange={(e) => setConvertForm(prev => ({ ...prev, forma_pagamento: Number(e.target.value) as FormaPagamentoValue }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([label, value]) => (
+                    <option key={value} value={value}>{formaPagamentoLabel[value]}</option>
+                  ))}
+                </select>
+              </label>
+              {convertForm.forma_pagamento === FormaPagamento.PRAZO && (
+                <label className="block space-y-1 text-sm">
+                  <span className="font-medium text-gray-700">Número de Parcelas</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={48}
+                    value={convertForm.parcelas}
+                    onChange={(e) => setConvertForm(prev => ({ ...prev, parcelas: Math.max(1, Number(e.target.value)) }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </label>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setConvertModal(null)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => convertMutation.mutate({ orcamentoId: convertModal.orcamentoId, ...convertForm })}
+                  disabled={convertMutation.isPending}
+                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 disabled:opacity-60"
+                >
+                  {convertMutation.isPending ? 'Convertendo...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
