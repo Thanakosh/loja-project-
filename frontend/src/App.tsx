@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Estoque from './pages/Estoque'
 import Fornecedores from './pages/Fornecedores'
 import Login from './pages/Login'
+import NotasFiscais from './pages/NotasFiscais'
 import Orcamentos from './pages/Orcamentos'
 import PDV from './pages/PDV'
 import Produtos from './pages/Produtos'
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/estoque" element={<Estoque />} />
           <Route path="/orcamentos" element={<Orcamentos />} />
           <Route path="/fornecedores" element={<Fornecedores />} />
+          <Route path="/notas-fiscais" element={<NotasFiscais />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/contas-receber" element={<ContasReceber />} />
           <Route path="/relatorios" element={<Relatorios />} />
