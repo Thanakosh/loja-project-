@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 
 interface VendaItem {
@@ -24,10 +24,10 @@ const Vendas = () => {
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
 
-    const fetchVendas = async () => {
+    const fetchVendas = useCallback(async () => {
         setLoading(true)
         try {
-            const params: any = { limit: 50 };
+            const params: Record<string, unknown> = { limit: 50 };
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
 
@@ -38,11 +38,11 @@ const Vendas = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [startDate, endDate])
 
     useEffect(() => {
         fetchVendas()
-    }, [])
+    }, [fetchVendas])
 
     const handleFilter = (e: React.FormEvent) => {
         e.preventDefault()

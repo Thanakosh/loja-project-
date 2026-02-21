@@ -160,17 +160,16 @@ const PDV = () => {
     }
   })
 
-  const produtos = produtosQuery.data?.items?.filter((produto) => produto.ativo) ?? []
-
   const filteredProducts = useMemo(() => {
+    const pList = produtosQuery.data?.items?.filter((produto) => produto.ativo) ?? []
     const search = productSearch.trim().toLowerCase()
 
     if (!search) {
-      return produtos
+      return pList
     }
 
-    return produtos.filter((produto) => produto.nome.toLowerCase().includes(search))
-  }, [productSearch, produtos])
+    return pList.filter((produto) => produto.nome.toLowerCase().includes(search))
+  }, [productSearch, produtosQuery.data?.items])
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + calcItemTotal(item), 0), [cartItems])
   const descontoGeralNumber = Math.max(0, Number(descontoGeral) || 0)

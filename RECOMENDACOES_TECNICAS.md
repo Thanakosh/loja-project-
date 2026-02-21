@@ -158,7 +158,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  ## 🛒 Módulos de Negócio (Pendentes)
  
  - [x] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
- - [ ] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
+ - [x] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
  - [ ] **Categorias Hierárquicas:** Ex: Fios > Cabo 2.5mm²
  - [ ] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
  - [ ] **Unidades de Medida:** Venda por metro ou unidade
@@ -171,11 +171,11 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  
  ## 🖥️ Frontend (Telas Planejadas)
  
- - [ ] **Login:** Autenticação segura
- - [ ] **Dashboard:** Resumo do dia (vendas, alertas)
- - [ ] **PDV:** Interface ágil para caixa
- - [ ] **Cadastros:** Grids para Produtos, Fornecedores, Clientes
- - [ ] **Estoque:** Consulta rápida e movimentação
+ - [x] **Login:** Autenticação segura
+ - [x] **Dashboard:** Resumo do dia (vendas, alertas)
+ - [x] **PDV:** Interface ágil para caixa
+ - [x] **Cadastros:** Grids para Produtos, Fornecedores, Clientes
+ - [x] **Estoque:** Consulta rápida e movimentação
  - [ ] **Orçamentos:** Editor de orçamentos
  - [ ] **Relatórios:** Visualização de dados
  
