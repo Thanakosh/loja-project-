@@ -260,7 +260,7 @@ const Orcamentos = () => {
     <div className="container mx-auto space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Orçamentos</h1>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Orçamentos</h1>
           <p className="text-sm text-gray-500">Gerencie propostas comerciais e converta em venda quando necessário.</p>
         </div>
 
@@ -271,7 +271,7 @@ const Orcamentos = () => {
               setStatusFilter(event.target.value as 'todos' | StatusOrcamento)
               setPage(1)
             }}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="todos">Todos os status</option>
             <option value="aberto">Abertos</option>
@@ -289,9 +289,9 @@ const Orcamentos = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cliente</th>
@@ -302,7 +302,7 @@ const Orcamentos = () => {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {orcamentosQuery.isLoading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
@@ -323,9 +323,9 @@ const Orcamentos = () => {
               </tr>
             ) : (
               orcamentos.map((orcamento) => (
-                <tr key={orcamento.id} className="hover:bg-gray-50">
+                <tr key={orcamento.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-4 py-3 text-sm text-gray-600">#{orcamento.id}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-800">{orcamento.cliente_nome ?? 'Cliente não informado'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{orcamento.cliente_nome ?? 'Cliente não informado'}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass[orcamento.status]}`}>
                       {statusLabel[orcamento.status]}
@@ -365,7 +365,7 @@ const Orcamentos = () => {
         <button
           onClick={() => setPage((previous) => Math.max(1, previous - 1))}
           disabled={page === 1}
-          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Anterior
         </button>
@@ -375,7 +375,7 @@ const Orcamentos = () => {
         <button
           onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
           disabled={page >= totalPages}
-          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Próxima
         </button>
@@ -383,18 +383,18 @@ const Orcamentos = () => {
 
       {convertModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800">Converter em Venda</h2>
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Converter em Venda</h2>
               <button onClick={() => setConvertModal(null)} className="text-2xl text-gray-400 hover:text-gray-600">×</button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <label className="block space-y-1 text-sm">
-                <span className="font-medium text-gray-700">Forma de Pagamento</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">Forma de Pagamento</span>
                 <select
                   value={convertForm.forma_pagamento}
                   onChange={(e) => setConvertForm(prev => ({ ...prev, forma_pagamento: Number(e.target.value) as FormaPagamentoValue }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([, value]) => (
                     <option key={value} value={value}>{formaPagamentoLabel[value]}</option>
@@ -403,21 +403,21 @@ const Orcamentos = () => {
               </label>
               {convertForm.forma_pagamento === FormaPagamento.PRAZO && (
                 <label className="block space-y-1 text-sm">
-                  <span className="font-medium text-gray-700">Número de Parcelas</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Número de Parcelas</span>
                   <input
                     type="number"
                     min={1}
                     max={48}
                     value={convertForm.parcelas}
                     onChange={(e) => setConvertForm(prev => ({ ...prev, parcelas: Math.max(1, Number(e.target.value)) }))}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </label>
               )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={() => setConvertModal(null)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancelar
                 </button>
@@ -436,9 +436,9 @@ const Orcamentos = () => {
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800">Novo orçamento</h2>
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Novo orçamento</h2>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-2xl text-gray-400 transition hover:text-gray-600"
@@ -450,7 +450,7 @@ const Orcamentos = () => {
             <form onSubmit={handleCreateSubmit} className="space-y-5 px-6 py-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-gray-700">Cliente</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Cliente</span>
                   <input
                     value={formState.cliente_nome}
                     onChange={(event) =>
@@ -459,13 +459,13 @@ const Orcamentos = () => {
                         cliente_nome: event.target.value
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nome do cliente"
                   />
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-gray-700">Validade</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Validade</span>
                   <input
                     type="date"
                     value={formState.data_validade}
@@ -475,12 +475,12 @@ const Orcamentos = () => {
                         data_validade: event.target.value
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-gray-700">Desconto geral (R$)</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Desconto geral (R$)</span>
                   <input
                     type="number"
                     min="0"
@@ -492,13 +492,13 @@ const Orcamentos = () => {
                         desconto_geral: event.target.value
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
               </div>
 
               <label className="block space-y-1 text-sm">
-                <span className="font-medium text-gray-700">Observação</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">Observação</span>
                 <textarea
                   value={formState.observacao}
                   onChange={(event) =>
@@ -507,7 +507,7 @@ const Orcamentos = () => {
                       observacao: event.target.value
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={2}
                   placeholder="Informações adicionais"
                 />
@@ -531,7 +531,7 @@ const Orcamentos = () => {
                       value={item.descricao}
                       onChange={(event) => updateItem(index, 'descricao', event.target.value)}
                       placeholder="Descrição"
-                      className="md:col-span-5 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="md:col-span-5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="number"
@@ -540,7 +540,7 @@ const Orcamentos = () => {
                       value={item.quantidade}
                       onChange={(event) => updateItem(index, 'quantidade', event.target.value)}
                       placeholder="Qtd"
-                      className="md:col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="number"
@@ -549,7 +549,7 @@ const Orcamentos = () => {
                       value={item.preco_unitario}
                       onChange={(event) => updateItem(index, 'preco_unitario', event.target.value)}
                       placeholder="Preço"
-                      className="md:col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="number"
@@ -559,12 +559,12 @@ const Orcamentos = () => {
                       value={item.desconto}
                       onChange={(event) => updateItem(index, 'desconto', event.target.value)}
                       placeholder="Desc.%"
-                      className="md:col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="md:col-span-1 rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-500 transition hover:bg-gray-100"
+                      className="md:col-span-1 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       −
                     </button>
@@ -572,7 +572,7 @@ const Orcamentos = () => {
                 ))}
               </section>
 
-              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                 Total estimado: <span className="font-semibold text-emerald-600">{moneyFormatter.format(totalPreview)}</span>
               </div>
 
@@ -582,7 +582,7 @@ const Orcamentos = () => {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancelar
                 </button>

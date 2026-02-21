@@ -297,15 +297,15 @@ const PDV = () => {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-slate-900">PDV</h1>
-        <p className="text-sm text-slate-500">Registre vendas rápidas e acompanhe o total em tempo real.</p>
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">PDV</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Registre vendas rápidas e acompanhe o total em tempo real.</p>
       </header>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Produtos</h2>
+        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Produtos</h2>
           <div className="mt-4 space-y-2">
-            <label className="text-sm font-medium text-slate-700" htmlFor="buscar-produto">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="buscar-produto">
               Buscar produto
             </label>
             <input
@@ -314,15 +314,15 @@ const PDV = () => {
               value={productSearch}
               onChange={(event) => setProductSearch(event.target.value)}
               placeholder="Buscar produto..."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             />
           </div>
 
           <div className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1">
             {produtosQuery.isLoading ? (
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">Carregando produtos...</p>
+              <p className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Carregando produtos...</p>
             ) : filteredProducts.length === 0 ? (
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">Nenhum produto encontrado.</p>
+              <p className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Nenhum produto encontrado.</p>
             ) : (
               filteredProducts.map((produto) => (
                 <button
@@ -330,11 +330,11 @@ const PDV = () => {
                   type="button"
                   onClick={() => addProductToCart(produto)}
                   disabled={produto.estoque_atual <= 0}
-                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-80"
+                  className="flex w-full items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-80"
                 >
                   <div>
-                    <p className="font-medium text-slate-900">{produto.nome}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-gray-800 dark:text-gray-100">{produto.nome}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {moneyFormatter.format(produto.preco_unitario)} • Estoque: {produto.estoque_atual}
                     </p>
                   </div>
@@ -349,11 +349,11 @@ const PDV = () => {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Cliente (opcional)</h2>
+        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Cliente (opcional)</h2>
 
           <div className="mt-4 space-y-2">
-            <label className="text-sm font-medium text-slate-700" htmlFor="buscar-cliente">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="buscar-cliente">
               Buscar cliente
             </label>
             <div className="relative">
@@ -368,34 +368,34 @@ const PDV = () => {
                   }
                 }}
                 placeholder="Buscar cliente..."
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 pr-10 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
               />
               {selectedClient ? (
                 <button
                   type="button"
                   onClick={clearSelectedClient}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-100"
                 >
                   ✕
                 </button>
               ) : null}
 
               {debouncedClientSearch && !selectedClient ? (
-                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
                   {clientesQuery.isLoading ? (
-                    <p className="px-3 py-2 text-sm text-slate-500">Buscando clientes...</p>
+                    <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Buscando clientes...</p>
                   ) : (clientesQuery.data ?? []).length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-slate-500">Nenhum cliente encontrado.</p>
+                    <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Nenhum cliente encontrado.</p>
                   ) : (
                     (clientesQuery.data ?? []).map((cliente) => (
                       <button
                         key={cliente.id}
                         type="button"
                         onClick={() => selectClient(cliente)}
-                        className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50"
+                        className="block w-full border-b border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <p className="font-medium text-slate-900">{cliente.nome}</p>
-                        {cliente.cpf_cnpj ? <p className="text-xs text-slate-500">{cliente.cpf_cnpj}</p> : null}
+                        <p className="font-medium text-gray-800 dark:text-gray-100">{cliente.nome}</p>
+                        {cliente.cpf_cnpj ? <p className="text-xs text-gray-500 dark:text-gray-400">{cliente.cpf_cnpj}</p> : null}
                       </button>
                     ))
                   )}
@@ -404,25 +404,25 @@ const PDV = () => {
             </div>
           </div>
 
-          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+          <div className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm">
             {selectedClient ? (
-              <p className="text-slate-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Cliente selecionado: <span className="font-semibold">{selectedClient.nome}</span>
               </p>
             ) : (
-              <p className="text-slate-500">Venda sem cliente</p>
+              <p className="text-gray-500 dark:text-gray-400">Venda sem cliente</p>
             )}
           </div>
         </section>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Carrinho e finalização</h2>
+      <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalização</h2>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmitSale}>
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <tr>
                   <th className="px-3 py-2 text-left">Produto</th>
                   <th className="px-3 py-2 text-left">Qtd</th>
@@ -432,24 +432,24 @@ const PDV = () => {
                   <th className="px-3 py-2 text-left">Remover</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 {cartItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
+                    <td colSpan={6} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
                       Nenhum item adicionado
                     </td>
                   </tr>
                 ) : (
                   cartItems.map((item) => (
                     <tr key={item.produto.id}>
-                      <td className="px-3 py-2 font-medium text-slate-800">{item.produto.nome}</td>
+                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-100">{item.produto.nome}</td>
                       <td className="px-3 py-2">
                         <input
                           type="number"
                           min={1}
                           value={item.quantidade}
                           onChange={(event) => updateItem(item.produto.id, 'quantidade', event.target.value)}
-                          className="w-20 rounded-md border border-slate-300 px-2 py-1"
+                          className="w-20 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -459,7 +459,7 @@ const PDV = () => {
                           step="0.01"
                           value={item.preco_unitario}
                           onChange={(event) => updateItem(item.produto.id, 'preco_unitario', event.target.value)}
-                          className="w-28 rounded-md border border-slate-300 px-2 py-1"
+                          className="w-28 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -470,10 +470,10 @@ const PDV = () => {
                           step="0.01"
                           value={item.desconto}
                           onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
-                          className="w-24 rounded-md border border-slate-300 px-2 py-1"
+                          className="w-24 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
                         />
                       </td>
-                      <td className="px-3 py-2 font-semibold text-slate-700">{moneyFormatter.format(calcItemTotal(item))}</td>
+                      <td className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">{moneyFormatter.format(calcItemTotal(item))}</td>
                       <td className="px-3 py-2">
                         <button
                           type="button"
@@ -491,20 +491,20 @@ const PDV = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <div className="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 p-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-600">Subtotal</span>
-                <strong className="text-slate-900">{moneyFormatter.format(subtotal)}</strong>
+                <span className="text-gray-600 dark:text-gray-300">Subtotal</span>
+                <strong className="text-gray-800 dark:text-gray-100">{moneyFormatter.format(subtotal)}</strong>
               </div>
               <label className="block">
-                <span className="mb-1 block text-slate-700">Desconto Geral (R$)</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Desconto Geral (R$)</span>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
                   value={descontoGeral}
                   onChange={(event) => setDescontoGeral(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                 />
               </label>
               <div className="flex items-center justify-between rounded-md bg-indigo-600 px-3 py-2 text-white">
@@ -513,13 +513,13 @@ const PDV = () => {
               </div>
             </div>
 
-            <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+            <div className="space-y-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-3 text-sm">
               <label className="block">
-                <span className="mb-1 block text-slate-700">Forma de Pagamento</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Forma de Pagamento</span>
                 <select
                   value={formaPagamento}
                   onChange={(event) => setFormaPagamento(Number(event.target.value))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                 >
                   {paymentOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -531,24 +531,24 @@ const PDV = () => {
 
               {formaPagamento === 6 ? (
                 <label className="block">
-                  <span className="mb-1 block text-slate-700">Parcelas</span>
+                  <span className="mb-1 block text-gray-700 dark:text-gray-300">Parcelas</span>
                   <input
                     type="number"
                     min={1}
                     value={parcelas}
                     onChange={(event) => setParcelas(Math.max(1, Number(event.target.value) || 1))}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                   />
                 </label>
               ) : null}
 
               <label className="block">
-                <span className="mb-1 block text-slate-700">Observação</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observação</span>
                 <textarea
                   value={observacao}
                   onChange={(event) => setObservacao(event.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                   placeholder="Observação opcional"
                 />
               </label>
@@ -568,10 +568,10 @@ const PDV = () => {
       </section>
 
       {saleResult ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">Venda concluída</h3>
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Venda concluída</h3>
+            <div className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <p>
                 Número da venda: <strong>{saleResult.numero_legado ?? saleResult.id}</strong>
               </p>
