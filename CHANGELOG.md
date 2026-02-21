@@ -5,6 +5,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### ✨ Adicionado
+- ✨ Adicionado: módulo Orçamentos refatorado com itens, status controlado, data de validade e conversão automática em venda via PDV.
 - Módulo completo de Fornecedores com CRUD, validação de CNPJ, soft delete, busca e relacionamento FK opcional com Produto.
 - Cadastro de clientes expandido com criação e edição pelo frontend (modal), incluindo integração com React Query e validação básica de CPF/CNPJ.
 - API de clientes agora possui endpoints de criação (`POST /api/v1/clientes/`) e atualização (`PUT /api/v1/clientes/{cliente_id}`), com geração automática de `codigo_legado` quando não informado.

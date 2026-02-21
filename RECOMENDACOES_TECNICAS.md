@@ -163,7 +163,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  - [ ] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
  - [ ] **Unidades de Medida:** Venda por metro ou unidade
  - [x] **PDV (Ponto de Venda):** Registro de venda com baixa automática
- - [ ] **Orçamentos:** Criação e conversão automática em venda
+ - [x] **Orçamentos:** Criação e conversão automática em venda
  - [ ] **Financeiro:** Controle de caixa diário (abertura/fechamento)
  - [ ] **Relatórios:** Estoque baixo, Vendas por período
  
@@ -200,7 +200,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
 - ✅ **Incremento concluído:** Passo 2 finalizado com fortalecimento da gestão de segredos, validações de startup e revisão de `.env.example`.
 - ✅ **Incremento concluído:** Passo 4 finalizado com rate limiting consistente em toda a API e logging estruturado observável em eventos críticos.
-- 🎯 **Próximo incremento:** módulo de Orçamentos completo (criação, itens, conversão em venda).
+- 🎯 **Próximo incremento:** relatórios básicos (estoque baixo, vendas por período).
 
 ---
 

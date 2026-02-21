@@ -9,3 +9,4 @@ from .movimentacao_estoque import MovimentacaoEstoque
 from .nota_fiscal import NotaFiscal, NotaFiscalItem
 
 from .fornecedor import Fornecedor
+from .orcamento import Orcamento, OrcamentoItem
