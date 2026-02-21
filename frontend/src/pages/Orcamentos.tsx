@@ -396,7 +396,7 @@ const Orcamentos = () => {
                   onChange={(e) => setConvertForm(prev => ({ ...prev, forma_pagamento: Number(e.target.value) as FormaPagamentoValue }))}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([label, value]) => (
+                  {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([, value]) => (
                     <option key={value} value={value}>{formaPagamentoLabel[value]}</option>
                   ))}
                 </select>

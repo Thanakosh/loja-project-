@@ -12,6 +12,7 @@ import PDV from './pages/PDV'
 import Produtos from './pages/Produtos'
 import Relatorios from './pages/Relatorios'
 import Vendas from './pages/Vendas'
+import ContasReceber from './pages/ContasReceber'
 
 const App = () => {
   return (
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/orcamentos" element={<Orcamentos />} />
           <Route path="/fornecedores" element={<Fornecedores />} />
           <Route path="/clientes" element={<Clientes />} />
+          <Route path="/contas-receber" element={<ContasReceber />} />
           <Route path="/relatorios" element={<Relatorios />} />
         </Route>
       </Route>

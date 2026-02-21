@@ -24,6 +24,7 @@ const Layout = () => {
         { name: 'Orçamentos', path: '/orcamentos', icon: '💰' },
         { name: 'Fornecedores', path: '/fornecedores', icon: '🚚' },
         { name: 'Clientes', path: '/clientes', icon: '👥' },
+        { name: 'Contas a Receber', path: '/contas-receber', icon: '💳' },
         { name: 'Relatórios', path: '/relatorios', icon: '📈' },
     ]
 
