@@ -5,6 +5,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### ✨ Adicionado
+- Frontend: módulo de Orçamentos expandido com listagem paginada, filtro por status, criação em modal com múltiplos itens e ações de cancelar/converter.
 - ✨ Adicionado: módulo Orçamentos refatorado com itens, status controlado, data de validade e conversão automática em venda via PDV.
 - Módulo completo de Fornecedores com CRUD, validação de CNPJ, soft delete, busca e relacionamento FK opcional com Produto.
 - Cadastro de clientes expandido com criação e edição pelo frontend (modal), incluindo integração com React Query e validação básica de CPF/CNPJ.
