@@ -95,3 +95,32 @@ def auth_headers(client: TestClient, test_user: User) -> dict[str, str]:
 
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def produto_com_estoque(client: TestClient, auth_headers: dict) -> int:
+    payload_produto = {
+        "nome": "Produto com Estoque",
+        "fornecedor": "Fornecedor Estoque",
+        "preco_unitario": 10.0,
+        "preco_liquido": 8.0,
+        "unidade": "UN",
+        "estoque_minimo": 2,
+    }
+    produto_resp = client.post("/api/v1/produtos/", json=payload_produto, headers=auth_headers)
+    assert produto_resp.status_code == 200
+    produto_id = produto_resp.json()["id"]
+
+    estoque_resp = client.post(
+        "/api/v2/estoque/transacao",
+        json={
+            "produto_id": produto_id,
+            "tipo": "entrada",
+            "quantidade": 100,
+            "motivo": "Estoque inicial para testes PDV",
+        },
+        headers=auth_headers,
+    )
+    assert estoque_resp.status_code == 200
+
+    return produto_id
