@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 
 interface VendaItem {
@@ -45,7 +45,7 @@ const Vendas = () => {
     const [skip, setSkip] = useState(0)
     const [hasNextPage, setHasNextPage] = useState(false)
 
-    const fetchVendas = async (currentSkip = skip) => {
+    const fetchVendas = useCallback(async (currentSkip = skip) => {
         setLoading(true)
         try {
             const params: Record<string, string | number> = { limit: LIMIT, skip: currentSkip }
@@ -60,11 +60,11 @@ const Vendas = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [endDate, skip, startDate])
 
     useEffect(() => {
-        fetchVendas()
-    }, [skip])
+        fetchVendas(skip)
+    }, [fetchVendas, skip])
 
     const handleFilter = (e: React.FormEvent) => {
         e.preventDefault()
