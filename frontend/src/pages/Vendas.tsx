@@ -115,7 +115,7 @@ const Vendas = () => {
                         <label className="block text-xs text-gray-500 dark:text-gray-400">De</label>
                         <input
                             type="date"
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                         />
@@ -124,7 +124,7 @@ const Vendas = () => {
                         <label className="block text-xs text-gray-500 dark:text-gray-400">Até</label>
                         <input
                             type="date"
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
@@ -215,19 +215,19 @@ const Vendas = () => {
             {/* Modal de Detalhes da Venda */}
             {selectedVenda && (
                 <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-300 dark:border-gray-600 pb-3">
                             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
                                 Detalhes da Venda {selectedVenda.numero_legado ? `#${selectedVenda.numero_legado}` : `(ID: ${selectedVenda.id})`}
                             </h2>
-                            <button onClick={() => setSelectedVenda(null)} className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100">
+                            <button onClick={() => setSelectedVenda(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="mb-6 grid grid-cols-2 gap-4">
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Data da Venda</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{new Date(selectedVenda.data).toLocaleString()}</p>
