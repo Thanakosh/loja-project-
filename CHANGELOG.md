@@ -8,6 +8,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Módulo completo de Fornecedores com CRUD, validação de CNPJ, soft delete, busca e relacionamento FK opcional com Produto.
 - Cadastro de clientes expandido com criação e edição pelo frontend (modal), incluindo integração com React Query e validação básica de CPF/CNPJ.
 - API de clientes agora possui endpoints de criação (`POST /api/v1/clientes/`) e atualização (`PUT /api/v1/clientes/{cliente_id}`), com geração automática de `codigo_legado` quando não informado.
+- Módulo PDV com registro de venda, baixa automática de estoque, geração de contas a receber para pagamentos a prazo e cancelamento com estorno.
 
 ### ✅ Testes
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validação de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), além de testes de logging estruturado em JSON para eventos de login.
