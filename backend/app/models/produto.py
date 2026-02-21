@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, Boolean
+from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -19,6 +19,7 @@ class Produto(Base):
     data_emissao = Column(Date)
     numero_nota = Column(String)
     cnpj_fornecedor = Column(String)
+    fornecedor_id = Column(Integer, ForeignKey("fornecedor.id"), nullable=True, index=True)
     
     # Campos adicionais
     ativo = Column(Boolean, default=True, nullable=False)  # Soft delete
@@ -26,6 +27,7 @@ class Produto(Base):
     
     # Relacionamentos
     transacoes = relationship("TransacaoEstoque", back_populates="produto", cascade="all, delete-orphan")
+    fornecedor_rel = relationship("Fornecedor", back_populates="produtos")
     
     @property
     def estoque_atual(self):

@@ -15,6 +15,7 @@ from app.api.v1.users import router as users_router
 from app.api.v1.clientes import router as clientes_router
 from app.api.v1.vendas import router as vendas_router
 from app.api.v1.movimentacao import router as movimentacao_router
+from app.api.v1.fornecedores import router as fornecedores_router
 from app.core.limiter import limiter
 
 from .core.config import settings
@@ -119,6 +120,7 @@ app.include_router(orcamento_router, prefix="/api/v1/orcamentos", tags=["Orcamen
 app.include_router(clientes_router, prefix="/api/v1/clientes", tags=["Clientes (Histórico)"])
 app.include_router(vendas_router, prefix="/api/v1/vendas", tags=["Vendas (Histórico)"])
 app.include_router(movimentacao_router, prefix="/api/v1/movimentacao", tags=["Estoque - Movimentação"])
+app.include_router(fornecedores_router, prefix="/api/v1/fornecedores", tags=["Fornecedores"])
 
 
 @app.get("/")
