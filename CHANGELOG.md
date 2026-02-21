@@ -5,6 +5,8 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### ✨ Adicionado
+- Backend: novos endpoints de Notas Fiscais (`GET /api/v1/notas-fiscais/` e `GET /api/v1/notas-fiscais/{nota_id}`) com filtros por cliente e período, incluindo retorno de itens.
+- Frontend: nova página "Notas Fiscais" com filtros por data, paginação, resumo de totais e modal de itens da NF.
 - Frontend: módulo de Orçamentos expandido com listagem paginada, filtro por status, criação em modal com múltiplos itens e ações de cancelar/converter.
 - ✨ Adicionado: módulo Orçamentos refatorado com itens, status controlado, data de validade e conversão automática em venda via PDV.
 - Módulo completo de Fornecedores com CRUD, validação de CNPJ, soft delete, busca e relacionamento FK opcional com Produto.
@@ -13,6 +15,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Módulo PDV com registro de venda, baixa automática de estoque, geração de contas a receber para pagamentos a prazo e cancelamento com estorno.
 
 ### ✅ Testes
+- Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validação de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), além de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criação e atualização de clientes na API (`backend/tests/test_clientes.py`).
 
