@@ -229,7 +229,7 @@ const Fornecedores = () => {
   return (
     <div className="container mx-auto">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800">Fornecedores</h1>
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Fornecedores</h1>
         <div className="flex flex-wrap gap-2">
           <form onSubmit={handleSearchSubmit} className="flex gap-2">
             <input
@@ -237,7 +237,7 @@ const Fornecedores = () => {
               value={searchInput}
               placeholder="Buscar por nome ou CNPJ"
               onChange={(event) => setSearchInput(event.target.value)}
-              className="rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="submit"
@@ -256,9 +256,9 @@ const Fornecedores = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nome</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">CNPJ</th>
@@ -267,7 +267,7 @@ const Fornecedores = () => {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {fornecedoresQuery.isLoading ? (
               <tr>
                 <td colSpan={4} className="px-6 py-4 text-center">Carregando...</td>
@@ -282,7 +282,7 @@ const Fornecedores = () => {
               </tr>
             ) : (
               fornecedores.map((fornecedor) => (
-                <tr key={fornecedor.id} className="hover:bg-gray-50">
+                <tr key={fornecedor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{fornecedor.nome}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{formatCnpj(fornecedor.cnpj || '')}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -313,7 +313,7 @@ const Fornecedores = () => {
             type="button"
             onClick={() => setPage((current) => Math.max(0, current - 1))}
             disabled={page === 0 || fornecedoresQuery.isFetching}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-40"
+            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           >
             ← Anterior
           </button>
@@ -321,7 +321,7 @@ const Fornecedores = () => {
             type="button"
             onClick={() => setPage((current) => current + 1)}
             disabled={fornecedores.length < PAGE_SIZE || fornecedoresQuery.isFetching}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-40"
+            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           >
             Próxima →
           </button>
@@ -330,7 +330,7 @@ const Fornecedores = () => {
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3">
-          <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl">
             <div className="mb-4 flex items-start justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 {modalMode === 'create' ? 'Novo Fornecedor' : 'Editar Fornecedor'}
@@ -338,7 +338,7 @@ const Fornecedores = () => {
               <button
                 type="button"
                 onClick={closeModal}
-                className="text-gray-500 transition hover:text-gray-700"
+                className="text-gray-500 transition hover:text-gray-700 dark:text-gray-300"
                 disabled={isSaving}
               >
                 ✕
@@ -347,24 +347,24 @@ const Fornecedores = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Nome *</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Nome *</label>
                 <input
                   type="text"
                   value={formState.nome}
                   onChange={(event) => handleInputChange('nome', event.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Razão social ou nome fantasia"
                   required
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">CNPJ *</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">CNPJ *</label>
                 <input
                   type="text"
                   value={formState.cnpj}
                   onChange={(event) => handleInputChange('cnpj', event.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="00.000.000/0000-00"
                   maxLength={18}
                   required
@@ -374,35 +374,35 @@ const Fornecedores = () => {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Telefone</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
                   <input
                     type="text"
                     value={formState.telefone}
                     onChange={(event) => handleInputChange('telefone', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="(00) 00000-0000"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Contato</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Contato</label>
                   <input
                     type="text"
                     value={formState.contato}
                     onChange={(event) => handleInputChange('contato', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nome do contato"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">E-mail</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
                 <input
                   type="email"
                   value={formState.email}
                   onChange={(event) => handleInputChange('email', event.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="contato@fornecedor.com.br"
                 />
               </div>
@@ -413,7 +413,7 @@ const Fornecedores = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                   disabled={isSaving}
                 >
                   Cancelar

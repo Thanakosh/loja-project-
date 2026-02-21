@@ -50,7 +50,7 @@ const getVendaTotal = (venda: Venda) => {
   return Number.isFinite(parsedValue) ? parsedValue : 0
 }
 
-const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200" />
+const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
 
 const Dashboard = () => {
   const queryClient = useQueryClient()
@@ -144,7 +144,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Dashboard</h1>
         <button
           type="button"
           onClick={handleRefresh}
@@ -155,9 +155,9 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <article className="rounded-lg bg-white p-4 shadow">
+        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
           <p className="text-sm text-gray-500">🛒 Vendas Hoje</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800">
+          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasHojeQuery.isLoading ? (
               <CardSkeleton />
             ) : vendasHojeQuery.isError ? (
@@ -168,9 +168,9 @@ const Dashboard = () => {
           </div>
         </article>
 
-        <article className="rounded-lg bg-white p-4 shadow">
+        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
           <p className="text-sm text-gray-500">📅 Vendas do Mês</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800">
+          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasMesQuery.isLoading ? (
               <CardSkeleton />
             ) : vendasMesQuery.isError ? (
@@ -181,9 +181,9 @@ const Dashboard = () => {
           </div>
         </article>
 
-        <article className="rounded-lg bg-white p-4 shadow">
+        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
           <p className="text-sm text-gray-500">💰 Orçamentos Abertos</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800">
+          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {orcamentosAbertosQuery.isLoading ? (
               <CardSkeleton />
             ) : orcamentosAbertosQuery.isError ? (
@@ -195,8 +195,8 @@ const Dashboard = () => {
         </article>
 
         <article
-          className={`rounded-lg bg-white p-4 shadow ${
-            estoqueAlertas.length > 0 ? 'border border-red-200' : ''
+          className={`rounded-lg bg-white dark:bg-gray-800 p-4 shadow ${
+            estoqueAlertas.length > 0 ? 'border border-red-200 dark:border-red-700' : ''
           }`}
         >
           <p className={`text-sm ${estoqueAlertas.length > 0 ? 'text-red-500' : 'text-gray-500'}`}>
@@ -218,9 +218,9 @@ const Dashboard = () => {
       </div>
 
       {estoqueAlertas.length > 0 && (
-        <section className="rounded-lg bg-white p-5 shadow">
+        <section className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800">Produtos com Estoque Baixo</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Produtos com Estoque Baixo</h2>
             <button
               type="button"
               onClick={() => navigate('/estoque')}
@@ -239,9 +239,9 @@ const Dashboard = () => {
               return (
                 <li
                   key={alerta.id ?? alerta.produto_id ?? `${nomeProduto}-${index}`}
-                  className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
                 >
-                  <span className="font-medium text-gray-800">{nomeProduto}</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-100">{nomeProduto}</span>
                   <span className="ml-2 text-gray-600">
                     Estoque: {estoqueAtual} / Mínimo: {estoqueMinimo}
                   </span>

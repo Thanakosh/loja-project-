@@ -269,13 +269,13 @@ const Clientes = () => {
   return (
     <div className="container mx-auto">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800">Clientes</h1>
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes</h1>
         <div className="flex flex-wrap gap-2">
           <form onSubmit={handleSearchSubmit} className="flex gap-2">
             <input
               type="text"
               placeholder="Buscar por nome ou CPF/CNPJ"
-              className="rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
@@ -296,9 +296,9 @@ const Clientes = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nome</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">CPF/CNPJ</th>
@@ -308,7 +308,7 @@ const Clientes = () => {
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {clientesQuery.isLoading ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center">Carregando...</td>
@@ -323,7 +323,7 @@ const Clientes = () => {
               </tr>
             ) : (
               clientes.map((cliente) => (
-                <tr key={cliente.id} className="hover:bg-gray-50">
+                <tr key={cliente.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{cliente.nome}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{normalizeCpfCnpj(cliente.cpf_cnpj || '') || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{cliente.telefone || '-'}</td>
@@ -333,7 +333,7 @@ const Clientes = () => {
                     <button
                       type="button"
                       onClick={() => openEditModal(cliente)}
-                      className="rounded border border-gray-300 px-3 py-1 text-gray-700 transition hover:bg-gray-100"
+                      className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-gray-700 transition hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       Editar
                     </button>
@@ -353,14 +353,14 @@ const Clientes = () => {
           <button
             onClick={() => setPage((previous) => previous - 1)}
             disabled={page === 0 || clientesQuery.isFetching}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-40"
+            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           >
             ← Anterior
           </button>
           <button
             onClick={() => setPage((previous) => previous + 1)}
             disabled={clientes.length < PAGE_SIZE || clientesQuery.isFetching}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-40"
+            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           >
             Próxima →
           </button>
@@ -369,16 +369,16 @@ const Clientes = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-xl rounded-lg bg-white shadow-xl">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800">
+          <div className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo cliente' : 'Editar cliente'}
               </h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-nome">
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-nome">
                   Nome *
                 </label>
                 <input
@@ -386,14 +386,14 @@ const Clientes = () => {
                   type="text"
                   value={formState.nome}
                   onChange={(event) => handleInputChange('nome', event.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nome do cliente"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-cpf-cnpj">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-cpf-cnpj">
                     CPF/CNPJ
                   </label>
                   <input
@@ -401,12 +401,12 @@ const Clientes = () => {
                     type="text"
                     value={formState.cpf_cnpj}
                     onChange={(event) => handleInputChange('cpf_cnpj', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="000.000.000-00"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-telefone">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-telefone">
                     Telefone
                   </label>
                   <input
@@ -414,7 +414,7 @@ const Clientes = () => {
                     type="text"
                     value={formState.telefone}
                     onChange={(event) => handleInputChange('telefone', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="(00) 00000-0000"
                   />
                 </div>
@@ -422,7 +422,7 @@ const Clientes = () => {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-cidade">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-cidade">
                     Cidade
                   </label>
                   <input
@@ -430,12 +430,12 @@ const Clientes = () => {
                     type="text"
                     value={formState.cidade}
                     onChange={(event) => handleInputChange('cidade', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Cidade"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-uf">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-uf">
                     UF
                   </label>
                   <input
@@ -443,14 +443,14 @@ const Clientes = () => {
                     type="text"
                     value={formState.uf}
                     onChange={(event) => handleInputChange('uf', event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="UF"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cliente-codigo-legado">
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-codigo-legado">
                   Código legado
                 </label>
                 <input
@@ -458,23 +458,23 @@ const Clientes = () => {
                   type="text"
                   value={formState.codigo_legado}
                   onChange={(event) => handleInputChange('codigo_legado', event.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Será gerado automaticamente se vazio"
                   disabled={modalMode === 'edit'}
                 />
               </div>
 
               {formError && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-md border border-red-200 dark:border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {formError}
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 border-t pt-4">
+              <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-lg border px-4 py-2 text-gray-700 transition hover:bg-gray-100"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-100 transition hover:bg-gray-100 dark:hover:bg-gray-700"
                   disabled={isSaving}
                 >
                   Cancelar
