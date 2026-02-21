@@ -40,17 +40,19 @@ const Vendas = () => {
     const [loading, setLoading] = useState(true)
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
+    const [appliedStartDate, setAppliedStartDate] = useState('')
+    const [appliedEndDate, setAppliedEndDate] = useState('')
     const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null)
     const [modalLoading, setModalLoading] = useState(false)
     const [skip, setSkip] = useState(0)
     const [hasNextPage, setHasNextPage] = useState(false)
 
-    const fetchVendas = useCallback(async (currentSkip = skip) => {
+    const fetchVendas = useCallback(async (currentSkip: number, currentStartDate: string, currentEndDate: string) => {
         setLoading(true)
         try {
             const params: Record<string, string | number> = { limit: LIMIT, skip: currentSkip }
-            if (startDate) params.start_date = startDate
-            if (endDate) params.end_date = endDate
+            if (currentStartDate) params.start_date = currentStartDate
+            if (currentEndDate) params.end_date = currentEndDate
 
             const response = await api.get('/vendas', { params })
             setVendas(response.data)
@@ -60,16 +62,17 @@ const Vendas = () => {
         } finally {
             setLoading(false)
         }
-    }, [endDate, skip, startDate])
+    }, [])
 
     useEffect(() => {
-        fetchVendas(skip)
-    }, [fetchVendas, skip])
+        fetchVendas(skip, appliedStartDate, appliedEndDate)
+    }, [appliedEndDate, appliedStartDate, fetchVendas, skip])
 
     const handleFilter = (e: React.FormEvent) => {
         e.preventDefault()
+        setAppliedStartDate(startDate)
+        setAppliedEndDate(endDate)
         setSkip(0)
-        fetchVendas(0)
     }
 
     const handleOpenDetails = async (vendaId: number) => {
@@ -96,7 +99,7 @@ const Vendas = () => {
         try {
             await api.post(`/pdv/venda/${selectedVenda.id}/cancelar`)
             setSelectedVenda(null)
-            fetchVendas()
+            fetchVendas(skip, appliedStartDate, appliedEndDate)
         } catch (error) {
             console.error('Erro ao cancelar venda', error)
             window.alert('Não foi possível cancelar a venda. Tente novamente.')
