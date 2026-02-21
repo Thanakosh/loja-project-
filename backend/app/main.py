@@ -17,6 +17,7 @@ from app.api.v1.vendas import router as vendas_router
 from app.api.v1.pdv import router as pdv_router
 from app.api.v1.movimentacao import router as movimentacao_router
 from app.api.v1.fornecedores import router as fornecedores_router
+from app.api.v1.notas_fiscais import router as notas_fiscais_router
 from app.core.limiter import limiter
 
 from .core.config import settings
@@ -123,6 +124,7 @@ app.include_router(vendas_router, prefix="/api/v1/vendas", tags=["Vendas (Histó
 app.include_router(pdv_router, prefix="/api/v1/pdv", tags=["PDV"])
 app.include_router(movimentacao_router, prefix="/api/v1/movimentacao", tags=["Estoque - Movimentação"])
 app.include_router(fornecedores_router, prefix="/api/v1/fornecedores", tags=["Fornecedores"])
+app.include_router(notas_fiscais_router, prefix="/api/v1/notas-fiscais", tags=["Notas Fiscais"])
 
 
 @app.get("/")
