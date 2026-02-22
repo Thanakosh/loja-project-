@@ -31,3 +31,9 @@ class ContaReceberBaixa(BaseModel):
     desconto: float = 0.0
     juros: float = 0.0
     historico: Optional[str] = None
+
+
+class ContaReceberResumo(BaseModel):
+    total_em_aberto: float = 0.0
+    total_vencido: float = 0.0
+    quantidade_em_aberto: int = 0

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 
@@ -16,6 +16,13 @@ interface ContaReceber {
     juros: number
     historico?: string
     em_aberto: boolean
+}
+
+
+interface ContaReceberResumo {
+    total_em_aberto: number
+    total_vencido: number
+    quantidade_em_aberto: number
 }
 
 export default function ContasReceber() {
@@ -45,12 +52,13 @@ export default function ContasReceber() {
     })
 
     const baixaMutation = useMutation({
-        mutationFn: async ({ id, data }: { id: number, data: any }) => {
+        mutationFn: async ({ id, data }: { id: number, data: { data_pagamento: string; valor_pago: number; desconto: number; juros: number; historico: string | null } }) => {
             const response = await api.put(`/contas-receber/${id}/baixar`, data)
             return response.data
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contas-receber'] })
+            queryClient.invalidateQueries({ queryKey: ['contas-receber-resumo'] })
             setIsModalOpen(false)
             setSelectedConta(null)
         },
@@ -103,31 +111,19 @@ export default function ContasReceber() {
         },
     })
 
-    // Calcula os totais baseados nos dados em tela
-    // (Idealmente viria do backend, mas calculamos aqui pro card de resumo por enquanto)
-    const stats = useMemo(() => {
-        let totalEmAberto = 0
-        let totalVencido = 0
-        let qtdEmAberto = 0
-        const hoje = new Date()
-        hoje.setHours(0, 0, 0, 0)
+    const { data: resumo } = useQuery<ContaReceberResumo>({
+        queryKey: ['contas-receber-resumo'],
+        queryFn: async () => {
+            const response = await api.get('/contas-receber/resumo')
+            return response.data
+        },
+    })
 
-        contas.forEach((conta) => {
-            if (conta.em_aberto) {
-                totalEmAberto += (conta.valor - conta.valor_pago)
-                qtdEmAberto++
-
-                if (conta.data_vencimento) {
-                    const ven = new Date(conta.data_vencimento)
-                    if (ven < hoje) {
-                        totalVencido += (conta.valor - conta.valor_pago)
-                    }
-                }
-            }
-        })
-
-        return { totalEmAberto, totalVencido, qtdEmAberto }
-    }, [contas])
+    const stats = {
+        totalEmAberto: resumo?.total_em_aberto ?? 0,
+        totalVencido: resumo?.total_vencido ?? 0,
+        qtdEmAberto: resumo?.quantidade_em_aberto ?? 0,
+    }
 
     const handleFilter = () => {
         setSkip(0)
