@@ -1,6 +1,7 @@
 import contextvars
 import logging
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,44 +32,37 @@ logger = logging.getLogger(__name__)
 
 _trace_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # — startup —
+    environment = settings.ENVIRONMENT.lower()
+
+    if "*" in settings.CORS_ORIGINS:
+        logger.warning("CORS wildcard ativo — não usar em produção")
+
+    if environment == "production" and settings.DEBUG:
+        logger.warning("⚠️  DEBUG=True em produção detectado.")
+
+    if environment == "production" and settings.LOG_LEVEL.upper() == "DEBUG":
+        logger.warning("⚠️  LOG_LEVEL=DEBUG em produção pode expor dados sensíveis.")
+
+    if environment in {"staging", "production"} and settings.ACCESS_TOKEN_EXPIRE_MINUTES > 60:
+        logger.warning("⚠️  ACCESS_TOKEN_EXPIRE_MINUTES acima de 60 em staging/production.")
+
+    logger.info(f"Loja API v2.0 iniciada | DEBUG={settings.DEBUG}")
+    yield
+    # — shutdown (adicionar lógica futura aqui se necessário) —
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API para gerenciamento de loja com OCR e IA",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
 register_exception_handlers(app)
-
-
-@app.on_event("startup")
-async def startup_warnings():
-    """Warnings de segurança no startup da aplicação."""
-    environment = settings.ENVIRONMENT.lower()
-
-    if "*" in settings.CORS_ORIGINS:
-        logger.warning(
-            "CORS wildcard ativo — não usar em produção"
-        )
-
-    if environment == "production" and settings.DEBUG:
-        logger.warning(
-            "⚠️  DEBUG=True em produção detectado. Isso aumenta risco de exposição de informações sensíveis."
-        )
-
-    if environment == "production" and settings.LOG_LEVEL.upper() == "DEBUG":
-        logger.warning(
-            "⚠️  LOG_LEVEL=DEBUG em produção pode expor dados sensíveis e aumentar ruído operacional."
-        )
-
-    if environment in {"staging", "production"} and settings.ACCESS_TOKEN_EXPIRE_MINUTES > 60:
-        logger.warning(
-            "⚠️  ACCESS_TOKEN_EXPIRE_MINUTES acima de 60 em staging/production. "
-            "Considere reduzir a duração para diminuir impacto de comprometimento de token."
-        )
-
-    logger.info(f"Loja API v2.0 iniciada | DEBUG={settings.DEBUG}")
-
 
 @app.middleware("http")
 async def add_trace_id_to_request(request: Request, call_next):
