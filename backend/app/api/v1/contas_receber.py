@@ -3,16 +3,51 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func
 
 from app.core.database import get_db
 from app.models.conta_receber import ContaReceber
-from app.schemas.conta_receber import ContaReceberRead, ContaReceberBaixa
+from app.schemas.conta_receber import ContaReceberRead, ContaReceberBaixa, ContaReceberResumo
 from app.core.security import get_current_user
 from app.models.user import User
 from fastapi import HTTPException
 
 router = APIRouter()
+
+
+@router.get("/resumo", response_model=ContaReceberResumo)
+def read_contas_receber_resumo(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    hoje = date.today()
+    em_aberto_filter = (
+        ContaReceber.data_pagamento.is_(None),
+        ContaReceber.valor_pago < ContaReceber.valor,
+    )
+    valor_em_aberto = ContaReceber.valor - ContaReceber.valor_pago
+
+    total_em_aberto = (
+        db.query(func.coalesce(func.sum(valor_em_aberto), 0.0))
+        .filter(*em_aberto_filter)
+        .scalar()
+    )
+    total_vencido = (
+        db.query(func.coalesce(func.sum(valor_em_aberto), 0.0))
+        .filter(*em_aberto_filter, ContaReceber.data_vencimento < hoje)
+        .scalar()
+    )
+    quantidade_em_aberto = (
+        db.query(func.count(ContaReceber.id))
+        .filter(*em_aberto_filter)
+        .scalar()
+    )
+
+    return ContaReceberResumo(
+        total_em_aberto=float(total_em_aberto or 0.0),
+        total_vencido=float(total_vencido or 0.0),
+        quantidade_em_aberto=int(quantidade_em_aberto or 0),
+    )
 
 @router.get("/", response_model=list[ContaReceberRead])
 def read_contas_receber(
