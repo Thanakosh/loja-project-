@@ -24,6 +24,13 @@ interface Venda {
     itens: VendaItem[]
 }
 
+interface VendasParams {
+    limit: number
+    skip?: number
+    start_date?: string
+    end_date?: string
+}
+
 const PAYMENT_LABELS: Record<number, string> = {
     1: 'Dinheiro',
     2: 'Débito',
@@ -33,7 +40,7 @@ const PAYMENT_LABELS: Record<number, string> = {
     6: 'A Prazo',
 }
 
-const LIMIT = 10
+const LIMIT = 50
 
 const Vendas = () => {
     const [vendas, setVendas] = useState<Venda[]>([])
@@ -50,7 +57,7 @@ const Vendas = () => {
     const fetchVendas = useCallback(async (currentSkip: number, currentStartDate: string, currentEndDate: string) => {
         setLoading(true)
         try {
-            const params: Record<string, string | number> = { limit: LIMIT, skip: currentSkip }
+            const params: VendasParams = { limit: LIMIT, skip: currentSkip }
             if (currentStartDate) params.start_date = currentStartDate
             if (currentEndDate) params.end_date = currentEndDate
 
