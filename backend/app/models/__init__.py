@@ -1,6 +1,7 @@
 from .user import User
 from .produto import Produto
 from .transacao_estoque import TransacaoEstoque
+from .ncm import NCM
 from .refresh_token import RefreshToken
 from .cliente import Cliente
 from .venda import Venda, VendaItem

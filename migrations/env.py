@@ -11,10 +11,10 @@ sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 
 # Importa Base e engine de app.core.database
 try:
-    from app.core.database import Base, engine
+    from app.core.database import Base, get_engine
     from app.core.config import settings
     # Importar todos os modelos para que o Alembic os reconheça
-    from app.models import User, Produto, Estoque, Orcamento, TransacaoEstoque
+    import app.models  # noqa: F401 — garante que todos os modelos são registrados no Base.metadata
 except ImportError as e:
     print(f"Erro ao importar módulos: {e}")
     print(f"PYTHONPATH: {sys.path}")
@@ -46,7 +46,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     # No SQLite, não podemos usar pool.NullPool com a mesma facilidade em alguns casos,
     # mas o engine já está configurado no app.core.database
-    connectable = engine
+    connectable = get_engine()
 
     with connectable.connect() as connection:
         context.configure(

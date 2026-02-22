@@ -339,9 +339,9 @@ const PDV = () => {
                     </p>
                   </div>
                   {produto.estoque_atual <= 0 ? (
-                    <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">Sem estoque</span>
+                    <span className="rounded-full bg-rose-100 dark:bg-rose-900/40 px-2 py-1 text-xs font-semibold text-rose-700 dark:text-rose-400">Sem estoque</span>
                   ) : (
-                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Adicionar</span>
+                    <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Adicionar</span>
                   )}
                 </button>
               ))
@@ -478,7 +478,7 @@ const PDV = () => {
                         <button
                           type="button"
                           onClick={() => removeItem(item.produto.id)}
-                          className="rounded-md px-2 py-1 text-rose-600 hover:bg-rose-50"
+                          className="rounded-md px-2 py-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/40"
                         >
                           ✕
                         </button>
@@ -555,7 +555,7 @@ const PDV = () => {
             </div>
           </div>
 
-          {submitError ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          {submitError ? <p className="rounded-lg bg-rose-50 dark:bg-rose-900/40 px-3 py-2 text-sm text-rose-700 dark:text-rose-400">{submitError}</p> : null}
 
           <button
             type="submit"

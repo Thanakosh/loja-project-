@@ -10,6 +10,8 @@ from ...models.user import User
 from ...models.transacao_estoque import TransacaoEstoque, TipoTransacao
 from ...schemas.pagination import PaginatedResponse
 from ...schemas.produto import ProdutoCreate, ProdutoRead
+from ...schemas.produto_ncm import LoteNCMUpdate
+from sqlalchemy import or_
 
 router = APIRouter(tags=["Produto"])
 
@@ -67,6 +69,31 @@ def listar_produtos(
         query = query.filter(Produto.nome.ilike(f"%{search}%"))
     return paginate(query, page=page, page_size=page_size)
 
+@router.get("/sem-ncm", response_model=PaginatedResponse[ProdutoRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def listar_produtos_sem_ncm(
+    request: Request,
+    response: Response,
+    page: int = Query(1, ge=1, description="Número da página"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
+    search: str = Query(None, description="Buscar por nome do produto"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Lista todos os produtos com NCM ausente ou inválido (requer autenticação)"""
+    from sqlalchemy import func
+    query = db.query(Produto).filter(
+        Produto.ativo == True,
+        or_(
+            Produto.codigo_ncm == None,
+            Produto.codigo_ncm == "",
+            func.length(Produto.codigo_ncm) < 8
+        )
+    )
+    if search:
+        query = query.filter(Produto.nome.ilike(f"%{search}%"))
+    return paginate(query, page=page, page_size=page_size)
+
 @router.get("/{produto_id}", response_model=ProdutoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def buscar_produto(
@@ -81,6 +108,31 @@ def buscar_produto(
     if not produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     return produto
+
+@router.put("/ncm/lote")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def atualizar_ncms_em_lote(
+    request: Request,
+    response: Response,
+    payload: LoteNCMUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Atualiza o NCM de vários produtos de uma só vez"""
+    ids_to_update = [item.id for item in payload.produtos]
+    produtos = db.query(Produto).filter(Produto.id.in_(ids_to_update)).all()
+    
+    # Criar dict para busca rápida
+    produtos_dict = {p.id: p for p in produtos}
+    
+    atualizados = 0
+    for item in payload.produtos:
+        if item.id in produtos_dict:
+            produtos_dict[item.id].codigo_ncm = item.codigo_ncm
+            atualizados += 1
+            
+    db.commit()
+    return {"ok": True, "message": f"{atualizados} produtos atualizados com sucesso"}
 
 @router.put("/{produto_id}", response_model=ProdutoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)

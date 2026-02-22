@@ -300,12 +300,12 @@ const Clientes = () => {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">CPF/CNPJ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Telefone</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cidade/UF</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cód. Legado</th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Ações</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CPF/CNPJ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Telefone</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cidade/UF</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cód. Legado</th>
+              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -319,16 +319,16 @@ const Clientes = () => {
               </tr>
             ) : clientes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">Nenhum cliente encontrado.</td>
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum cliente encontrado.</td>
               </tr>
             ) : (
               clientes.map((cliente) => (
                 <tr key={cliente.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{cliente.nome}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{normalizeCpfCnpj(cliente.cpf_cnpj || '') || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{cliente.telefone || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{cliente.cidade || ''}/{cliente.uf || ''}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{cliente.codigo_legado || '-'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{cliente.nome}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{normalizeCpfCnpj(cliente.cpf_cnpj || '') || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.telefone || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.cidade || ''}/{cliente.uf || ''}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.codigo_legado || '-'}</td>
                   <td className="px-6 py-4 text-right text-sm">
                     <button
                       type="button"
@@ -346,7 +346,7 @@ const Clientes = () => {
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {page + 1} de {totalPages} — mostrando {clientes.length} registros
         </span>
         <div className="flex gap-2">
@@ -465,7 +465,7 @@ const Clientes = () => {
               </div>
 
               {formError && (
-                <div className="rounded-md border border-red-200 dark:border-red-700 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-md border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/40 px-3 py-2 text-sm text-red-700 dark:text-red-400">
                   {formError}
                 </div>
               )}

@@ -142,13 +142,13 @@ const Vendas = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Data</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pagamento</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Itens</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Itens</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -164,14 +164,14 @@ const Vendas = () => {
                             vendas.map((venda) => (
                                 <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{new Date(venda.data).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{venda.numero_legado}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">{PAYMENT_LABELS[venda.forma_pagamento] ?? 'Não informado'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{venda.numero_legado}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{PAYMENT_LABELS[venda.forma_pagamento] ?? 'Não informado'}</td>
                                     <td className="px-6 py-4 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${venda.cancelada ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'}`}>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${venda.cancelada ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
                                             {venda.cancelada ? 'Cancelada' : 'Ativa'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                                    <td className="px-6 py-4 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(venda.total)}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">{venda.itens.length} itens</td>
@@ -229,12 +229,12 @@ const Vendas = () => {
 
                         <div className="mb-6 grid grid-cols-2 gap-4">
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Data da Venda</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Data da Venda</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{new Date(selectedVenda.data).toLocaleString()}</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Total</p>
-                                <p className="font-medium text-green-600 text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedVenda.total)}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
+                                <p className="font-medium text-emerald-600 dark:text-emerald-400 text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedVenda.total)}</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Forma de Pagamento</p>
@@ -242,7 +242,7 @@ const Vendas = () => {
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
-                                <p className={`font-medium ${selectedVenda.cancelada ? 'text-red-600 dark:text-red-300' : 'text-green-600 dark:text-green-300'}`}>
+                                <p className={`font-medium ${selectedVenda.cancelada ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                     {selectedVenda.cancelada ? 'Cancelada' : 'Ativa'}
                                 </p>
                             </div>
@@ -277,10 +277,10 @@ const Vendas = () => {
                                     {selectedVenda.itens && selectedVenda.itens.length > 0 ? (
                                         selectedVenda.itens.map((item, idx) => (
                                             <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                <td className="px-4 py-3 text-sm text-gray-900">{item.nome_produto}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 text-center">{item.quantidade}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 font-medium text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{item.nome_produto}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">{item.quantidade}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}</td>
                                             </tr>
                                         ))
                                     ) : (

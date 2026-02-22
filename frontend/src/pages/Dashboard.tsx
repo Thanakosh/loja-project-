@@ -156,7 +156,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500">🛒 Vendas Hoje</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">🛒 Vendas Hoje</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasHojeQuery.isLoading ? (
               <CardSkeleton />
@@ -169,7 +169,7 @@ const Dashboard = () => {
         </article>
 
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500">📅 Vendas do Mês</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">📅 Vendas do Mês</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasMesQuery.isLoading ? (
               <CardSkeleton />
@@ -182,7 +182,7 @@ const Dashboard = () => {
         </article>
 
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500">💰 Orçamentos Abertos</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">💰 Orçamentos Abertos</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {orcamentosAbertosQuery.isLoading ? (
               <CardSkeleton />
@@ -195,14 +195,13 @@ const Dashboard = () => {
         </article>
 
         <article
-          className={`rounded-lg bg-white dark:bg-gray-800 p-4 shadow ${
-            estoqueAlertas.length > 0 ? 'border border-red-200 dark:border-red-700' : ''
-          }`}
+          className={`rounded-lg bg-white dark:bg-gray-800 p-4 shadow ${estoqueAlertas.length > 0 ? 'border border-red-200 dark:border-red-700' : ''
+            }`}
         >
-          <p className={`text-sm ${estoqueAlertas.length > 0 ? 'text-red-500' : 'text-gray-500'}`}>
+          <p className={`text-sm ${estoqueAlertas.length > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
             ⚠️ Alertas de Estoque
           </p>
-          <div className={`mt-2 text-2xl font-semibold ${estoqueAlertas.length > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+          <div className={`mt-2 text-2xl font-semibold ${estoqueAlertas.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-100'}`}>
             {estoqueAlertasQuery.isLoading ? (
               <CardSkeleton />
             ) : estoqueAlertasQuery.isError ? (
@@ -212,7 +211,7 @@ const Dashboard = () => {
             )}
           </div>
           {!produtosQuery.isLoading && !produtosQuery.isError && (
-            <p className="mt-2 text-xs text-gray-500">Total de produtos: {produtosQuery.data ?? 0}</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Total de produtos: {produtosQuery.data ?? 0}</p>
           )}
         </article>
       </div>
@@ -242,7 +241,7 @@ const Dashboard = () => {
                   className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
                 >
                   <span className="font-medium text-gray-800 dark:text-gray-100">{nomeProduto}</span>
-                  <span className="ml-2 text-gray-600">
+                  <span className="ml-2 text-gray-600 dark:text-gray-400">
                     Estoque: {estoqueAtual} / Mínimo: {estoqueMinimo}
                   </span>
                 </li>

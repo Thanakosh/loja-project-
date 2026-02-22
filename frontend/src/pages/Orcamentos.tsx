@@ -81,10 +81,10 @@ const statusLabel: Record<StatusOrcamento, string> = {
 }
 
 const statusBadgeClass: Record<StatusOrcamento, string> = {
-  aberto: 'bg-blue-50 text-blue-700',
-  aprovado: 'bg-emerald-50 text-emerald-700',
-  cancelado: 'bg-rose-50 text-rose-700',
-  convertido: 'bg-purple-50 text-purple-700'
+  aberto: 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+  aprovado: 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400',
+  cancelado: 'bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400',
+  convertido: 'bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400'
 }
 
 const moneyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -234,9 +234,9 @@ const Orcamentos = () => {
       itens: previous.itens.map((item, itemIndex) =>
         itemIndex === index
           ? {
-              ...item,
-              [field]: value
-            }
+            ...item,
+            [field]: value
+          }
           : item
       )
     }))
@@ -261,7 +261,7 @@ const Orcamentos = () => {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Orçamentos</h1>
-          <p className="text-sm text-gray-500">Gerencie propostas comerciais e converta em venda quando necessário.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie propostas comerciais e converta em venda quando necessário.</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -293,52 +293,52 @@ const Orcamentos = () => {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cliente</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Criação</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Ações</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Criação</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
             {orcamentosQuery.isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   Carregando orçamentos...
                 </td>
               </tr>
             ) : orcamentosQuery.isError ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-rose-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-rose-500 dark:text-rose-400">
                   Erro ao buscar orçamentos. Tente novamente.
                 </td>
               </tr>
             ) : orcamentos.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   Nenhum orçamento encontrado para o filtro selecionado.
                 </td>
               </tr>
             ) : (
               orcamentos.map((orcamento) => (
                 <tr key={orcamento.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-4 py-3 text-sm text-gray-600">#{orcamento.id}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">#{orcamento.id}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{orcamento.cliente_nome ?? 'Cliente não informado'}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass[orcamento.status]}`}>
                       {statusLabel[orcamento.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(orcamento.data_criacao).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{new Date(orcamento.data_criacao).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-3 text-sm font-semibold text-emerald-600">{moneyFormatter.format(orcamento.total)}</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => cancelMutation.mutate(orcamento.id)}
                         disabled={orcamento.status !== 'aberto' || cancelMutation.isPending}
-                        className="rounded border border-rose-200 px-2 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded border border-rose-200 dark:border-rose-700 px-2 py-1 text-xs font-medium text-rose-600 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-900/40 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Cancelar
                       </button>
@@ -348,7 +348,7 @@ const Orcamentos = () => {
                           setConvertModal({ orcamentoId: orcamento.id })
                         }}
                         disabled={(orcamento.status !== 'aberto' && orcamento.status !== 'aprovado') || convertMutation.isPending}
-                        className="rounded border border-purple-200 px-2 py-1 text-xs font-medium text-purple-600 transition hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded border border-purple-200 dark:border-purple-700 px-2 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 transition hover:bg-purple-50 dark:hover:bg-purple-900/40 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Converter
                       </button>
@@ -365,17 +365,17 @@ const Orcamentos = () => {
         <button
           onClick={() => setPage((previous) => Math.max(1, previous - 1))}
           disabled={page === 1}
-          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Anterior
         </button>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {page} de {totalPages}
         </span>
         <button
           onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
           disabled={page >= totalPages}
-          className="rounded border px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Próxima
         </button>
@@ -515,18 +515,18 @@ const Orcamentos = () => {
 
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Itens do orçamento</h3>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Itens do orçamento</h3>
                   <button
                     type="button"
                     onClick={addItem}
-                    className="rounded border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                    className="rounded border border-blue-200 dark:border-blue-700 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40"
                   >
                     + Adicionar item
                   </button>
                 </div>
 
                 {formState.itens.map((item, index) => (
-                  <div key={`item-${index}`} className="grid gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-12">
+                  <div key={`item-${index}`} className="grid gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3 md:grid-cols-12">
                     <input
                       value={item.descricao}
                       onChange={(event) => updateItem(index, 'descricao', event.target.value)}
@@ -572,11 +572,11 @@ const Orcamentos = () => {
                 ))}
               </section>
 
-              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                 Total estimado: <span className="font-semibold text-emerald-600">{moneyFormatter.format(totalPreview)}</span>
               </div>
 
-              {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
+              {formError && <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{formError}</p>}
 
               <div className="flex justify-end gap-2">
                 <button

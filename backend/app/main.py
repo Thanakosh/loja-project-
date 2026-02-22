@@ -19,6 +19,7 @@ from app.api.v1.movimentacao import router as movimentacao_router
 from app.api.v1.fornecedores import router as fornecedores_router
 from app.api.v1.contas_receber import router as contas_receber_router
 from app.api.v1.notas_fiscais import router as notas_fiscais_router
+from app.api.endpoints.ncm import router as ncm_router
 from app.core.limiter import limiter
 
 from .core.config import settings
@@ -127,6 +128,7 @@ app.include_router(movimentacao_router, prefix="/api/v1/movimentacao", tags=["Es
 app.include_router(fornecedores_router, prefix="/api/v1/fornecedores", tags=["Fornecedores"])
 app.include_router(contas_receber_router, prefix="/api/v1/contas-receber", tags=["Contas a Receber"])
 app.include_router(notas_fiscais_router, prefix="/api/v1/notas-fiscais", tags=["Notas Fiscais"])
+app.include_router(ncm_router, prefix="/api/v1/ncm", tags=["NCM"])
 
 
 @app.get("/")

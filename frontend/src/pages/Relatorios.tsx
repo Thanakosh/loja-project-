@@ -1,183 +1,357 @@
-import { useMemo, useState } from 'react'
-import axios from 'axios'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 
 import api from '../services/api'
 import { getToken } from '../utils/auth'
 
-interface Venda {
-  id: number
-  data: string
-  total?: number | string | null
-  cliente_id?: number | null
-  forma_pagamento?: number | string | null
-}
-
-interface EstoqueItem {
-  produto_id: number
-  nome_produto: string
-  quantidade_atual: number
-  estoque_minimo: number
-}
-
-interface PaginatedEstoqueResponse {
-  items?: EstoqueItem[]
-}
-
-interface Cliente {
-  id: number
-  nome: string
-}
-
-const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') })
+const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') || 'http://localhost:8000/api/v2' })
 apiV2.interceptors.request.use((config) => {
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
+interface VendaItem {
+  quantidade: number
+}
+
+interface Venda {
+  id: number
+  numero_legado: string | null
+  data: string
+  total: number
+  desconto: number
+  forma_pagamento: number
+  cancelada: boolean
+  itens: VendaItem[]
+}
+
+interface EstoqueAtual {
+  produto_id: number
+  nome_produto: string
+  quantidade_atual: number
+  estoque_minimo: number
+  estoque_baixo: boolean
+  ultima_movimentacao: string | null
+}
+
+type Tab = 'vendas' | 'estoque' | 'resumo'
+
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value)
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
-const formatDate = (value: string) => {
-  const parsedDate = new Date(value)
-  return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleDateString('pt-BR')
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR')
 }
 
-const parseNumber = (value: number | string | null | undefined) => {
-  if (typeof value === 'number') return value
-
-  const parsedValue = Number(value)
-  return Number.isFinite(parsedValue) ? parsedValue : 0
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? '-' : d.toLocaleString('pt-BR')
 }
 
-const PAYMENT_METHODS: Record<number, string> = {
-  0: 'Não informado',
+const FORMAS_PAGAMENTO: Record<number, string> = {
   1: 'Dinheiro',
-  2: 'Cartão de Débito',
-  3: 'Cartão de Crédito',
-  4: 'Pix',
+  2: 'Débito',
+  3: 'Crédito',
+  4: 'PIX',
   5: 'Boleto',
   6: 'A Prazo'
 }
 
-const getPaymentMethodLabel = (paymentMethod: number | string | null | undefined) => {
-  const parsedMethod = Number(paymentMethod)
-  if (!Number.isFinite(parsedMethod)) return 'Não informado'
-
-  return PAYMENT_METHODS[parsedMethod] ?? `Código ${parsedMethod}`
+const getTodayDate = () => new Date().toISOString().split('T')[0]
+const getFirstDayOfMonth = () => {
+  const d = new Date()
+  d.setDate(1)
+  return d.toISOString().split('T')[0]
 }
 
-const getTodayDate = () => new Date().toISOString().split('T')[0]
+const AbaVendas = () => {
+  const [dataInicio, setDataInicio] = useState(getFirstDayOfMonth())
+  const [dataFim, setDataFim] = useState(getTodayDate())
+  const [filterQuery, setFilterQuery] = useState({ start: getFirstDayOfMonth(), end: getTodayDate() })
 
-const Relatorios = () => {
-  const [startDate, setStartDate] = useState(getTodayDate())
-  const [endDate, setEndDate] = useState(getTodayDate())
-  const [filterStartDate, setFilterStartDate] = useState(getTodayDate())
-  const [filterEndDate, setFilterEndDate] = useState(getTodayDate())
-
-  const vendasPeriodoQuery = useQuery({
-    queryKey: ['relatorios', 'vendas-periodo', filterStartDate, filterEndDate],
+  const { data: vendas = [], isLoading } = useQuery({
+    queryKey: ['vendas', filterQuery.start, filterQuery.end],
     queryFn: async () => {
       const response = await api.get('/vendas/', {
-        params: {
-          data_inicio: filterStartDate,
-          data_fim: filterEndDate,
-          start_date: filterStartDate,
-          end_date: filterEndDate,
-          limit: 200
-        }
+        params: { start_date: filterQuery.start, end_date: filterQuery.end, limit: 2000 }
       })
-
-      return Array.isArray(response.data) ? (response.data as Venda[]) : []
+      return (Array.isArray(response.data) ? response.data : []) as Venda[]
     }
   })
 
-  const resumoDiaQuery = useQuery({
-    queryKey: ['relatorios', 'resumo-dia', getTodayDate()],
+  const resumo = useMemo(() => {
+    const validas = vendas.filter(v => !v.cancelada)
+    const total = validas.reduce((acc, v) => acc + (v.total || 0), 0)
+    const descontos = validas.reduce((acc, v) => acc + (v.desconto || 0), 0)
+    const qtd = validas.length
+    const ticket = qtd > 0 ? total / qtd : 0
+    return { total, descontos, qtd, ticket }
+  }, [vendas])
+
+  const vendasOrdenadas = useMemo(() => {
+    return [...vendas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+  }, [vendas])
+
+  const handleGerar = (e: React.FormEvent) => {
+    e.preventDefault()
+    setFilterQuery({ start: dataInicio, end: dataFim })
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
+          <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Fim</label>
+          <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500" required />
+        </div>
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent">
+          Gerar
+        </button>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total de Vendas', value: formatCurrency(resumo.total), color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Quantidade', value: resumo.qtd, color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Ticket Médio', value: formatCurrency(resumo.ticket), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Total Descontos', value: formatCurrency(resumo.descontos), color: 'text-red-500 dark:text-red-400' },
+        ].map((card, idx) => (
+          <div key={idx} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{card.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${card.color}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qtd. Itens</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Desconto</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
+              ) : vendasOrdenadas.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no período.</td></tr>
+              ) : (
+                vendasOrdenadas.map(v => (
+                  <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatDateTime(v.data)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {v.numero_legado || `#${v.id}`}
+                      {v.cancelada && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">Cancelada</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                      {v.itens?.reduce((acc, i) => acc + (i.quantidade || 0), 0) || 0}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                        {FORMAS_PAGAMENTO[v.forma_pagamento] || 'Outro'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatCurrency(v.desconto || 0)}</td>
+                    <td className={`px-6 py-4 text-sm font-medium ${v.cancelada ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {formatCurrency(v.total || 0)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const AbaEstoque = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['estoque-baixo'],
     queryFn: async () => {
-      const today = getTodayDate()
+      const resp = await apiV2.get('/estoque/', {
+        params: { apenas_baixo: true, apenas_ativos: true, page_size: 200 }
+      })
+      return {
+        items: (resp.data?.items || []) as EstoqueAtual[],
+        total: (resp.data?.total || 0) as number
+      }
+    }
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow w-full md:w-1/3 border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do Mínimo</p>
+        <p className="text-3xl font-bold mt-1 text-red-600 dark:text-red-400">{isError ? '-' : (data?.total || 0)}</p>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estoque Atual</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mínimo</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Déficit</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Última Movimentação</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
+              ) : isError ? (
+                <tr><td colSpan={5} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar os itens de estoque.</td></tr>
+              ) : data?.items.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto com estoque crítico.</td></tr>
+              ) : (
+                data?.items.map(item => {
+                  const deficit = item.estoque_minimo - item.quantidade_atual
+                  const rowClass = item.quantidade_atual <= 0
+                    ? 'bg-red-50 dark:bg-red-900/20'
+                    : 'bg-yellow-50 dark:bg-yellow-900/10'
+                  const qtyClass = item.quantidade_atual <= 0
+                    ? 'text-red-700 dark:text-red-400 font-bold'
+                    : 'text-yellow-700 dark:text-yellow-400 font-bold'
+                  return (
+                    <tr key={item.produto_id} className={rowClass}>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{item.nome_produto}</td>
+                      <td className={`px-6 py-4 text-sm text-center ${qtyClass}`}>{item.quantidade_atual}</td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-500 dark:text-gray-400">{item.estoque_minimo}</td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-900 dark:text-gray-100 font-medium">{deficit > 0 ? deficit : 0}</td>
+                      <td className="px-6 py-4 text-sm text-right text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateTime(item.ultima_movimentacao)}</td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const AbaResumoMes = () => {
+  const dataHoje = getTodayDate()
+  const dataInicioMes = getFirstDayOfMonth()
+
+  const { data: vendas = [], isLoading } = useQuery({
+    queryKey: ['vendas-mes', dataInicioMes, dataHoje],
+    queryFn: async () => {
       const response = await api.get('/vendas/', {
-        params: {
-          data_inicio: today,
-          data_fim: today,
-          start_date: today,
-          end_date: today,
-          limit: 200
-        }
+        params: { start_date: dataInicioMes, end_date: dataHoje, limit: 2000 }
       })
-
-      return Array.isArray(response.data) ? (response.data as Venda[]) : []
+      return (Array.isArray(response.data) ? response.data : []) as Venda[]
     }
   })
 
-  const estoqueBaixoQuery = useQuery({
-    queryKey: ['relatorios', 'estoque-baixo'],
-    queryFn: async () => {
-      const response = await apiV2.get('/estoque/', {
-        params: {
-          apenas_baixo: true,
-          page: 1,
-          page_size: 200
-        }
-      })
+  const { bruto, descontos, liquido, qtd, ticket, vendasPorDia } = useMemo(() => {
+    const validas = vendas.filter(v => !v.cancelada)
+    const bruto = validas.reduce((acc, v) => acc + (v.total || 0) + (v.desconto || 0), 0)
+    const descontos = validas.reduce((acc, v) => acc + (v.desconto || 0), 0)
+    const liquido = validas.reduce((acc, v) => acc + (v.total || 0), 0)
+    const qtd = validas.length
+    const ticket = qtd > 0 ? liquido / qtd : 0
 
-      const responseData = response.data as PaginatedEstoqueResponse
-      return responseData.items ?? []
-    }
-  })
-
-  const clientesIds = useMemo(() => {
-    const vendas = vendasPeriodoQuery.data ?? []
-    const uniqueIds = new Set<number>()
-
-    vendas.forEach((venda) => {
-      if (venda.cliente_id) uniqueIds.add(venda.cliente_id)
+    // Vendas por dia para o gráfico
+    const diaMap: Record<string, number> = {}
+    validas.forEach(v => {
+      if (!v.data) return
+      const day = v.data.split('T')[0]
+      if (!diaMap[day]) diaMap[day] = 0
+      diaMap[day] += (v.total || 0)
     })
 
-    return Array.from(uniqueIds)
-  }, [vendasPeriodoQuery.data])
+    // Obter dias do inicio do mes ate hoje para preencher buracos no grafico
+    const startDate = new Date(dataInicioMes + 'T00:00:00')
+    const endDate = new Date(dataHoje + 'T00:00:00')
+    const chartData = []
+    let maxVal = 0
 
-  const clientesMapQuery = useQuery({
-    queryKey: ['relatorios', 'clientes-map', clientesIds],
-    enabled: clientesIds.length > 0,
-    queryFn: async () => {
-      const responses = await Promise.allSettled(
-        clientesIds.map((clienteId) => api.get(`/clientes/${clienteId}`))
-      )
-
-      return responses.reduce<Record<number, string>>((acc, response) => {
-        if (response.status === 'fulfilled') {
-          const cliente = response.value.data as Cliente
-          acc[cliente.id] = cliente.nome
-        }
-
-        return acc
-      }, {})
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dayStr = d.toISOString().split('T')[0]
+      const val = diaMap[dayStr] || 0
+      if (val > maxVal) maxVal = val
+      chartData.push({ dayStr, val, dayNum: d.getDate() })
     }
-  })
 
-  const resumoDia = useMemo(() => {
-    const vendas = resumoDiaQuery.data ?? []
-    const total = vendas.reduce((acc, venda) => acc + parseNumber(venda.total), 0)
-    const transacoes = vendas.length
-    const ticketMedio = transacoes > 0 ? total / transacoes : 0
+    return { bruto, descontos, liquido, qtd, ticket, vendasPorDia: { data: chartData, maxVal } }
+  }, [vendas, dataInicioMes, dataHoje])
 
-    return {
-      total,
-      transacoes,
-      ticketMedio
-    }
-  }, [resumoDiaQuery.data])
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          { label: 'Faturamento Bruto', value: formatCurrency(bruto), color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Descontos', value: formatCurrency(descontos), color: 'text-red-500 dark:text-red-400' },
+          { label: 'Faturamento Líquido', value: formatCurrency(liquido), color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Nº Vendas', value: qtd, color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Ticket Médio', value: formatCurrency(ticket), color: 'text-blue-600 dark:text-blue-400' },
+        ].map((c, i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{c.label}</p>
+            <p className={`text-xl md:text-2xl font-bold mt-2 ${c.color}`}>{isLoading ? '...' : c.value}</p>
+          </div>
+        ))}
+      </div>
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setFilterStartDate(startDate)
-    setFilterEndDate(endDate)
-  }
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Faturamento Diário - {new Date(dataInicioMes + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+        <div className="h-64 flex items-end justify-between gap-1 w-full">
+          {isLoading ? (
+            <div className="w-full text-center text-gray-500 pt-20">Processando gráfico...</div>
+          ) : vendasPorDia.data.length === 0 ? (
+            <div className="w-full text-center text-gray-500 pt-20">Nenhum dado para exibir.</div>
+          ) : (
+            vendasPorDia.data.map(item => {
+              const heightPct = vendasPorDia.maxVal > 0 ? (item.val / vendasPorDia.maxVal) * 100 : 0
+              return (
+                <div key={item.dayStr} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                  {/* Tooltip */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none shadow-lg">
+                    {formatDate(item.dayStr)}: {formatCurrency(item.val)}
+                  </div>
+                  {/* Barra */}
+                  <div
+                    className="w-full bg-blue-500 hover:bg-blue-400 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-t-sm transition-all duration-300 border border-blue-600 dark:border-blue-500"
+                    style={{ height: `${Math.max(heightPct, 1)}%`, minHeight: item.val > 0 ? '4px' : '0' }}
+                  ></div>
+                  {/* Label X-axis */}
+                  <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">
+                    {item.dayNum}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const Relatorios = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('vendas')
 
   return (
     <div className="space-y-6">
@@ -185,147 +359,43 @@ const Relatorios = () => {
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Relatórios</h1>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total de vendas do dia</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-            {resumoDiaQuery.isLoading ? 'Carregando...' : formatCurrency(resumoDia.total)}
-          </p>
-        </article>
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('vendas')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'vendas'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+          >
+            Vendas por Período
+          </button>
+          <button
+            onClick={() => setActiveTab('estoque')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'estoque'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+          >
+            Estoque Baixo
+          </button>
+          <button
+            onClick={() => setActiveTab('resumo')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'resumo'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+          >
+            Resumo do Mês
+          </button>
+        </nav>
+      </div>
 
-        <article className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Transações do dia</p>
-          <p className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-            {resumoDiaQuery.isLoading ? 'Carregando...' : resumoDia.transacoes}
-          </p>
-        </article>
-
-        <article className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Ticket médio</p>
-          <p className="mt-2 text-2xl font-semibold text-blue-600 dark:text-blue-400">
-            {resumoDiaQuery.isLoading ? 'Carregando...' : formatCurrency(resumoDia.ticketMedio)}
-          </p>
-        </article>
-      </section>
-
-      <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
-        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Vendas por período</h2>
-
-          <form onSubmit={handleSubmit} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Data inicial</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Data final</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-            >
-              Filtrar
-            </button>
-          </form>
-        </div>
-
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Data</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Forma de pagamento</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-              {vendasPeriodoQuery.isLoading ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Carregando vendas...</td>
-                </tr>
-              ) : vendasPeriodoQuery.isError ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-red-600 dark:text-red-400">Erro ao carregar vendas.</td>
-                </tr>
-              ) : (vendasPeriodoQuery.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma venda encontrada para o período.</td>
-                </tr>
-              ) : (
-                (vendasPeriodoQuery.data ?? []).map((venda) => (
-                  <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{formatDate(venda.data)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
-                      {venda.cliente_id
-                        ? (clientesMapQuery.data?.[venda.cliente_id] ?? `Cliente #${venda.cliente_id}`)
-                        : 'Não informado'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
-                      {getPaymentMethodLabel(venda.forma_pagamento)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(parseNumber(venda.total))}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-100">Produtos com estoque baixo</h2>
-
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Produto</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Estoque atual</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Estoque mínimo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-              {estoqueBaixoQuery.isLoading ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Carregando produtos...</td>
-                </tr>
-              ) : estoqueBaixoQuery.isError ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-sm text-red-600 dark:text-red-400">Erro ao carregar produtos.</td>
-                </tr>
-              ) : (estoqueBaixoQuery.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum produto com estoque baixo.</td>
-                </tr>
-              ) : (
-                (estoqueBaixoQuery.data ?? []).map((item) => (
-                  <tr key={item.produto_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">{item.nome_produto}</td>
-                    <td className="px-4 py-3 text-center text-sm text-red-600 dark:text-red-400">{item.quantidade_atual}</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-200">{item.estoque_minimo}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div className="mt-4">
+        {activeTab === 'vendas' && <AbaVendas />}
+        {activeTab === 'estoque' && <AbaEstoque />}
+        {activeTab === 'resumo' && <AbaResumoMes />}
+      </div>
     </div>
   )
 }

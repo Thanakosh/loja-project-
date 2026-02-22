@@ -14,31 +14,35 @@ import Produtos from './pages/Produtos'
 import Relatorios from './pages/Relatorios'
 import Vendas from './pages/Vendas'
 import ContasReceber from './pages/ContasReceber'
+import { Toaster } from 'react-hot-toast'
 
 const App = () => {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-      <Route element={<PrivateRoute />}>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Navigate replace to="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/pdv" element={<PDV />} />
-          <Route path="/vendas" element={<Vendas />} />
-          <Route path="/produtos" element={<Produtos />} />
-          <Route path="/estoque" element={<Estoque />} />
-          <Route path="/orcamentos" element={<Orcamentos />} />
-          <Route path="/fornecedores" element={<Fornecedores />} />
-          <Route path="/notas-fiscais" element={<NotasFiscais />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/contas-receber" element={<ContasReceber />} />
-          <Route path="/relatorios" element={<Relatorios />} />
+        <Route element={<PrivateRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate replace to="/dashboard" />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/pdv" element={<PDV />} />
+            <Route path="/vendas" element={<Vendas />} />
+            <Route path="/produtos" element={<Produtos />} />
+            <Route path="/estoque" element={<Estoque />} />
+            <Route path="/orcamentos" element={<Orcamentos />} />
+            <Route path="/fornecedores" element={<Fornecedores />} />
+            <Route path="/notas-fiscais" element={<NotasFiscais />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/contas-receber" element={<ContasReceber />} />
+            <Route path="/relatorios" element={<Relatorios />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate replace to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate replace to="/" />} />
+      </Routes>
+    </>
   )
 }
 

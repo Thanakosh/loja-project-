@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useLogin } from '../hooks/useAuth'
+import logoImg from '../assets/logo.png'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -23,14 +24,17 @@ const Login = () => {
   }
 
   return (
-    <section className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg sm:p-8">
-        <h1 className="text-center text-2xl font-semibold text-slate-900">Entrar</h1>
-        <p className="mt-2 text-center text-sm text-slate-500">Acesse sua conta para continuar.</p>
+    <section className="flex min-h-screen items-center justify-center bg-gray-900 px-4 py-10">
+      <div className="w-full max-w-md rounded-xl bg-gray-800 p-6 shadow-lg sm:p-8 border border-gray-700">
+        <div className="mb-6 flex justify-center">
+          <img src={logoImg} alt="Logo Eletroluz" className="h-32 object-contain" />
+        </div>
+        <h1 className="text-center text-2xl font-semibold text-gray-100">Entrar</h1>
+        <p className="mt-2 text-center text-sm text-gray-400">Acesse sua conta para continuar.</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="email">
+            <label className="mb-1 block text-sm font-medium text-gray-300" htmlFor="email">
               Email
             </label>
             <input
@@ -38,14 +42,14 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none ring-emerald-500 transition focus:ring"
+              className="w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100 outline-none ring-emerald-500 transition focus:ring placeholder:text-gray-400"
               placeholder="voce@empresa.com"
               required
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="password">
+            <label className="mb-1 block text-sm font-medium text-gray-300" htmlFor="password">
               Senha
             </label>
             <input
@@ -53,13 +57,13 @@ const Login = () => {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none ring-emerald-500 transition focus:ring"
+              className="w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100 outline-none ring-emerald-500 transition focus:ring placeholder:text-gray-400"
               placeholder="••••••••"
               required
             />
           </div>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="rounded-md bg-red-900/40 p-3 text-sm font-medium text-red-400 border border-red-700">{error}</p> : null}
 
           <button
             type="submit"

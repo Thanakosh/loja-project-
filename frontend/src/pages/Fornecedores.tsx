@@ -260,10 +260,10 @@ const Fornecedores = () => {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">CNPJ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Contato</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Ações</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CNPJ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contato</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
             </tr>
           </thead>
 
@@ -278,17 +278,17 @@ const Fornecedores = () => {
               </tr>
             ) : fornecedores.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">Nenhum fornecedor encontrado.</td>
+                <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum fornecedor encontrado.</td>
               </tr>
             ) : (
               fornecedores.map((fornecedor) => (
                 <tr key={fornecedor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{fornecedor.nome}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{formatCnpj(fornecedor.cnpj || '')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{fornecedor.nome}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCnpj(fornecedor.cnpj || '')}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     {fornecedor.contato || fornecedor.telefone || fornecedor.email || '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     <button
                       type="button"
                       onClick={() => openEditModal(fornecedor)}
@@ -305,7 +305,7 @@ const Fornecedores = () => {
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {page + 1} de {totalPages} — mostrando {fornecedores.length} registros
         </span>
         <div className="flex gap-2">
@@ -332,7 +332,7 @@ const Fornecedores = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3">
           <div className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl">
             <div className="mb-4 flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo Fornecedor' : 'Editar Fornecedor'}
               </h2>
               <button
@@ -407,7 +407,7 @@ const Fornecedores = () => {
                 />
               </div>
 
-              {formError ? <p className="text-sm font-medium text-red-600">{formError}</p> : null}
+              {formError ? <p className="text-sm font-medium text-red-600 dark:text-red-400">{formError}</p> : null}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
