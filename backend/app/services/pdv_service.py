@@ -13,6 +13,7 @@ from ..schemas.pdv import VendaPDVCreate
 
 
 def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
+    data_venda = date.today()
     produto_ids = [item.produto_id for item in venda_in.itens]
 
     try:
@@ -57,7 +58,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
 
         venda = Venda(
             numero_legado=numero_legado,
-            data=date.today(),
+            data=data_venda,
             cliente_id=venda_in.cliente_id,
             total=total_venda,
             desconto=venda_in.desconto_geral,
@@ -104,8 +105,8 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                         cliente_id=venda_in.cliente_id,
                         documento=numero_legado,
                         parcela=parcela,
-                        data_emissao=date.today(),
-                        data_vencimento=date.today() + timedelta(days=30 * parcela),
+                        data_emissao=data_venda,
+                        data_vencimento=data_venda + timedelta(days=30 * parcela),
                         valor=valor_parcela,
                         historico=f"PDV Venda #{numero_legado}",
                     )

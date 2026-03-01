@@ -25,10 +25,18 @@ interface ContaReceberResumo {
     quantidade_em_aberto: number
 }
 
+interface ContaReceberListResponse {
+    items: ContaReceber[]
+    total: number
+    page: number
+    page_size: number
+    pages: number
+}
+
 export default function ContasReceber() {
     const queryClient = useQueryClient()
-    const [skip, setSkip] = useState(0)
-    const [limit] = useState(50)
+    const [page, setPage] = useState(1)
+    const [pageSize] = useState(50)
     const [apenasEmAberto, setApenasEmAberto] = useState(false)
     const [vencidas, setVencidas] = useState(false)
     const [clienteId, setClienteId] = useState('')
@@ -96,12 +104,12 @@ export default function ContasReceber() {
         })
     }
 
-    const { data: contas = [], isLoading, isError } = useQuery<ContaReceber[]>({
-        queryKey: ['contas-receber', skip, limit, activeFilters],
+    const { data: contasResponse, isLoading, isError } = useQuery<ContaReceberListResponse>({
+        queryKey: ['contas-receber', page, pageSize, activeFilters],
         queryFn: async () => {
             const params = new URLSearchParams()
-            params.append('skip', skip.toString())
-            params.append('limit', limit.toString())
+            params.append('page', page.toString())
+            params.append('page_size', pageSize.toString())
             if (activeFilters.apenasEmAberto) params.append('apenas_em_aberto', 'true')
             if (activeFilters.vencidas) params.append('vencidas', 'true')
             if (activeFilters.clienteId) params.append('cliente_id', activeFilters.clienteId)
@@ -125,8 +133,10 @@ export default function ContasReceber() {
         qtdEmAberto: resumo?.quantidade_em_aberto ?? 0,
     }
 
+    const contas = contasResponse?.items ?? []
+
     const handleFilter = () => {
-        setSkip(0)
+        setPage(1)
         setActiveFilters({
             apenasEmAberto,
             vencidas,
@@ -249,7 +259,7 @@ export default function ContasReceber() {
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {contas.map((conta) => (
+                            {(contasResponse?.items ?? []).map((conta) => (
                                 <tr key={conta.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         {conta.documento} / {conta.parcela}
@@ -293,18 +303,18 @@ export default function ContasReceber() {
             <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
                 <button
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-200 transition-colors"
-                    onClick={() => setSkip(Math.max(0, skip - limit))}
-                    disabled={skip === 0}
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    disabled={page === 1}
                 >
                     Anterior
                 </button>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Mostrando página {Math.floor(skip / limit) + 1}
+                    Mostrando página {contasResponse?.page ?? page} de {contasResponse?.pages ?? 1}
                 </span>
                 <button
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-200 transition-colors"
-                    onClick={() => setSkip(skip + limit)}
-                    disabled={contas.length < limit}
+                    onClick={() => setPage(page + 1)}
+                    disabled={!contasResponse || page >= contasResponse.pages}
                 >
                     Próxima
                 </button>
