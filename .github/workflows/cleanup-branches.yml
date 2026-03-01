@@ -1,0 +1,83 @@
+# Cleanup Branches Workflow
+#
+# Triggers:
+#   - pull_request (closed): automatically deletes the PR head branch after merge.
+#   - workflow_dispatch: ⚠️ DESTRUCTIVE — deletes ALL branches except `main`.
+#     This action is irreversible. Use with caution.
+
+name: Cleanup Branches
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+jobs:
+  delete-merged-branch:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete merged branch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            if (branch === 'main') {
+              console.log('Skipping deletion of main branch');
+              return;
+            }
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branch}`,
+              });
+              console.log(`Deleted branch: ${branch}`);
+            } catch (e) {
+              console.log(`Could not delete branch ${branch}: ${e.message}`);
+            }
+
+  delete-all-except-main:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete all branches except main
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let page = 1;
+            let deleted = 0;
+            while (true) {
+              const { data: branches } = await github.rest.repos.listBranches({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page,
+              });
+              if (branches.length === 0) break;
+              for (const branch of branches) {
+                if (branch.name === 'main') {
+                  console.log('Skipping main branch');
+                  continue;
+                }
+                try {
+                  await github.rest.git.deleteRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: `heads/${branch.name}`,
+                  });
+                  console.log(`Deleted branch: ${branch.name}`);
+                  deleted++;
+                } catch (e) {
+                  console.log(`Could not delete branch ${branch.name}: ${e.message}`);
+                }
+              }
+              page++;
+            }
+            console.log(`Total branches deleted: ${deleted}`);
