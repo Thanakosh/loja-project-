@@ -1,11 +1,18 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
 from ...core.config import settings
 from ...core.database import get_db
+from ...core.exceptions import (
+    ClienteNaoIdentificadoError,
+    OrcamentoNaoAbertoError,
+    OrcamentoNaoCancelavelError,
+    OrcamentoNaoEncontradoError,
+    SemItensElegiveisError,
+)
 from ...core.enums import FormaPagamento
 from ...core.limiter import limiter
 from ...core.pagination import paginate
@@ -40,7 +47,7 @@ def criar_orcamento(
     current_user: User = Depends(get_current_active_user),
 ):
     if not orcamento.cliente_id and not orcamento.cliente_nome:
-        raise HTTPException(status_code=422, detail="deve informar cliente_id ou cliente_nome")
+        raise ClienteNaoIdentificadoError()
 
     db_orcamento = Orcamento(
         cliente_id=orcamento.cliente_id,
@@ -112,7 +119,7 @@ def buscar_orcamento(
         .first()
     )
     if not orcamento:
-        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+        raise OrcamentoNaoEncontradoError()
     return orcamento
 
 
@@ -133,10 +140,10 @@ def atualizar_orcamento(
         .first()
     )
     if not db_orcamento:
-        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+        raise OrcamentoNaoEncontradoError()
 
     if db_orcamento.status != StatusOrcamento.ABERTO.value:
-        raise HTTPException(status_code=400, detail="Apenas orçamentos abertos podem ser atualizados")
+        raise OrcamentoNaoAbertoError()
 
     update_data = orcamento.model_dump(exclude_unset=True, exclude={"itens"})
     if "status" in update_data and update_data["status"] is not None:
@@ -177,7 +184,7 @@ def cancelar_orcamento(
 ):
     db_orcamento = db.query(Orcamento).filter(Orcamento.id == orcamento_id).first()
     if not db_orcamento:
-        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+        raise OrcamentoNaoEncontradoError()
 
     db_orcamento.status = StatusOrcamento.CANCELADO.value
     db.commit()
@@ -201,10 +208,10 @@ def converter_orcamento_em_venda(
         .first()
     )
     if not db_orcamento:
-        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+        raise OrcamentoNaoEncontradoError()
 
     if db_orcamento.status not in (StatusOrcamento.ABERTO.value, StatusOrcamento.APROVADO.value):
-        raise HTTPException(status_code=400, detail="Apenas orçamentos abertos ou aprovados podem ser convertidos")
+        raise OrcamentoNaoCancelavelError()
 
     itens_venda = [
         VendaPDVItemCreate(
@@ -218,7 +225,7 @@ def converter_orcamento_em_venda(
     ]
 
     if not itens_venda:
-        raise HTTPException(status_code=400, detail="Nenhum item elegível para venda")
+        raise SemItensElegiveisError()
 
     venda_in = VendaPDVCreate(
         cliente_id=db_orcamento.cliente_id,

@@ -7,9 +7,10 @@ quando será reimplementada com uma arquitetura mais robusta (fila assíncrona
 com persistência de estado).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 
 from ...core.config import settings
+from ...core.exceptions import BusinessException
 from ...core.limiter import limiter
 from ...core.security import get_current_active_user
 from ...models.user import User
@@ -24,10 +25,11 @@ async def ollama_disabled(
     response: Response,
     current_user: User = Depends(get_current_active_user),
 ):
-    raise HTTPException(
-        status_code=422,
-        detail=(
+    raise BusinessException(
+        code="servico_indisponivel",
+        message=(
             "Integração com LLM/Ollama está desativada nesta versão. "
             "Use o fluxo de importação via XML da NFe."
         ),
+        status_code=503,
     )

@@ -36,6 +36,9 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ## [Unreleased]
 
+### 🔄 Alterado
+- Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orçamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
+
 ### ✨ Adicionado
 - Backend: novos endpoints de Notas Fiscais (`GET /api/v1/notas-fiscais/` e `GET /api/v1/notas-fiscais/{nota_id}`) com filtros por cliente e período, incluindo retorno de itens.
 - Frontend: nova página "Notas Fiscais" com filtros por data, paginação, resumo de totais e modal de itens da NF.
