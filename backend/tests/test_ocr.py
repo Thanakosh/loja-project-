@@ -4,7 +4,16 @@ Testes do módulo OCR — versão atual: apenas XML de NFe.
 Processamento de imagens e PDFs via IA está desativado nesta versão.
 """
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def _load_fixture_bytes(filename: str) -> bytes:
+    return (FIXTURES_DIR / filename).read_bytes()
 
 
 def test_ocr_upload_imagem_retorna_422(client: TestClient, auth_headers: dict[str, str]):
@@ -15,7 +24,9 @@ def test_ocr_upload_imagem_retorna_422(client: TestClient, auth_headers: dict[st
         headers=auth_headers,
     )
     assert response.status_code == 422
-    assert "imagens" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+    body = response.json()
+    assert body["code"] == "http_error"
+    assert "imagens" in body["message"].lower() or "xml" in body["message"].lower()
 
 
 def test_ocr_upload_pdf_retorna_422(client: TestClient, auth_headers: dict[str, str]):
@@ -26,7 +37,9 @@ def test_ocr_upload_pdf_retorna_422(client: TestClient, auth_headers: dict[str, 
         headers=auth_headers,
     )
     assert response.status_code == 422
-    assert "pdf" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+    body = response.json()
+    assert body["code"] == "http_error"
+    assert "pdf" in body["message"].lower() or "xml" in body["message"].lower()
 
 
 def test_ocr_upload_arquivo_desconhecido_retorna_400(client: TestClient, auth_headers: dict[str, str]):
@@ -71,3 +84,56 @@ def test_ocr_xml_invalido_retorna_400(client: TestClient, auth_headers: dict[str
         headers=auth_headers,
     )
     assert response.status_code == 400
+
+
+def test_ocr_xml_valido_retorna_completed(client: TestClient, auth_headers: dict[str, str]):
+    xml_content = _load_fixture_bytes("nfe_minima.xml")
+
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_minima.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+
+
+def test_ocr_xml_valido_extrai_produtos(client: TestClient, auth_headers: dict[str, str]):
+    xml_content = _load_fixture_bytes("nfe_minima.xml")
+
+    upload_response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_minima.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+
+    assert upload_response.status_code == 200
+    task_id = upload_response.json()["task_id"]
+
+    status_response = client.get(f"/api/v1/ocr/status/{task_id}", headers=auth_headers)
+
+    assert status_response.status_code == 200
+    body = status_response.json()
+    produtos = body["result"]["nota_fiscal"]["produtos"]
+    assert len(produtos) >= 1
+
+
+def test_ocr_xml_idempotente(client: TestClient, auth_headers: dict[str, str]):
+    xml_content = _load_fixture_bytes("nfe_minima.xml")
+
+    first_response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_minima.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+    second_response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_minima.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert first_response.json()["task_id"] == second_response.json()["task_id"]

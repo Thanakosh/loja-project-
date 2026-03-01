@@ -6,6 +6,7 @@ para uma versão futura e foram desativados intencionalmente.
 """
 
 import hashlib
+import importlib.util
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -89,8 +90,26 @@ def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str):
             return "novo", novo.id
         finally:
             db.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "[OCR] Falha no auto-cadastro de fornecedor | razao_social=%s | cnpj=%s | erro=%s",
+            razao_social,
+            cnpj_raw,
+            exc,
+            exc_info=True,
+        )
         return None, None
+
+
+
+
+def _ensure_ocr_dependencies() -> None:
+    """Mantido por compatibilidade: OCR por imagem/PDF segue desativado."""
+    if importlib.util.find_spec("lxml") is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Dependências de OCR não instaladas no ambiente.",
+        )
 
 
 def _get_file_type(file: UploadFile) -> str:

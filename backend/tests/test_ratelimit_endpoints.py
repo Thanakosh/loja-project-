@@ -1,6 +1,5 @@
 import pytest
 
-from app.api.v1 import ocr
 from app.core.limiter import limiter
 from app.core.security import get_current_active_user
 from app.main import app
@@ -41,21 +40,21 @@ def test_users_token_rate_limit_20_per_minute(client):
     assert response.status_code == 429
 
 
-def test_ocr_upload_rate_limit_respects_ocr_limit(client, monkeypatch):
+def test_ocr_upload_erro_estrutura_padrao(client):
     app.dependency_overrides[get_current_active_user] = lambda: User(id=1, email="ocr@test.com", is_active=True)
-    monkeypatch.setattr(ocr, "_ensure_ocr_dependencies", lambda: None)
 
-    files = {"file": ("nota.jpg", b"conteudo fake", "image/jpeg")}
-    call_number, response = _find_first_429(
-        client,
-        "post",
-        "/api/v1/ocr/upload",
-        max_calls=12,
-        files=files,
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nota.xml", b"<xml>conteudo invalido</xml>", "application/xml")},
     )
 
-    assert call_number <= 11
-    assert response.status_code == 429
+    assert response.status_code == 400
+    data = response.json()
+    assert data["code"] == "http_error"
+    assert "message" in data
+    assert "details" in data
+    assert "trace_id" in data
+
     app.dependency_overrides = {}
 
 

@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"
 
     # Rate Limiting
-    RATE_LIMIT_OCR: str = "60/hour"   # mantido pois o endpoint XML usa o limiter
+    RATE_LIMIT_OCR: str = "10/hour"
     RATE_LIMIT_LLM: str = "30/hour"   # mantido para evitar erros de import; sem endpoints ativos
     RATE_LIMIT_DEFAULT: str = "100/minute"
 

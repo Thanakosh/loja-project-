@@ -1,10 +1,11 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session, joinedload
 
 from ...core.config import settings
 from ...core.database import get_db
+from ...core.exceptions import VendaJaCanceladaError, VendaNaoEncontradaError
 from ...core.limiter import limiter
 from ...core.security import get_current_active_user
 from ...models.conta_receber import ContaReceber
@@ -53,7 +54,7 @@ def buscar_venda_pdv(
 ):
     venda = db.query(Venda).options(joinedload(Venda.itens)).filter(Venda.id == venda_id).first()
     if not venda:
-        raise HTTPException(status_code=404, detail="Venda não encontrada")
+        raise VendaNaoEncontradaError()
     return venda
 
 
@@ -70,9 +71,9 @@ def cancelar_venda_pdv(
     try:
         venda = db.query(Venda).options(joinedload(Venda.itens)).filter(Venda.id == venda_id).first()
         if not venda:
-            raise HTTPException(status_code=404, detail="Venda não encontrada")
+            raise VendaNaoEncontradaError()
         if venda.cancelada:
-            raise HTTPException(status_code=400, detail="Venda já cancelada")
+            raise VendaJaCanceladaError()
 
         venda.cancelada = True
 
