@@ -1,10 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.exceptions import ClienteNaoEncontradoError, CodigoLegadoJaCadastradoError
 from app.core.limiter import limiter
 from app.core.security import get_current_active_user
 from app.models.cliente import Cliente
@@ -52,7 +53,7 @@ def get_cliente(
 ):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        raise ClienteNaoEncontradoError()
     return cliente
 
 
@@ -70,7 +71,7 @@ def create_cliente(
     if codigo_legado is not None:
         codigo_existente = db.query(Cliente).filter(Cliente.codigo_legado == codigo_legado).first()
         if codigo_existente:
-            raise HTTPException(status_code=400, detail="Código legado já cadastrado")
+            raise CodigoLegadoJaCadastradoError()
     else:
         codigo_legado = _next_codigo_legado(db)
 
@@ -104,7 +105,7 @@ def update_cliente(
 ):
     cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        raise ClienteNaoEncontradoError()
 
     cliente.nome = cliente_in.nome
     cliente.cpf_cnpj = cliente_in.cpf_cnpj

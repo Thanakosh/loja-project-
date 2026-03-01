@@ -196,7 +196,7 @@ const ImportarNota = () => {
             })
         },
         onError: (err: any) => {
-            const detail = err?.response?.data?.detail || 'Erro ao enviar arquivo. Tente novamente.'
+            const detail = err?.response?.data?.message ?? err?.response?.data?.detail ?? 'Erro ao enviar arquivo. Tente novamente.'
             toast.error(detail)
             setErrorMsg(detail)
         },
@@ -328,7 +328,7 @@ const ImportarNota = () => {
                     const res = await api.post('/produtos/', prod)
                     results.push(res.data)
                 } catch (err: any) {
-                    const detail = err?.response?.data?.detail || `Erro ao cadastrar "${prod.nome}"`
+                    const detail = err?.response?.data?.message ?? err?.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"`
                     erros.push(detail)
                 }
             }
@@ -347,7 +347,7 @@ const ImportarNota = () => {
             }
         },
         onError: (err: any) => {
-            const detail = err?.response?.data?.detail || 'Erro ao importar produtos.'
+            const detail = err?.response?.data?.message ?? err?.response?.data?.detail ?? 'Erro ao importar produtos.'
             toast.error(detail)
         },
     })

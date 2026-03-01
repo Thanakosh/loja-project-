@@ -135,7 +135,7 @@ const PDV = () => {
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        const detail = error.response?.data?.detail
+        const detail = error.response?.data?.message ?? error.response?.data?.detail
         if (typeof detail === 'string') {
           setSubmitError(detail)
           return
