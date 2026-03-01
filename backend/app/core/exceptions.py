@@ -35,3 +35,63 @@ class EstoqueInsuficienteError(BusinessException):
             status_code=400,
             details=details,
         )
+
+
+class VendaNaoEncontradaError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="venda_nao_encontrada",
+            message="Venda não encontrada",
+            status_code=404,
+            details=details,
+        )
+
+
+class VendaJaCanceladaError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="venda_ja_cancelada",
+            message="Venda já cancelada",
+            status_code=400,
+            details=details,
+        )
+
+
+class ClienteNaoEncontradoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="cliente_nao_encontrado",
+            message="Cliente não encontrado",
+            status_code=404,
+            details=details,
+        )
+
+
+class CodigoLegadoJaCadastradoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="codigo_legado_ja_cadastrado",
+            message="Código legado já cadastrado",
+            status_code=400,
+            details=details,
+        )
+
+
+class ProdutoJaDesativadoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="produto_ja_desativado",
+            message="Produto já está desativado",
+            status_code=400,
+            details=details,
+        )
+
+
+class ProdutoJaAtivoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="produto_ja_ativo",
+            message="Produto já está ativo",
+            status_code=400,
+            details=details,
+        )

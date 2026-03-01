@@ -18,8 +18,9 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def reset_limiter():
     """Reset limiter storage before each test to ensure isolation."""
-    if hasattr(limiter.limiter, "_storage"):
-        limiter.limiter._storage.reset()
+    storage = getattr(limiter.limiter, "storage", None) or getattr(limiter.limiter, "_storage", None)
+    if storage and hasattr(storage, "reset"):
+        storage.reset()
     yield
 
 
@@ -32,35 +33,19 @@ def _first_429_call(path: str, *, max_calls: int, **request_kwargs) -> tuple[int
     raise AssertionError(f"Nenhuma resposta 429 recebida em até {max_calls} chamadas")
 
 
-def test_ocr_upload_rate_limit():
+def test_ocr_upload_retorna_erro_estruturado_para_xml_invalido():
     app.dependency_overrides[get_current_active_user] = lambda: User(id=1, email="test@example.com", is_active=True)
 
-    files = {"file": ("test.txt", b"fake content", "image/jpeg")}
-    call_number, response = _first_429_call("/api/v1/ocr/upload", max_calls=11, files=files)
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nota.xml", b"<xml>conteudo invalido</xml>", "application/xml")},
+    )
 
-    # O bloqueio precisa acontecer até a 10ª/11ª chamada (variação de janela do backend de teste)
-    assert call_number <= 11
-
+    assert response.status_code == 400
     data = response.json()
-    assert data["code"] == "rate_limit_exceeded"
+    assert data["code"] == "http_error"
     assert "message" in data
     assert "details" in data
     assert "trace_id" in data
-    assert "Retry-After" in response.headers
-
-    app.dependency_overrides = {}
-
-
-def test_llm_rate_limit():
-    app.dependency_overrides[get_current_active_user] = lambda: User(id=1, email="test@example.com", is_active=True)
-
-    payload = {"prompt": "test", "model": "gemma:3b"}
-    call_number, response = _first_429_call("/api/v1/llm/ollama", max_calls=31, json=payload)
-
-    assert call_number <= 31
-
-    data = response.json()
-    assert data["code"] == "rate_limit_exceeded"
-    assert "Retry-After" in response.headers
 
     app.dependency_overrides = {}

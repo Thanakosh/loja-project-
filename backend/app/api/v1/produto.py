@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, File
+from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
 from sqlalchemy.orm import Session
 from ...core.config import settings
 from ...core.database import get_db
+from ...core.exceptions import ProdutoJaAtivoError, ProdutoJaDesativadoError, ProdutoNaoEncontradoError
 from ...core.limiter import limiter
 from ...core.pagination import paginate
 from ...core.security import get_current_active_user
@@ -106,7 +107,7 @@ def buscar_produto(
     """Busca um produto específico (requer autenticação)"""
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
     return produto
 
 @router.put("/ncm/lote")
@@ -147,7 +148,7 @@ def atualizar_produto(
     """Atualiza um produto (requer autenticação)"""
     db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not db_produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
     
     produto_dict = produto.model_dump()
     produto_dict.pop("quantidade_inicial", None) # Não atualizamos estoque por aqui
@@ -170,10 +171,10 @@ def deletar_produto(
     """Desativa um produto via soft delete (requer autenticação)"""
     db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not db_produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
 
     if not db_produto.ativo:
-        raise HTTPException(status_code=400, detail="Produto já está desativado")
+        raise ProdutoJaDesativadoError()
 
     db_produto.ativo = False
     db.commit()
@@ -192,9 +193,9 @@ def reativar_produto(
     """Reativa um produto desativado (requer autenticação)"""
     db_produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not db_produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise ProdutoNaoEncontradoError()
     if db_produto.ativo:
-        raise HTTPException(status_code=400, detail="Produto já está ativo")
+        raise ProdutoJaAtivoError()
 
     db_produto.ativo = True
     db.commit()
