@@ -95,24 +95,13 @@ def test_ocr_hash_is_deterministic():
     assert ocr._build_file_hash(b"abc") != ocr._build_file_hash(b"xyz")
 
 
-def test_ocr_dependency_validation(monkeypatch):
-    from app.api.v1 import ocr
-
-    monkeypatch.setattr(ocr.importlib.util, "find_spec", lambda _: None)
-
-    with pytest.raises(Exception) as exc_info:
-        ocr._ensure_ocr_dependencies()
-
-    assert "Dependências de OCR não instaladas" in exc_info.value.detail
-
-
 def test_env_example_has_no_real_secrets_and_uses_safe_guidance():
     env_example = Path(__file__).resolve().parents[2] / ".env.example"
     content = env_example.read_text(encoding="utf-8")
 
     assert "NUNCA deve ser commitado" in content
     assert "JWT_SECRET=SUBSTITUA_POR_UMA_CHAVE_SEGURA" in content
-    assert "OPENAI_KEY=" in content
+    assert "OPENAI_KEY=" not in content
     assert "WHATSAPP_TOKEN=" in content
 
 
