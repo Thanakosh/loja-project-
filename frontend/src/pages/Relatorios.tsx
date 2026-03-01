@@ -27,6 +27,22 @@ interface Venda {
   itens: VendaItem[]
 }
 
+interface VendasPaginadas {
+  items: Venda[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+interface VendaResumo {
+  total_bruto: number
+  total_descontos: number
+  total_liquido: number
+  quantidade_vendas: number
+  ticket_medio: number
+}
+
 interface EstoqueAtual {
   produto_id: number
   nome_produto: string
@@ -72,17 +88,20 @@ const getFirstDayOfMonth = () => {
 const AbaVendas = () => {
   const [dataInicio, setDataInicio] = useState(getFirstDayOfMonth())
   const [dataFim, setDataFim] = useState(getTodayDate())
+  const [page, setPage] = useState(1)
   const [filterQuery, setFilterQuery] = useState({ start: getFirstDayOfMonth(), end: getTodayDate() })
 
-  const { data: vendas = [], isLoading } = useQuery({
-    queryKey: ['vendas', filterQuery.start, filterQuery.end],
+  const { data, isLoading } = useQuery({
+    queryKey: ['vendas', filterQuery.start, filterQuery.end, page],
     queryFn: async () => {
       const response = await api.get('/vendas/', {
-        params: { start_date: filterQuery.start, end_date: filterQuery.end, limit: 2000 }
+        params: { start_date: filterQuery.start, end_date: filterQuery.end, page, page_size: 100 }
       })
-      return (Array.isArray(response.data) ? response.data : []) as Venda[]
+      return (response.data || { items: [], total: 0, page: 1, page_size: 100, pages: 0 }) as VendasPaginadas
     }
   })
+
+  const vendas = data?.items || []
 
   const resumo = useMemo(() => {
     const validas = vendas.filter(v => !v.cancelada)
@@ -93,14 +112,14 @@ const AbaVendas = () => {
     return { total, descontos, qtd, ticket }
   }, [vendas])
 
-  const vendasOrdenadas = useMemo(() => {
-    return [...vendas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-  }, [vendas])
-
   const handleGerar = (e: React.FormEvent) => {
     e.preventDefault()
+    setPage(1)
     setFilterQuery({ start: dataInicio, end: dataFim })
   }
+
+  const totalPages = data?.pages || 0
+  const totalRegistros = data?.total || 0
 
   return (
     <div className="space-y-6">
@@ -141,7 +160,7 @@ const AbaVendas = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qtd. Itens</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Itens</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Desconto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
@@ -150,10 +169,10 @@ const AbaVendas = () => {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {isLoading ? (
                 <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
-              ) : vendasOrdenadas.length === 0 ? (
+              ) : vendas.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no período.</td></tr>
               ) : (
-                vendasOrdenadas.map(v => (
+                vendas.map(v => (
                   <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatDateTime(v.data)}</td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
@@ -177,6 +196,27 @@ const AbaVendas = () => {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Página {data?.page || 1} de {totalPages || 1} — {totalRegistros} registros</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(current => Math.max(current - 1, 1))}
+              disabled={isLoading || page <= 1}
+              className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage(current => (totalPages > 0 ? Math.min(current + 1, totalPages) : current + 1))}
+              disabled={isLoading || (totalPages > 0 && page >= totalPages)}
+              className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -255,25 +295,43 @@ const AbaResumoMes = () => {
   const dataHoje = getTodayDate()
   const dataInicioMes = getFirstDayOfMonth()
 
-  const { data: vendas = [], isLoading } = useQuery({
-    queryKey: ['vendas-mes', dataInicioMes, dataHoje],
+  const dataInicioGrafico = useMemo(() => {
+    const inicioMes = new Date(`${dataInicioMes}T00:00:00`)
+    const maxRange = new Date(`${dataHoje}T00:00:00`)
+    maxRange.setDate(maxRange.getDate() - 89)
+
+    return inicioMes < maxRange ? maxRange.toISOString().split('T')[0] : dataInicioMes
+  }, [dataInicioMes, dataHoje])
+
+  const { data: resumo, isLoading: isLoadingResumo } = useQuery({
+    queryKey: ['vendas-resumo', dataInicioMes, dataHoje],
     queryFn: async () => {
-      const response = await api.get('/vendas/', {
-        params: { start_date: dataInicioMes, end_date: dataHoje, limit: 2000 }
+      const response = await api.get('/vendas/resumo', {
+        params: { start_date: dataInicioMes, end_date: dataHoje }
       })
-      return (Array.isArray(response.data) ? response.data : []) as Venda[]
+      return (response.data || {
+        total_bruto: 0,
+        total_descontos: 0,
+        total_liquido: 0,
+        quantidade_vendas: 0,
+        ticket_medio: 0
+      }) as VendaResumo
     }
   })
 
-  const { bruto, descontos, liquido, qtd, ticket, vendasPorDia } = useMemo(() => {
-    const validas = vendas.filter(v => !v.cancelada)
-    const bruto = validas.reduce((acc, v) => acc + (v.total || 0) + (v.desconto || 0), 0)
-    const descontos = validas.reduce((acc, v) => acc + (v.desconto || 0), 0)
-    const liquido = validas.reduce((acc, v) => acc + (v.total || 0), 0)
-    const qtd = validas.length
-    const ticket = qtd > 0 ? liquido / qtd : 0
+  const { data: vendas = [], isLoading: isLoadingGrafico } = useQuery({
+    queryKey: ['vendas-mes-grafico', dataInicioGrafico, dataHoje],
+    queryFn: async () => {
+      const response = await api.get('/vendas/', {
+        params: { start_date: dataInicioGrafico, end_date: dataHoje, page: 1, page_size: 200 }
+      })
+      return ((response.data?.items || []) as Venda[])
+    }
+  })
 
-    // Vendas por dia para o gráfico
+  const vendasPorDia = useMemo(() => {
+    const validas = vendas.filter(v => !v.cancelada)
+
     const diaMap: Record<string, number> = {}
     validas.forEach(v => {
       if (!v.data) return
@@ -282,8 +340,7 @@ const AbaResumoMes = () => {
       diaMap[day] += (v.total || 0)
     })
 
-    // Obter dias do inicio do mes ate hoje para preencher buracos no grafico
-    const startDate = new Date(dataInicioMes + 'T00:00:00')
+    const startDate = new Date(dataInicioGrafico + 'T00:00:00')
     const endDate = new Date(dataHoje + 'T00:00:00')
     const chartData = []
     let maxVal = 0
@@ -295,22 +352,24 @@ const AbaResumoMes = () => {
       chartData.push({ dayStr, val, dayNum: d.getDate() })
     }
 
-    return { bruto, descontos, liquido, qtd, ticket, vendasPorDia: { data: chartData, maxVal } }
-  }, [vendas, dataInicioMes, dataHoje])
+    return { data: chartData, maxVal }
+  }, [vendas, dataInicioGrafico, dataHoje])
+
+  const isLoading = isLoadingResumo || isLoadingGrafico
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Faturamento Bruto', value: formatCurrency(bruto), color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Descontos', value: formatCurrency(descontos), color: 'text-red-500 dark:text-red-400' },
-          { label: 'Faturamento Líquido', value: formatCurrency(liquido), color: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Nº Vendas', value: qtd, color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Ticket Médio', value: formatCurrency(ticket), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Faturamento Bruto', value: formatCurrency(resumo?.total_bruto || 0), color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Descontos', value: formatCurrency(resumo?.total_descontos || 0), color: 'text-red-500 dark:text-red-400' },
+          { label: 'Faturamento Líquido', value: formatCurrency(resumo?.total_liquido || 0), color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Nº Vendas', value: resumo?.quantidade_vendas || 0, color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Ticket Médio', value: formatCurrency(resumo?.ticket_medio || 0), color: 'text-blue-600 dark:text-blue-400' },
         ].map((c, i) => (
           <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{c.label}</p>
-            <p className={`text-xl md:text-2xl font-bold mt-2 ${c.color}`}>{isLoading ? '...' : c.value}</p>
+            <p className={`text-xl md:text-2xl font-bold mt-2 ${c.color}`}>{isLoadingResumo ? '...' : c.value}</p>
           </div>
         ))}
       </div>
@@ -327,16 +386,13 @@ const AbaResumoMes = () => {
               const heightPct = vendasPorDia.maxVal > 0 ? (item.val / vendasPorDia.maxVal) * 100 : 0
               return (
                 <div key={item.dayStr} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                  {/* Tooltip */}
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none shadow-lg">
                     {formatDate(item.dayStr)}: {formatCurrency(item.val)}
                   </div>
-                  {/* Barra */}
                   <div
                     className="w-full bg-blue-500 hover:bg-blue-400 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-t-sm transition-all duration-300 border border-blue-600 dark:border-blue-500"
                     style={{ height: `${Math.max(heightPct, 1)}%`, minHeight: item.val > 0 ? '4px' : '0' }}
                   ></div>
-                  {/* Label X-axis */}
                   <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">
                     {item.dayNum}
                   </div>

@@ -36,3 +36,11 @@ class VendaRead(VendaBase):
     cancelada: bool
     itens: List[VendaItemRead] = []
     model_config = ConfigDict(from_attributes=True)
+
+
+class VendaResumo(BaseModel):
+    total_bruto: float
+    total_descontos: float
+    total_liquido: float
+    quantidade_vendas: int
+    ticket_medio: float
