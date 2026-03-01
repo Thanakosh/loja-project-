@@ -22,6 +22,14 @@ def _find_text(element: Optional[ET.Element], path: str, ns: dict = NFE_NS) -> O
     return node.text.strip() if node is not None and node.text else None
 
 
+
+
+def _first_not_none(*elements: Optional[ET.Element]) -> Optional[ET.Element]:
+    for element in elements:
+        if element is not None:
+            return element
+    return None
+
 def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     """
     Faz o parse de um XML de NFe brasileira e retorna dados estruturados.
@@ -68,7 +76,7 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         return node.text.strip() if node is not None and node.text else None
 
     # ─── Emitente (fornecedor) ───
-    emit = inf_nfe.find("nfe:emit", ns_real) or inf_nfe.find("emit")
+    emit = _first_not_none(inf_nfe.find("nfe:emit", ns_real), inf_nfe.find("emit"))
     fornecedor = _ft(emit, "nfe:xNome") or _ft(emit, "xNome") or "Não identificado"
     cnpj = _ft(emit, "nfe:CNPJ") or _ft(emit, "CNPJ") or ""
 
@@ -77,7 +85,7 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         cnpj = f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
 
     # ─── Identificação da nota ───
-    ide = inf_nfe.find("nfe:ide", ns_real) or inf_nfe.find("ide")
+    ide = _first_not_none(inf_nfe.find("nfe:ide", ns_real), inf_nfe.find("ide"))
     numero_nota = _ft(ide, "nfe:nNF") or _ft(ide, "nNF") or ""
     data_emissao = _ft(ide, "nfe:dhEmi") or _ft(ide, "dhEmi") or ""
     # Extrair apenas a data (YYYY-MM-DD) de datetime
@@ -88,9 +96,11 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     produtos: List[ProdutoExtraido] = []
 
     # Buscar todos os elementos det (detalhe)
-    dets = inf_nfe.findall("nfe:det", ns_real) or inf_nfe.findall("det")
+    dets = inf_nfe.findall("nfe:det", ns_real)
+    if not dets:
+        dets = inf_nfe.findall("det")
     for det in dets:
-        prod = det.find("nfe:prod", ns_real) or det.find("prod")
+        prod = _first_not_none(det.find("nfe:prod", ns_real), det.find("prod"))
         if prod is None:
             continue
 
@@ -127,10 +137,10 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         )
 
     # ─── Valor total ───
-    total_node = inf_nfe.find("nfe:total", ns_real) or inf_nfe.find("total")
+    total_node = _first_not_none(inf_nfe.find("nfe:total", ns_real), inf_nfe.find("total"))
     icms_tot = None
     if total_node is not None:
-        icms_tot = total_node.find("nfe:ICMSTot", ns_real) or total_node.find("ICMSTot")
+        icms_tot = _first_not_none(total_node.find("nfe:ICMSTot", ns_real), total_node.find("ICMSTot"))
 
     valor_total_str = "0"
     if icms_tot is not None:

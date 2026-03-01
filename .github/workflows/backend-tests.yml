@@ -36,6 +36,8 @@ jobs:
           pytest \
             tests/test_users.py \
             tests/test_estoque_v2.py \
-            tests/test_ocr.py::test_ocr_upload_async_erro_e_recuperacao \
+            tests/test_ocr.py::test_ocr_upload_imagem_retorna_422 \
+            tests/test_ocr.py::test_ocr_upload_pdf_retorna_422 \
             tests/test_ocr.py::test_ocr_status_task_inexistente_retorna_404 \
+            tests/test_ocr.py::test_ocr_xml_invalido_retorna_400 \
             -v
