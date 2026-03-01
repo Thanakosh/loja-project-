@@ -1,12 +1,18 @@
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.exceptions import (
+    CnpjJaCadastradoError,
+    FornecedorJaAtivoError,
+    FornecedorJaInativoError,
+    FornecedorNaoEncontradoError,
+)
 from app.core.limiter import limiter
 from app.core.security import get_current_active_user
 from app.models.fornecedor import Fornecedor
@@ -54,7 +60,7 @@ def buscar_fornecedor(
 ):
     fornecedor = db.query(Fornecedor).filter(Fornecedor.id == fornecedor_id).first()
     if not fornecedor:
-        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        raise FornecedorNaoEncontradoError()
     return fornecedor
 
 
@@ -70,7 +76,7 @@ def criar_fornecedor(
     fornecedor_existente = db.query(Fornecedor).filter(Fornecedor.cnpj == fornecedor_in.cnpj).first()
     if fornecedor_existente:
         logger.warning("Tentativa de cadastro com CNPJ duplicado", extra={"cnpj": fornecedor_in.cnpj})
-        raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
+        raise CnpjJaCadastradoError()
 
     fornecedor = Fornecedor(**fornecedor_in.model_dump())
     db.add(fornecedor)
@@ -93,7 +99,7 @@ def atualizar_fornecedor(
 ):
     fornecedor = db.query(Fornecedor).filter(Fornecedor.id == fornecedor_id).first()
     if not fornecedor:
-        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        raise FornecedorNaoEncontradoError()
 
     dados_atualizacao = fornecedor_in.model_dump(exclude_unset=True)
 
@@ -102,7 +108,7 @@ def atualizar_fornecedor(
         fornecedor_existente = db.query(Fornecedor).filter(Fornecedor.cnpj == novo_cnpj).first()
         if fornecedor_existente:
             logger.warning("Tentativa de atualização com CNPJ duplicado", extra={"cnpj": novo_cnpj})
-            raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
+            raise CnpjJaCadastradoError()
 
     for chave, valor in dados_atualizacao.items():
         setattr(fornecedor, chave, valor)
@@ -123,10 +129,10 @@ def remover_fornecedor(
 ):
     fornecedor = db.query(Fornecedor).filter(Fornecedor.id == fornecedor_id).first()
     if not fornecedor:
-        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        raise FornecedorNaoEncontradoError()
 
     if not fornecedor.ativo:
-        raise HTTPException(status_code=400, detail="Fornecedor já está inativo")
+        raise FornecedorJaInativoError()
 
     fornecedor.ativo = False
     db.commit()
@@ -146,10 +152,10 @@ def reativar_fornecedor(
 ):
     fornecedor = db.query(Fornecedor).filter(Fornecedor.id == fornecedor_id).first()
     if not fornecedor:
-        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        raise FornecedorNaoEncontradoError()
 
     if fornecedor.ativo:
-        raise HTTPException(status_code=400, detail="Fornecedor já está ativo")
+        raise FornecedorJaAtivoError()
 
     fornecedor.ativo = True
     db.commit()

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from ...core.exceptions import ItemEstoqueNaoEncontradoError
 from ...core.security import get_current_active_user
 from ...models.estoque import Estoque as EstoqueModel
 from ...models.user import User
@@ -39,7 +40,7 @@ def obter_estoque(
     """Obtém um item específico do estoque (requer autenticação)"""
     item = db.query(EstoqueModel).filter(EstoqueModel.id == item_id).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
+        raise ItemEstoqueNaoEncontradoError()
     return item
 
 @router.put("/{item_id}", response_model=EstoqueRead)
@@ -52,7 +53,7 @@ def atualizar_estoque(
     """Atualiza um item do estoque (requer autenticação)"""
     item = db.query(EstoqueModel).filter(EstoqueModel.id == item_id).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
+        raise ItemEstoqueNaoEncontradoError()
     
     item_data = novo_item_data.model_dump(exclude_unset=True)
     for key, value in item_data.items():
@@ -71,7 +72,7 @@ def deletar_estoque(
     """Deleta um item do estoque (requer autenticação)"""
     item = db.query(EstoqueModel).filter(EstoqueModel.id == item_id).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
+        raise ItemEstoqueNaoEncontradoError()
     db.delete(item)
     db.commit()
     return {"ok": True}

@@ -11,8 +11,8 @@ from app.schemas.conta_receber import ContaReceberRead, ContaReceberBaixa, Conta
 from app.schemas.pagination import PaginatedResponse
 from app.core.pagination import paginate
 from app.core.security import get_current_user
+from app.core.exceptions import ContaJaBaixadaError, ContaNaoEncontradaError
 from app.models.user import User
-from fastapi import HTTPException
 
 router = APIRouter()
 
@@ -89,10 +89,10 @@ def baixar_conta(
 ):
     conta = db.query(ContaReceber).filter(ContaReceber.id == conta_id).first()
     if not conta:
-        raise HTTPException(status_code=404, detail="Conta não encontrada")
+        raise ContaNaoEncontradaError()
 
     if conta.data_pagamento is not None:
-        raise HTTPException(status_code=400, detail="Esta conta já foi baixada anteriormente")
+        raise ContaJaBaixadaError()
 
     # Update fields based on payment
     conta.data_pagamento = baixa_data.data_pagamento
