@@ -2,6 +2,19 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.1.1] — Alinhamento técnico pós ondas T-001 a T-005
+
+### ✅ Ajustado
+- Alinhamento e estabilização da suíte de testes dos fluxos críticos do backend.
+- Contrato de erro unificado para respostas de exceção, com formato consistente entre endpoints.
+- Paginação padronizada nos módulos de vendas e contas a receber.
+- Validação do fluxo de importação XML de NFe para cenários válidos e inválidos.
+
+### 📝 Documentação
+- Atualização dos documentos de projeto para refletir com precisão o estado ativo da versão 2.1.x.
+
+---
+
 ## [2.1.0] — OCR/IA simplificado; Ollama removido
 
 ### 🚧 Removido / Desativado

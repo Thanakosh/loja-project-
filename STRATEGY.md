@@ -13,9 +13,10 @@ Este documento detalha o planejamento estratégico para a evolução do sistema,
 - **Async Database:** Migrar as chamadas de banco de dados para o padrão totalmente assíncrono usando `SQLAlchemy` e `asyncpg`.
 
 ## 2. Expansão de Funcionalidades (Médio Prazo)
-### Inteligência Artificial & OCR
-- **Processamento em Segundo Plano:** Migrar o processamento de OCR para `BackgroundTasks` para evitar timeouts na API.
-- **Análise de Tendências:** Usar o módulo LLM para prever falta de estoque com base no histórico de orçamentos aprovados.
+### Inteligência Artificial & OCR — **Fase 2 (Planejada)**
+- **Status atual (v2.1.0):** OCR/IA de imagens e PDFs está desativado; o fluxo oficial ativo é importação de NFe via XML.
+- **Retomada futura:** OCR com processamento em segundo plano e filas persistentes quando a Fase 2 for iniciada.
+- **Análise de tendências (planejada):** uso de LLM apenas após estabilização dos módulos core.
 
 ### Comunicação & Vendas
 - **Integração WhatsApp:** Implementar serviço de mensageria para envio de PDFs de orçamentos e notificações de estoque baixo.
@@ -47,3 +48,8 @@ Este documento detalha o planejamento estratégico para a evolução do sistema,
    - Emissão de NF-e / NFC-e
    - Contas a Pagar e Receber
    - Integração WhatsApp para orçamentos e notificações
+
+## 5. Status do Roadmap (v2.1.0)
+- **Ativo hoje:** XML de NFe, PDV com baixa automática, orçamentos com conversão em venda, contas a receber com parcelamento, relatórios operacionais e dashboard com alertas.
+- **Fase 2 — Planejada (sem prazo):** OCR/IA de imagens e PDFs (TASK-011 adiada).
+- **Itens planejados (sem prazo):** controle de caixa diário, categorias hierárquicas, precificação atacado/varejo.

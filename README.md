@@ -13,18 +13,15 @@ Sistema de Gerenciamento Comercial para pequenos e médios negócios.
 
 O **Loja Project** é uma solução de backend desenvolvida com **FastAPI**, voltada para gestão comercial com controle de estoque, PDV, orçamentos, clientes, fornecedores e importação de notas fiscais via XML de NFe.
 
-### ✨ Novidades da v2.1
+### ✨ Status da v2.1.0
 
-- **Importação de XML de NFe**: extração direta e precisa dos dados da nota fiscal
-- **Auto-cadastro de fornecedor**: CNPJ da NF cadastra o fornecedor automaticamente
-- **OCR/IA removido temporariamente**: processamento de imagens e PDFs será reintroduzido em versão futura com arquitetura mais robusta
-
-### ✅ Funcionalidades da v2.0 (mantidas)
-
-- **Sistema de Transações de Estoque**: rastreabilidade completa de movimentações
-- **Autenticação JWT**: segurança em todos os endpoints
-- **Performance 2-5x melhor**: migração para Pydantic v2
-- **PDV, Orçamentos, Clientes, Fornecedores, Contas a Receber**
+- **Importação de NFe via XML**: caminho oficial de entrada fiscal no sistema
+- **PDV com baixa automática de estoque**: operação de venda integrada ao estoque
+- **Orçamentos com conversão em venda**: fluxo comercial completo
+- **Contas a receber com parcelamento**: suporte para vendas a prazo
+- **Relatórios operacionais**: vendas por período e estoque baixo
+- **Dashboard com alertas de estoque**
+- **Autenticação JWT** em toda a API protegida
 
 ---
 
@@ -89,12 +86,12 @@ O **Loja Project** é uma solução de backend desenvolvida com **FastAPI**, vol
 
 ---
 
-## 🔮 Em desenvolvimento (versão futura)
+## 🔮 Em desenvolvimento (roadmap)
 
-- **OCR de imagens e PDFs via IA** — leitura automática de notas fiscais em foto ou PDF, com arquitetura de filas persistentes (ARQ + Redis)
-- **Análise inteligente com LLM** — extração e validação de dados via modelos de linguagem
-- **Integração WhatsApp** — envio de orçamentos e notificações
-- **Relatórios avançados** — vendas por período, estoque baixo, DRE simplificado
+- **OCR de imagens e PDFs via IA (Gemini)** — **Fase 2 (TASK-011 adiada)**
+- **Controle de caixa diário** (abertura/fechamento)
+- **Categorias hierárquicas de produtos**
+- **Precificação atacado/varejo**
 
 ---
 
@@ -214,6 +211,8 @@ Content-Type: multipart/form-data
 
 file: nota_fiscal.xml
 ```
+
+> Observação: na versão 2.1.0, o upload aceita apenas XML de NFe como fluxo oficial.
 
 ---
 
