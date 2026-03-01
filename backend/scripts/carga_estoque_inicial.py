@@ -165,7 +165,7 @@ def main() -> None:
     database_url = args.database_url or os.environ["DATABASE_URL"]
     engine = create_engine(database_url)
 
-    with Session(bind=engine) as session:
+    with Session(engine) as session:
         executar_carga(session=session, limite=args.limite, dry_run=args.dry_run)
 
 
