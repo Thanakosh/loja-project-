@@ -68,3 +68,7 @@ backend/create_user.py
 frontend/eslint-report.json
 git_status.txt
 status.txt
+
+# Scripts e testes avulsos de IA/OCR (removidos na v2.1.0)
+backend/test_gemini_ocr.py
+test_pipeline.ps1
