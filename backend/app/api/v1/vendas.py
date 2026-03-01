@@ -1,10 +1,11 @@
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.exceptions import VendaNaoEncontradaError
 from app.core.limiter import limiter
 from app.models.venda import Venda
 from app.schemas.venda import VendaRead
@@ -44,7 +45,7 @@ def get_venda(
 ):
     venda = db.query(Venda).options(joinedload(Venda.itens)).filter(Venda.id == venda_id).first()
     if not venda:
-        raise HTTPException(status_code=404, detail="Venda não encontrada")
+        raise VendaNaoEncontradaError()
     return venda
 
 @router.get("/cliente/{cliente_id}", response_model=List[VendaRead])
