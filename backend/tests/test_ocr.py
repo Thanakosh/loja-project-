@@ -15,7 +15,9 @@ def test_ocr_upload_imagem_retorna_422(client: TestClient, auth_headers: dict[st
         headers=auth_headers,
     )
     assert response.status_code == 422
-    assert "imagens" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+    body = response.json()
+    assert body["code"] == "http_error"
+    assert "imagens" in body["message"].lower() or "xml" in body["message"].lower()
 
 
 def test_ocr_upload_pdf_retorna_422(client: TestClient, auth_headers: dict[str, str]):
@@ -26,7 +28,9 @@ def test_ocr_upload_pdf_retorna_422(client: TestClient, auth_headers: dict[str, 
         headers=auth_headers,
     )
     assert response.status_code == 422
-    assert "pdf" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+    body = response.json()
+    assert body["code"] == "http_error"
+    assert "pdf" in body["message"].lower() or "xml" in body["message"].lower()
 
 
 def test_ocr_upload_arquivo_desconhecido_retorna_400(client: TestClient, auth_headers: dict[str, str]):
