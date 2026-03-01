@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from app.models.conta_receber import ContaReceber
 from fastapi.testclient import TestClient
 
@@ -88,8 +89,20 @@ class TestPDV:
         assert venda_resp.json()["cliente_id"] == cliente_id
 
         numero_legado = venda_resp.json()["numero_legado"]
-        parcelas = db_session.query(ContaReceber).filter(ContaReceber.documento == numero_legado).all()
+        parcelas = (
+            db_session.query(ContaReceber)
+            .filter(ContaReceber.documento == numero_legado)
+            .order_by(ContaReceber.parcela)
+            .all()
+        )
         assert len(parcelas) == 3
+
+        data_base = date.today()
+        for indice, conta in enumerate(parcelas, start=1):
+            assert conta.data_vencimento is not None
+            assert conta.data_vencimento == data_base + timedelta(days=30 * indice)
+
+        assert parcelas[0].data_vencimento < parcelas[1].data_vencimento < parcelas[2].data_vencimento
 
     def test_venda_estoque_insuficiente_retorna_erro(
         self, client: TestClient, auth_headers: dict, produto_com_estoque: int
@@ -171,6 +184,9 @@ class TestPDV:
 
         contas_depois = db_session.query(ContaReceber).filter(ContaReceber.documento == numero_legado).all()
         assert len(contas_depois) == 0
+
+        estoque_apos_cancelamento = self._obter_estoque(client, auth_headers, produto_com_estoque)
+        assert estoque_apos_cancelamento == 100
 
     def test_venda_sem_autenticacao_retorna_401(self, client: TestClient, produto_com_estoque: int):
         payload = {

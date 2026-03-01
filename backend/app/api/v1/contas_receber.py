@@ -8,6 +8,8 @@ from sqlalchemy import func
 from app.core.database import get_db
 from app.models.conta_receber import ContaReceber
 from app.schemas.conta_receber import ContaReceberRead, ContaReceberBaixa, ContaReceberResumo
+from app.schemas.pagination import PaginatedResponse
+from app.core.pagination import paginate
 from app.core.security import get_current_user
 from app.models.user import User
 from fastapi import HTTPException
@@ -49,10 +51,10 @@ def read_contas_receber_resumo(
         quantidade_em_aberto=int(quantidade_em_aberto or 0),
     )
 
-@router.get("/", response_model=list[ContaReceberRead])
+@router.get("/", response_model=PaginatedResponse[ContaReceberRead])
 def read_contas_receber(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Número da página"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     apenas_em_aberto: bool = False,
     vencidas: bool = False,
     cliente_id: Optional[int] = None,
@@ -74,8 +76,8 @@ def read_contas_receber(
             ContaReceber.data_pagamento.is_(None)
         )
 
-    contas = query.order_by(ContaReceber.data_vencimento.desc()).offset(skip).limit(limit).all()
-    return contas
+    query = query.order_by(ContaReceber.data_vencimento.desc(), ContaReceber.id.desc())
+    return paginate(query, page=page, page_size=page_size)
 
 
 @router.put("/{conta_id}/baixar", response_model=ContaReceberRead)
