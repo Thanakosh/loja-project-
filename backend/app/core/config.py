@@ -24,9 +24,10 @@ class Settings(BaseSettings):
 
     # Optional configurations
     WHATSAPP_TOKEN: Optional[str] = None
-    OPENAI_KEY: Optional[str] = None
-    OLLAMA_URL: str = "http://localhost:11434"
-    OPEN_INTERPRETER_URL: str = "http://localhost:4000/v1/chat/completions"
+
+    # IA/LLM — reservado para versão futura
+    # GEMINI_API_KEY, OLLAMA_URL e OPEN_INTERPRETER_URL foram removidos.
+    # Serão reintroduzidos quando OCR/LLM for reimplementado.
 
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
@@ -39,8 +40,8 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"
 
     # Rate Limiting
-    RATE_LIMIT_OCR: str = "10/hour"
-    RATE_LIMIT_LLM: str = "30/hour"
+    RATE_LIMIT_OCR: str = "60/hour"   # mantido pois o endpoint XML usa o limiter
+    RATE_LIMIT_LLM: str = "30/hour"   # mantido para evitar erros de import; sem endpoints ativos
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
     # CORS - Em produção, deve ser uma lista restrita de URLs

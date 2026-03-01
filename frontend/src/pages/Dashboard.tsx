@@ -27,12 +27,14 @@ interface ProdutosResponse {
 interface EstoqueAlerta {
   id?: number
   produto_id?: number
+  nome_produto?: string
   nome?: string
   produto_nome?: string
-  estoque_atual?: number
   quantidade_atual?: number
+  estoque_atual?: number
   estoque_minimo?: number
   quantidade_minima?: number
+  estoque_baixo?: boolean
 }
 
 const formatCurrency = (value: number) =>
@@ -231,8 +233,8 @@ const Dashboard = () => {
 
           <ul className="space-y-2">
             {estoqueAlertas.map((alerta, index) => {
-              const nomeProduto = alerta.nome ?? alerta.produto_nome ?? `Produto ${index + 1}`
-              const estoqueAtual = alerta.estoque_atual ?? alerta.quantidade_atual ?? 0
+              const nomeProduto = alerta.nome_produto ?? alerta.nome ?? alerta.produto_nome ?? `Produto ${index + 1}`
+              const estoqueAtual = alerta.quantidade_atual ?? alerta.estoque_atual ?? 0
               const estoqueMinimo = alerta.estoque_minimo ?? alerta.quantidade_minima ?? 0
 
               return (

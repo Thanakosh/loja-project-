@@ -1,21 +1,29 @@
+"""
+Módulo OCR — Versão atual: apenas XML de NFe.
+
+Processamento de imagens (EasyOCR) e PDFs via IA (Gemini) estão planejados
+para uma versão futura e foram desativados intencionalmente.
+"""
+
 import hashlib
-import importlib.util
-import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional
+from typing import Dict
 
 import aiofiles
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile, Request, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.security import get_current_active_user
 from ...models.user import User
-from ...schemas.ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
+from ...schemas.ocr import OCRTaskResponse, OCRTaskStatus
 from ...core.config import settings
 from ...core.limiter import limiter
+
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["OCR"])
 
@@ -47,120 +55,57 @@ def _build_file_hash(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
 
-def _ensure_ocr_dependencies() -> None:
-    if importlib.util.find_spec("easyocr") is None:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Dependências de OCR não instaladas. "
-                "Instale o conjunto OCR (ex.: pip install -r requirements-ocr.txt)."
-            ),
-        )
-
-
-def _get_easyocr_reader():
-    _ensure_ocr_dependencies()
-    import easyocr
-    return easyocr.Reader(["pt"], gpu=False)
-
-
-async def process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
-    """Processa OCR em background"""
+def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str):
+    """
+    Verifica se o fornecedor já existe pelo CNPJ.
+    Se não existir, cadastra automaticamente.
+    Retorna (status, fornecedor_id) onde status é 'novo' | 'existente' | None
+    """
     try:
-        ocr_tasks[task_id]["status"] = "processing"
+        cnpj_digits = re.sub(r"\D", "", cnpj_raw)
+        if len(cnpj_digits) != 14:
+            return None, None
+        cnpj_fmt = f"{cnpj_digits[:2]}.{cnpj_digits[2:5]}.{cnpj_digits[5:8]}/{cnpj_digits[8:12]}-{cnpj_digits[12:]}"
 
-        reader = _get_easyocr_reader()
-        result = reader.readtext(file_path, detail=0)
-        texto_extraido = " ".join(result)
+        from ...core.database import get_engine
+        from ...models.fornecedor import Fornecedor
+        from sqlalchemy.orm import sessionmaker
 
-        if use_llm:
-            from ...api.v1.llm import processar_nota_fiscal_com_llm
-            nota_fiscal = await processar_nota_fiscal_com_llm(texto_extraido)
-            ocr_tasks[task_id]["result"] = {
-                "texto": texto_extraido,
-                "nota_fiscal": nota_fiscal,
-            }
-        else:
-            produtos = re.findall(r"Produto: ([\w\s]+)", texto_extraido, re.IGNORECASE)
-            quantidades = [int(q) for q in re.findall(r"Quantidade: (\d+)", texto_extraido, re.IGNORECASE)]
-            valores = [float(v.replace(",", ".")) for v in re.findall(r"Valor: ([\d\.,]+)", texto_extraido, re.IGNORECASE)]
-
-            ocr_tasks[task_id]["result"] = {
-                "texto": texto_extraido,
-                "produtos": produtos if produtos else None,
-                "quantidade": quantidades if quantidades else None,
-                "valor": valores if valores else None,
-            }
-
-        ocr_tasks[task_id]["status"] = "completed"
-    except Exception as exc:
-        ocr_tasks[task_id]["status"] = "failed"
-        ocr_tasks[task_id]["error"] = str(exc)
-    finally:
-        ocr_tasks[task_id]["expires_at"] = _task_expiration_timestamp()
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-
-
-@router.post("/upload", response_model=OCRTaskResponse, summary="Upload de imagem para OCR assíncrono")
-@limiter.limit(settings.RATE_LIMIT_OCR)
-async def upload_ocr_async(
-    request: Request,
-    response: Response,
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    use_llm: bool = False,
-    current_user: User = Depends(get_current_active_user),
-):
-    """
-    Faz upload de imagem e processa OCR em background.
-
-    - **file**: Imagem da nota fiscal
-    - **use_llm**: Se True, usa LLM para análise inteligente (mais lento, mais preciso)
-    - Retorna um task_id para consultar o status em /ocr/status/{task_id}
-    """
-    _cleanup_expired_tasks()
-    _ensure_ocr_dependencies()
-
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Arquivo enviado não é uma imagem.")
-
-    content = await file.read()
-    file_hash = _build_file_hash(content)
-    existing_task_id = ocr_task_index_by_hash.get(file_hash)
-    if existing_task_id and existing_task_id in ocr_tasks:
-        existing_task = ocr_tasks[existing_task_id]
-        if existing_task.get("status") in {"pending", "processing", "completed"}:
-            return OCRTaskResponse(
-                task_id=existing_task_id,
-                status=existing_task["status"],
-                message="Tarefa idempotente reutilizada para o mesmo arquivo.",
+        engine = get_engine()
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        db = SessionLocal()
+        try:
+            existente = db.query(Fornecedor).filter(Fornecedor.cnpj == cnpj_fmt).first()
+            if existente:
+                return "existente", existente.id
+            novo = Fornecedor(
+                razao_social=razao_social[:120],
+                cnpj=cnpj_fmt,
+                ativo=True,
             )
+            db.add(novo)
+            db.commit()
+            db.refresh(novo)
+            return "novo", novo.id
+        finally:
+            db.close()
+    except Exception:
+        return None, None
 
-    task_id = str(uuid.uuid4())
-    temp_path = f"/tmp/ocr_{task_id}_{file.filename}"
 
-    async with aiofiles.open(temp_path, "wb") as file_buffer:
-        await file_buffer.write(content)
+def _get_file_type(file: UploadFile) -> str:
+    filename = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
 
-    ocr_tasks[task_id] = {
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": _task_expiration_timestamp(),
-        "filename": file.filename,
-        "use_llm": use_llm,
-        "hash": file_hash,
-    }
-    ocr_task_index_by_hash[file_hash] = task_id
-
-    background_tasks.add_task(process_ocr_task, task_id, temp_path, use_llm)
-
-    return OCRTaskResponse(
-        task_id=task_id,
-        status="pending",
-        message="Tarefa de OCR criada. Use /ocr/status/{task_id} para verificar o progresso.",
-    )
+    if filename.endswith(".xml") or "xml" in content_type:
+        return "xml"
+    if filename.endswith(".pdf") or "pdf" in content_type:
+        return "pdf"
+    if content_type.startswith("image/") or any(
+        filename.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff")
+    ):
+        return "image"
+    return "unknown"
 
 
 @router.get("/status/{task_id}", response_model=OCRTaskStatus, summary="Consulta status de tarefa OCR")
@@ -168,7 +113,6 @@ async def get_ocr_status(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Consulta o status de uma tarefa de OCR"""
     _cleanup_expired_tasks()
     if task_id not in ocr_tasks:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada ou expirada")
@@ -182,69 +126,178 @@ async def get_ocr_status(
     )
 
 
-@router.post("/upload-sync", response_model=OCRResponse, summary="Upload de imagem para OCR síncrono (legado)")
-async def upload_ocr_sync(
+@router.post(
+    "/upload-arquivo",
+    response_model=OCRTaskResponse,
+    summary="Upload de arquivo para extração de nota fiscal (somente XML nesta versão)",
+)
+@limiter.limit(settings.RATE_LIMIT_OCR)
+async def upload_arquivo_nota_fiscal(
+    request: Request,
+    response: Response,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Extrai texto via OCR de forma síncrona.
-    **Atenção**: Pode causar timeout em imagens grandes. Prefira /upload para processamento assíncrono.
+    Processa o arquivo da nota fiscal enviado.
+
+    **Suporte atual:** apenas XML de NFe.
+
+    Processamento de **imagens** e **PDFs** via IA está previsto para uma versão
+    futura e não está disponível neste momento.
     """
-    _ensure_ocr_dependencies()
+    _cleanup_expired_tasks()
 
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Arquivo enviado não é uma imagem.")
+    file_type = _get_file_type(file)
 
-    temp_path = f"/tmp/temp_{uuid.uuid4()}_{file.filename}"
-    async with aiofiles.open(temp_path, "wb") as file_buffer:
-        content = await file.read()
-        await file_buffer.write(content)
+    if file_type in ("image", "pdf"):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Processamento de {'imagens' if file_type == 'image' else 'PDF'} via IA não está disponível nesta versão. "
+                "Utilize o XML da NFe para importar sua nota fiscal."
+            ),
+        )
+
+    if file_type == "unknown":
+        raise HTTPException(
+            status_code=400,
+            detail="Tipo de arquivo não suportado. Envie o XML da NFe.",
+        )
+
+    # — XML de NFe —
+    content = await file.read()
+    file_hash = _build_file_hash(content)
+
+    existing_task_id = ocr_task_index_by_hash.get(file_hash)
+    if existing_task_id and existing_task_id in ocr_tasks:
+        existing_task = ocr_tasks[existing_task_id]
+        if existing_task.get("status") in {"pending", "processing", "completed"}:
+            logger.info(
+                f"[OCR] Cache hit — reutilizando task existente | task={existing_task_id} | status={existing_task['status']}"
+            )
+            return OCRTaskResponse(
+                task_id=existing_task_id,
+                status=existing_task["status"],
+                message="Tarefa reutilizada para o mesmo arquivo.",
+            )
+
+    task_id = str(uuid.uuid4())
 
     try:
-        reader = _get_easyocr_reader()
-        result = reader.readtext(temp_path, detail=0)
-        return OCRResponse(texto=" ".join(result))
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        from ...core.nfe_parser import parse_nfe_xml
+        nota = parse_nfe_xml(content)
+
+        fornecedor_status, fornecedor_id = None, None
+        if nota.fornecedor and nota.cnpj_fornecedor:
+            fornecedor_status, fornecedor_id = _auto_cadastrar_fornecedor(
+                nota.fornecedor, nota.cnpj_fornecedor
+            )
+
+        ocr_tasks[task_id] = {
+            "status": "completed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": _task_expiration_timestamp(),
+            "filename": file.filename,
+            "hash": file_hash,
+            "file_type": "xml",
+            "result": {
+                "texto": f"[XML NFe] Nota {nota.numero_nota or 'S/N'} — {nota.fornecedor}",
+                "nota_fiscal": {
+                    "fornecedor": nota.fornecedor,
+                    "cnpj_fornecedor": nota.cnpj_fornecedor,
+                    "numero_nota": nota.numero_nota,
+                    "data_emissao": nota.data_emissao,
+                    "produtos": [p.model_dump() for p in nota.produtos],
+                    "valor_total": nota.valor_total,
+                    "fornecedor_status": fornecedor_status,
+                    "fornecedor_id": fornecedor_id,
+                },
+            },
+        }
+        ocr_task_index_by_hash[file_hash] = task_id
+
+        logger.info(f"[OCR] XML processado com sucesso | task={task_id} | produtos={len(nota.produtos)}")
+
+        return OCRTaskResponse(
+            task_id=task_id,
+            status="completed",
+            message=f"XML processado com sucesso! {len(nota.produtos)} produto(s) encontrado(s).",
+        )
+
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"[OCR] Erro ao processar XML | task={task_id} | erro={exc}", exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao processar XML: {str(exc)}",
+        )
 
 
-@router.post("/extrair-dados", response_model=OCRResponse, summary="Extrai dados estruturados do texto OCR")
-def extrair_dados_ocr(
-    texto: str = Body(..., embed=True),
+# ─── Endpoints legados mantidos por compatibilidade ──────────────────────────
+
+@router.post(
+    "/upload",
+    response_model=OCRTaskResponse,
+    summary="[DESATIVADO] Upload de imagem para OCR — disponível em versão futura",
+    deprecated=True,
+)
+@limiter.limit(settings.RATE_LIMIT_OCR)
+async def upload_ocr_async(
+    request: Request,
+    response: Response,
+    file: UploadFile = File(...),
+    use_llm: bool = False,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Extrai produtos, quantidades e valores do texto OCR usando regex"""
-    produtos = re.findall(r"Produto: ([\w\s]+)", texto, re.IGNORECASE)
-    quantidades = [int(q) for q in re.findall(r"Quantidade: (\d+)", texto, re.IGNORECASE)]
-    valores = [float(v.replace(",", ".")) for v in re.findall(r"Valor: ([\d\.,]+)", texto, re.IGNORECASE)]
-
-    return OCRResponse(
-        texto=texto,
-        produtos=produtos if produtos else None,
-        quantidade=quantidades if quantidades else None,
-        valor=valores if valores else None,
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "Processamento de imagens via OCR/IA não está disponível nesta versão. "
+            "Utilize o XML da NFe para importar sua nota fiscal."
+        ),
     )
 
 
-@router.post("/processar-nota-fiscal", response_model=OCRTaskResponse, summary="Processa nota fiscal completa")
+@router.post(
+    "/upload-sync",
+    response_model=OCRTaskResponse,
+    summary="[DESATIVADO] OCR síncrono — disponível em versão futura",
+    deprecated=True,
+)
+async def upload_ocr_sync(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "Processamento de imagens via OCR/IA não está disponível nesta versão. "
+            "Utilize o XML da NFe para importar sua nota fiscal."
+        ),
+    )
+
+
+@router.post(
+    "/processar-nota-fiscal",
+    response_model=OCRTaskResponse,
+    summary="[DESATIVADO] Processamento de nota fiscal com IA — disponível em versão futura",
+    deprecated=True,
+)
 @limiter.limit(settings.RATE_LIMIT_OCR)
 async def processar_nota_fiscal_completa(
     request: Request,
     response: Response,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     auto_cadastrar: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Processa nota fiscal com OCR + LLM"""
-    return await upload_ocr_async(
-        request=request,
-        response=response,
-        background_tasks=background_tasks,
-        file=file,
-        use_llm=True,
-        current_user=current_user,
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "Processamento com IA não está disponível nesta versão. "
+            "Utilize o XML da NFe para importar sua nota fiscal."
+        ),
     )

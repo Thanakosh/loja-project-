@@ -6,12 +6,14 @@ scope: backend/app/core/, backend/app/api/v1/ocr.py, docker-compose.yml
 branch: feat/ocr-async-queue
 commit_message: "feat(ocr): desacopla pipeline OCR com fila assíncrona persistida"
 estimated_effort: 120 minutos
-status: pendente
+status: adiada
 depends_on: []
 recomendacao_ref: "#10 — Desacoplamento do pipeline OCR → LLM → cadastro"
 ---
 
 # TASK-011: Desacoplamento do pipeline OCR com fila assíncrona
+
+> ⏸️ **STATUS: ADIADA** — OCR/IA foi desativado na v2.1.0. Esta task será retomada quando o processamento de imagens e PDFs for reintroduzido. Consultar CHANGELOG.md para contexto.
 
 ## Contexto
 O pipeline OCR → LLM → cadastro roda dentro do processo da API usando `BackgroundTasks`. O estado é mantido **em memória** (dict Python), o que causa:

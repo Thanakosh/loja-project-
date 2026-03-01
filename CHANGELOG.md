@@ -2,6 +2,25 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.1.0] — OCR/IA simplificado; Ollama removido
+
+### 🚧 Removido / Desativado
+- **OCR de imagens e PDFs via IA** desativado nesta versão. Endpoints legados (`/ocr/upload`, `/ocr/upload-sync`, `/ocr/processar-nota-fiscal`) retornam HTTP 422 com mensagem explicativa.
+- **Ollama** e **Open Interpreter** removidos completamente do projeto (código e dependências).
+- **Gemini API** removida. A integração será reintroduzida em versão futura com arquitetura de filas persistentes.
+- Variáveis `GEMINI_API_KEY`, `OLLAMA_URL`, `OPEN_INTERPRETER_URL` e `OPENAI_KEY` removidas do `config.py` e do `.env.example`.
+- `requirements-ocr.txt` esvaziado; dependências `easyocr`, `Pillow`, `ollama`, `pdfplumber` e `lxml` comentadas como reservadas para versão futura.
+
+### ✅ Mantido e funcional
+- **Importação de XML de NFe** continua funcionando normalmente via `POST /api/v1/ocr/upload-arquivo`.
+- Auto-cadastro de fornecedor pelo CNPJ do XML mantido.
+- Frontend (`ImportarNota.tsx`) atualizado para aceitar apenas XML, com mensagem clara sobre PDF/imagem.
+
+### 📝 Testes
+- `test_ocr.py` atualizado: removidos testes de comportamento de IA/OCR; adicionados testes para respostas 422 em imagens/PDFs e 400 para XML inválido.
+
+---
+
 ## [Unreleased]
 
 ### ✨ Adicionado

@@ -15,7 +15,7 @@ class OCRTaskResponse(BaseModel):
 class OCRTaskStatus(BaseModel):
     task_id: str
     status: str  # "pending", "processing", "completed", "failed"
-    result: Optional[OCRResponse] = None
+    result: Optional[dict] = None
     error: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)

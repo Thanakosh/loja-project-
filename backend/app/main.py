@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="API para gerenciamento de loja com OCR e IA",
-    version="2.0.0",
+    description="API para gerenciamento de loja. Importação de notas fiscais via XML de NFe.",
+    version="2.1.0",
     lifespan=lifespan,
 )
 
@@ -128,13 +128,16 @@ app.include_router(ncm_router, prefix="/api/v1/ncm", tags=["NCM"])
 @app.get("/")
 async def root():
     return {
-        "message": "Welcome to Loja API v2.0",
+        "message": "Welcome to Loja API v2.1",
         "features": [
-            "OCR assíncrono para notas fiscais",
-            "Análise inteligente com LLM",
+            "Importação de notas fiscais via XML de NFe",
             "Sistema de transações de estoque",
             "Autenticação JWT",
             "API RESTful completa"
+        ],
+        "coming_soon": [
+            "OCR de imagens e PDFs via IA",
+            "Análise inteligente com LLM"
         ]
     }
 
@@ -142,4 +145,4 @@ async def root():
 @app.get("/ping", tags=["Health Check"])
 def health_check():
     """Health check endpoint to verify if the API is running."""
-    return {"status": "healthy", "message": "pong", "version": "2.0.0"}
+    return {"status": "healthy", "message": "pong", "version": "2.1.0"}

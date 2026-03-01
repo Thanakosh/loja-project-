@@ -1,86 +1,57 @@
+"""
+Testes do módulo OCR — versão atual: apenas XML de NFe.
+
+Processamento de imagens e PDFs via IA está desativado nesta versão.
+"""
+
 from fastapi.testclient import TestClient
 
 
-def test_ocr_upload_imagem_invalida(client: TestClient, auth_headers: dict[str, str], monkeypatch):
-    monkeypatch.setattr("app.api.v1.ocr.importlib.util.find_spec", lambda _: object())
-
+def test_ocr_upload_imagem_retorna_422(client: TestClient, auth_headers: dict[str, str]):
+    """Imagens devem retornar 422 com mensagem explicativa."""
     response = client.post(
-        "/api/v1/ocr/upload",
-        files={"file": ("arquivo.txt", b"nao sou imagem", "text/plain")},
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nota.png", b"fake-image-content", "image/png")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 422
+    assert "imagens" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+
+
+def test_ocr_upload_pdf_retorna_422(client: TestClient, auth_headers: dict[str, str]):
+    """PDFs devem retornar 422 com mensagem explicativa."""
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nota.pdf", b"%PDF-fake", "application/pdf")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 422
+    assert "pdf" in response.json()["detail"].lower() or "xml" in response.json()["detail"].lower()
+
+
+def test_ocr_upload_arquivo_desconhecido_retorna_400(client: TestClient, auth_headers: dict[str, str]):
+    """Arquivos não suportados devem retornar 400."""
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("arquivo.txt", b"conteudo qualquer", "text/plain")},
         headers=auth_headers,
     )
     assert response.status_code == 400
 
 
-def test_extrair_dados_ocr(client: TestClient, auth_headers: dict[str, str]):
-    texto = "Produto: Caneta, Quantidade: 10, Valor: 2.50\nProduto: Lápis, Quantidade: 5, Valor: 1.20"
+def test_ocr_endpoint_legado_upload_retorna_422(client: TestClient, auth_headers: dict[str, str]):
+    """Endpoint legado /upload deve retornar 422 indicando que está desativado."""
     response = client.post(
-        "/api/v1/ocr/extrair-dados",
-        json={"texto": texto},
+        "/api/v1/ocr/upload",
+        files={"file": ("nota.png", b"fake-image-content", "image/png")},
         headers=auth_headers,
     )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert "Caneta" in data["produtos"]
-    assert 10 in data["quantidade"]
-    assert 2.5 in data["valor"]
+    assert response.status_code == 422
 
 
-def test_ocr_upload_async_erro_e_recuperacao(client: TestClient, auth_headers: dict[str, str], monkeypatch):
+def test_ocr_status_task_inexistente_retorna_404(client: TestClient, auth_headers: dict[str, str]):
+    """Consulta de task inexistente deve retornar 404."""
     from app.api.v1 import ocr as ocr_module
-
-    attempts = {"count": 0}
-
-    async def fake_process_ocr_task(task_id: str, file_path: str, use_llm: bool = False):
-        attempts["count"] += 1
-        task = ocr_module.ocr_tasks[task_id]
-        if attempts["count"] == 1:
-            task["status"] = "failed"
-            task["error"] = "falha temporária no OCR"
-        else:
-            task["status"] = "completed"
-            task["result"] = {
-                "texto": "Produto: Caneta Quantidade: 10 Valor: 2.50",
-                "produtos": ["Caneta"],
-                "quantidade": [10],
-                "valor": [2.5],
-            }
-        task["expires_at"] = ocr_module._task_expiration_timestamp()
-
-    monkeypatch.setattr("app.api.v1.ocr._ensure_ocr_dependencies", lambda: None)
-    monkeypatch.setattr("app.api.v1.ocr.process_ocr_task", fake_process_ocr_task)
-    ocr_module.ocr_tasks.clear()
-    ocr_module.ocr_task_index_by_hash.clear()
-
-    files = {"file": ("nota.png", b"fake-image-content", "image/png")}
-
-    first_upload = client.post("/api/v1/ocr/upload", files=files, headers=auth_headers)
-    assert first_upload.status_code == 200
-    first_task_id = first_upload.json()["task_id"]
-
-    first_status = client.get(f"/api/v1/ocr/status/{first_task_id}", headers=auth_headers)
-    assert first_status.status_code == 200
-    first_status_data = first_status.json()
-    assert first_status_data["status"] == "failed"
-    assert "falha temporária" in first_status_data["error"]
-
-    second_upload = client.post("/api/v1/ocr/upload", files=files, headers=auth_headers)
-    assert second_upload.status_code == 200
-    second_task_id = second_upload.json()["task_id"]
-    assert second_task_id != first_task_id
-
-    second_status = client.get(f"/api/v1/ocr/status/{second_task_id}", headers=auth_headers)
-    assert second_status.status_code == 200
-    second_status_data = second_status.json()
-    assert second_status_data["status"] == "completed"
-    assert "Caneta" in second_status_data["result"]["texto"]
-
-
-def test_ocr_status_task_inexistente_retorna_404(client: TestClient, auth_headers: dict[str, str], monkeypatch):
-    from app.api.v1 import ocr as ocr_module
-
-    monkeypatch.setattr("app.api.v1.ocr.importlib.util.find_spec", lambda _: object())
     ocr_module.ocr_tasks.clear()
     ocr_module.ocr_task_index_by_hash.clear()
 
@@ -89,4 +60,14 @@ def test_ocr_status_task_inexistente_retorna_404(client: TestClient, auth_header
     assert response.status_code == 404
     body = response.json()
     assert body["code"] == "http_error"
-    assert body["message"] == "Tarefa não encontrada ou expirada"
+    assert "não encontrada" in body["message"].lower() or "expirada" in body["message"].lower()
+
+
+def test_ocr_xml_invalido_retorna_400(client: TestClient, auth_headers: dict[str, str]):
+    """XML inválido deve retornar 400."""
+    response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nota.xml", b"<xml>isso nao e uma NFe</xml>", "application/xml")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400

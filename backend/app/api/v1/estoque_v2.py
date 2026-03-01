@@ -217,6 +217,55 @@ def obter_historico_produto(
     return paginate(query, page=page, page_size=page_size)
 
 
+@router.get("/alertas", response_model=List[EstoqueAtual], summary="Lista produtos com estoque abaixo do mínimo")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def listar_alertas_estoque(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Retorna todos os produtos ativos com estoque atual abaixo ou igual ao estoque mínimo.
+    Usado pelo Dashboard para exibir o card de alertas.
+    """
+    sub_estoque = (
+        db.query(
+            TransacaoEstoque.produto_id.label("produto_id"),
+            func.coalesce(func.sum(TransacaoEstoque.quantidade), 0).label("quantidade_atual"),
+            func.max(TransacaoEstoque.data_transacao).label("ultima_data"),
+        )
+        .group_by(TransacaoEstoque.produto_id)
+        .subquery()
+    )
+
+    rows = (
+        db.query(
+            Produto.id,
+            Produto.nome,
+            Produto.estoque_minimo,
+            func.coalesce(sub_estoque.c.quantidade_atual, 0).label("quantidade_atual"),
+            sub_estoque.c.ultima_data,
+        )
+        .outerjoin(sub_estoque, sub_estoque.c.produto_id == Produto.id)
+        .filter(Produto.ativo.is_(True))
+        .all()
+    )
+
+    return [
+        EstoqueAtual(
+            produto_id=row.id,
+            nome_produto=row.nome,
+            quantidade_atual=row.quantidade_atual,
+            estoque_minimo=row.estoque_minimo,
+            estoque_baixo=True,
+            ultima_movimentacao=row.ultima_data,
+        )
+        for row in rows
+        if row.estoque_minimo > 0 and row.quantidade_atual <= row.estoque_minimo
+    ]
+
+
 @router.post("/entrada-lote", response_model=List[TransacaoEstoqueRead])
 @limiter.limit(settings.RATE_LIMIT_OCR)
 def entrada_lote_produtos(

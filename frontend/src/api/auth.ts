@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import { saveToken } from '../utils/auth'
+import { saveToken, saveRefreshToken } from '../utils/auth'
 
 interface TokenResponse {
   access_token: string
@@ -28,6 +28,7 @@ export const login = async (email: string, password: string): Promise<LoggedUser
   })
 
   saveToken(tokenResponse.data.access_token)
+  saveRefreshToken(tokenResponse.data.refresh_token)
 
   const userResponse = await apiClient.get<LoggedUser>('/api/v1/users/me')
   return userResponse.data
