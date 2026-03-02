@@ -1,7 +1,7 @@
 ---
 task_id: TASK-024
 title: "Precificação avançada: custo, varejo e atacado"
-status: pendente
+status: concluída
 priority: media
 agent_chat_executable: "sim"
 depends_on: []

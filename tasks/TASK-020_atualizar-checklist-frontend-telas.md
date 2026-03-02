@@ -1,7 +1,7 @@
 ---
 task_id: TASK-020
 title: "Atualizar checklist de telas do frontend no RECOMENDACOES_TECNICAS.md"
-status: pendente
+status: concluída
 priority: baixa
 agent_chat_executable: "sim"
 depends_on: []

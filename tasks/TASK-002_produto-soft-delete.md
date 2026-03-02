@@ -6,7 +6,7 @@ scope: backend/app/api/v1/produto.py
 branch: fix/produto-soft-delete
 commit_message: "fix(produto): altera endpoint DELETE para usar soft delete (campo ativo)"
 estimated_effort: 10 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-002: Ajustar DELETE de produto para usar soft delete
