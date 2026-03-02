@@ -1,7 +1,7 @@
 ---
 task_id: TASK-025
 title: "Unidades de medida flexíveis para produtos"
-status: em_andamento
+status: concluída
 priority: media
 agent_chat_executable: "sim"
 depends_on: []
