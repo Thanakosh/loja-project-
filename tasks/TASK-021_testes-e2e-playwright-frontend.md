@@ -1,7 +1,7 @@
 ---
 task_id: TASK-021
 title: "Implementar testes E2E do frontend com Playwright"
-status: pendente
+status: concluida
 priority: alta
 agent_chat_executable: "sim"
 depends_on: ["TASK-019"]
