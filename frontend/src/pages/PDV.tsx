@@ -13,6 +13,9 @@ interface Produto {
   unidade_medida?: string | null
   estoque_atual: number
   ativo: boolean
+  preco_varejo?: number | null
+  preco_atacado?: number | null
+  qtd_minima_atacado?: number | null
 }
 
 interface Cliente {
@@ -31,6 +34,22 @@ interface ItemCarrinho {
 const unidadesFracionaveis = new Set(['MT', 'KG', 'LT', 'M2', 'M3'])
 
 const permiteFracionado = (produto: Produto) => unidadesFracionaveis.has((produto.unidade_medida ?? 'UN').toUpperCase())
+
+const getPrecoEfetivo = (produto: Produto, quantidade: number): number => {
+  if (
+    produto.preco_atacado != null &&
+    produto.qtd_minima_atacado != null &&
+    quantidade >= produto.qtd_minima_atacado
+  ) {
+    return produto.preco_atacado
+  }
+  return produto.preco_varejo ?? produto.preco_unitario
+}
+
+const isAtacado = (produto: Produto, quantidade: number): boolean =>
+  produto.preco_atacado != null &&
+  produto.qtd_minima_atacado != null &&
+  quantidade >= produto.qtd_minima_atacado
 
 const formatQuantidade = (produto: Produto, quantidade: number) => {
   const unidade = (produto.unidade_medida ?? produto.unidade ?? 'UN').toUpperCase()
@@ -219,7 +238,7 @@ const PDV = () => {
         {
           produto,
           quantidade: 1,
-          preco_unitario: Number(produto.preco_unitario),
+          preco_unitario: getPrecoEfetivo(produto, 1),
           desconto: 0
         }
       ]
@@ -236,11 +255,13 @@ const PDV = () => {
         const numericValue = Number(value)
 
         if (field === 'quantidade') {
+          const newQty = permiteFracionado(item.produto)
+            ? Math.max(0.001, Number.isNaN(numericValue) ? 1 : numericValue)
+            : Math.max(1, Number.isNaN(numericValue) ? 1 : Math.floor(numericValue))
           return {
             ...item,
-            quantidade: permiteFracionado(item.produto)
-              ? Math.max(0.001, Number.isNaN(numericValue) ? 1 : numericValue)
-              : Math.max(1, Number.isNaN(numericValue) ? 1 : Math.floor(numericValue))
+            quantidade: newQty,
+            preco_unitario: getPrecoEfetivo(item.produto, newQty)
           }
         }
 
@@ -454,7 +475,12 @@ const PDV = () => {
                 ) : (
                   cartItems.map((item) => (
                     <tr key={item.produto.id}>
-                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-100">{item.produto.nome}</td>
+                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-100">
+                        {item.produto.nome}
+                        {isAtacado(item.produto, item.quantidade) && (
+                          <span className="ml-2 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">Atacado</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <input
                           type="number"

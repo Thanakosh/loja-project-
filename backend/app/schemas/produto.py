@@ -16,6 +16,11 @@ class ProdutoBase(BaseModel):
     cnpj_fornecedor: Optional[str] = None
     estoque_minimo: Optional[int] = 0
     categoria_id: Optional[int] = None
+    # Precificação avançada
+    preco_custo: Optional[float] = None
+    preco_varejo: Optional[float] = None
+    preco_atacado: Optional[float] = None
+    qtd_minima_atacado: Optional[float] = None
 
     @field_validator("unidade_medida")
     @classmethod
@@ -45,3 +50,8 @@ class ProdutoUpdate(BaseModel):
     unidade_medida: Optional[str] = None
     estoque_minimo: Optional[int] = None
     ativo: Optional[bool] = None
+    # Precificação avançada
+    preco_custo: Optional[float] = None
+    preco_varejo: Optional[float] = None
+    preco_atacado: Optional[float] = None
+    qtd_minima_atacado: Optional[float] = None

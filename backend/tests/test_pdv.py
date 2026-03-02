@@ -251,3 +251,95 @@ class TestPDV:
         }
         resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
         assert resp.status_code == 422
+
+    def _criar_produto_atacado(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        preco_varejo: float = 20.0,
+        preco_atacado: float = 15.0,
+        qtd_minima_atacado: float = 5.0,
+    ) -> int:
+        payload = {
+            "nome": "Produto Atacado",
+            "fornecedor": "Fornecedor Atacado",
+            "preco_unitario": preco_varejo,
+            "preco_liquido": preco_varejo,
+            "unidade_medida": "UN",
+            "preco_varejo": preco_varejo,
+            "preco_atacado": preco_atacado,
+            "qtd_minima_atacado": qtd_minima_atacado,
+        }
+        resp = client.post("/api/v1/produtos/", json=payload, headers=auth_headers)
+        assert resp.status_code == 200
+        produto_id = resp.json()["id"]
+
+        entrada = client.post(
+            "/api/v2/estoque/transacao",
+            json={"produto_id": produto_id, "tipo": "entrada", "quantidade": 100, "motivo": "Carga inicial"},
+            headers=auth_headers,
+        )
+        assert entrada.status_code == 200
+        return produto_id
+
+    def test_pdv_aplica_preco_atacado_quando_quantidade_atinge_minimo(
+        self, client: TestClient, auth_headers: dict
+    ):
+        produto_id = self._criar_produto_atacado(
+            client, auth_headers, preco_varejo=20.0, preco_atacado=15.0, qtd_minima_atacado=5.0
+        )
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_id, "quantidade": 5, "preco_unitario": 20.0, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        item = resp.json()["itens"][0]
+        assert item["preco_unitario"] == 15.0
+        assert item["preco_total"] == 75.0
+
+    def test_pdv_nao_aplica_preco_atacado_abaixo_do_minimo(
+        self, client: TestClient, auth_headers: dict
+    ):
+        produto_id = self._criar_produto_atacado(
+            client, auth_headers, preco_varejo=20.0, preco_atacado=15.0, qtd_minima_atacado=5.0
+        )
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_id, "quantidade": 4, "preco_unitario": 20.0, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        item = resp.json()["itens"][0]
+        assert item["preco_unitario"] == 20.0
+        assert item["preco_total"] == 80.0
+
+    def test_pdv_sem_preco_atacado_usa_preco_enviado(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_com_estoque, "quantidade": 10, "preco_unitario": 12.5, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        item = resp.json()["itens"][0]
+        assert item["preco_unitario"] == 12.5
+        assert item["preco_total"] == 125.0
+
+    def test_pdv_ignora_preco_errado_e_aplica_atacado(
+        self, client: TestClient, auth_headers: dict
+    ):
+        """Backend deve aplicar preco_atacado mesmo que o frontend envie um preço diferente."""
+        produto_id = self._criar_produto_atacado(
+            client, auth_headers, preco_varejo=20.0, preco_atacado=15.0, qtd_minima_atacado=5.0
+        )
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_id, "quantidade": 10, "preco_unitario": 25.0, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        item = resp.json()["itens"][0]
+        assert item["preco_unitario"] == 15.0
+        assert item["preco_total"] == 150.0

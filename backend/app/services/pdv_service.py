@@ -16,6 +16,17 @@ from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
 
 
+def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: float) -> float:
+    """Retorna o preço efetivo para o PDV aplicando preço atacado quando aplicável."""
+    if (
+        produto.preco_atacado is not None
+        and produto.qtd_minima_atacado is not None
+        and quantidade >= produto.qtd_minima_atacado
+    ):
+        return produto.preco_atacado
+    return preco_enviado
+
+
 def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
     data_venda = date.today()
     produto_ids = [item.produto_id for item in venda_in.itens]
@@ -63,7 +74,8 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     }
                 )
 
-            preco_total = item.quantidade * item.preco_unitario * (1 - (item.desconto / 100))
+            preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
+            preco_total = item.quantidade * preco_efetivo * (1 - (item.desconto / 100))
             totais_por_item.append(preco_total)
 
         total_venda = sum(totais_por_item) - venda_in.desconto_geral
@@ -97,7 +109,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     nome_produto=produto.nome,
                     unidade=produto.unidade,
                     quantidade=item.quantidade,
-                    preco_unitario=item.preco_unitario,
+                    preco_unitario=_calcular_preco_pdv(produto, item.quantidade, item.preco_unitario),
                     preco_total=preco_total,
                     desconto=item.desconto,
                 )
