@@ -26,6 +26,12 @@ class Produto(Base):
     fornecedor_id = Column(Integer, ForeignKey("fornecedor.id"), nullable=True, index=True)
     categoria_id = Column(Integer, ForeignKey("categoria.id"), nullable=True, index=True)
     
+    # Precificação avançada
+    preco_custo = Column(Float, nullable=True)
+    preco_varejo = Column(Float, nullable=True)
+    preco_atacado = Column(Float, nullable=True)
+    qtd_minima_atacado = Column(Float, nullable=True)
+
     # Campos adicionais
     ativo = Column(Boolean, default=True, nullable=False)  # Soft delete
     estoque_minimo = Column(Integer, default=0)  # Alerta de estoque baixo

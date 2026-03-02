@@ -21,6 +21,10 @@ interface Produto {
   numero_nota?: string | null
   cnpj_fornecedor?: string | null
   categoria_id?: number | null
+  preco_custo?: number | null
+  preco_varejo?: number | null
+  preco_atacado?: number | null
+  qtd_minima_atacado?: number | null
 }
 
 interface CategoriaTreeNode {
@@ -43,6 +47,10 @@ interface ProdutoFormPayload {
   codigo_ncm?: string
   descricao?: string
   categoria_id?: number
+  preco_custo?: number
+  preco_varejo?: number
+  preco_atacado?: number
+  qtd_minima_atacado?: number
 }
 
 interface ProdutoListResponse {
@@ -64,6 +72,10 @@ interface FormState {
   codigo_ncm: string
   descricao: string
   categoria_id: string
+  preco_custo: string
+  preco_varejo: string
+  preco_atacado: string
+  qtd_minima_atacado: string
 }
 
 interface FormErrors {
@@ -93,7 +105,11 @@ const emptyFormState: FormState = {
   unidade_medida: 'UN',
   codigo_ncm: '',
   descricao: '',
-  categoria_id: ''
+  categoria_id: '',
+  preco_custo: '',
+  preco_varejo: '',
+  preco_atacado: '',
+  qtd_minima_atacado: ''
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -183,7 +199,11 @@ const Produtos = () => {
       estoque_minimo: String(produto.estoque_minimo ?? 0), quantidade_inicial: '0',
       unidade: produto.unidade ?? '', codigo_ncm: produto.codigo_ncm ?? '', descricao: produto.descricao ?? '',
       unidade_medida: produto.unidade_medida ?? 'UN',
-      categoria_id: produto.categoria_id ? String(produto.categoria_id) : ''
+      categoria_id: produto.categoria_id ? String(produto.categoria_id) : '',
+      preco_custo: produto.preco_custo != null ? String(produto.preco_custo) : '',
+      preco_varejo: produto.preco_varejo != null ? String(produto.preco_varejo) : '',
+      preco_atacado: produto.preco_atacado != null ? String(produto.preco_atacado) : '',
+      qtd_minima_atacado: produto.qtd_minima_atacado != null ? String(produto.qtd_minima_atacado) : ''
     })
     setFormErrors({}); setFormError(''); setIsModalOpen(true)
   }
@@ -231,6 +251,10 @@ const Produtos = () => {
     if (codigoNcm) payload.codigo_ncm = codigoNcm
     if (descricao) payload.descricao = descricao
     if (formState.categoria_id) payload.categoria_id = Number(formState.categoria_id)
+    if (formState.preco_custo !== '') payload.preco_custo = Number(formState.preco_custo)
+    if (formState.preco_varejo !== '') payload.preco_varejo = Number(formState.preco_varejo)
+    if (formState.preco_atacado !== '') payload.preco_atacado = Number(formState.preco_atacado)
+    if (formState.qtd_minima_atacado !== '') payload.qtd_minima_atacado = Number(formState.qtd_minima_atacado)
     return payload
   }
 
@@ -426,6 +450,28 @@ const Produtos = () => {
                   <input id="produto-estoque-minimo" type="number" min="0" step="1" value={formState.estoque_minimo} onChange={(e) => handleInputChange('estoque_minimo', e.target.value)} className={inputCls} />
                 </div>
               </div>
+
+              <fieldset className="rounded-lg border border-gray-200 dark:border-gray-600 p-3">
+                <legend className="px-1 text-sm font-medium text-gray-700 dark:text-gray-300">Precificação avançada</legend>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-custo">Preço de Custo</label>
+                    <input id="produto-preco-custo" type="number" min="0" step="0.01" value={formState.preco_custo} onChange={(e) => handleInputChange('preco_custo', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-varejo">Preço Varejo</label>
+                    <input id="produto-preco-varejo" type="number" min="0" step="0.01" value={formState.preco_varejo} onChange={(e) => handleInputChange('preco_varejo', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-atacado">Preço Atacado</label>
+                    <input id="produto-preco-atacado" type="number" min="0" step="0.01" value={formState.preco_atacado} onChange={(e) => handleInputChange('preco_atacado', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-qtd-minima-atacado">Qtd. mínima para atacado</label>
+                    <input id="produto-qtd-minima-atacado" type="number" min="0" step="1" value={formState.qtd_minima_atacado} onChange={(e) => handleInputChange('qtd_minima_atacado', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  </div>
+                </div>
+              </fieldset>
 
               {modalMode === 'create' && (
                 <div>
