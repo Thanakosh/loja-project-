@@ -22,7 +22,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    const devServerUrl = 'http://localhost:5173';
+    const devServerUrl = process.env.ELECTRON_START_URL ?? 'http://localhost:5173';
     mainWindow.loadURL(devServerUrl);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
