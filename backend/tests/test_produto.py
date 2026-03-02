@@ -80,6 +80,48 @@ class TestProdutoCRUD:
         resp = client.delete(f"/api/v1/produtos/{produto_id}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
+        assert resp.json()["message"] == "Produto desativado com sucesso"
+
+        listagem_padrao = client.get("/api/v1/produtos/", headers=auth_headers)
+        assert listagem_padrao.status_code == 200
+        assert all(item["id"] != produto_id for item in listagem_padrao.json()["items"])
+
+        listagem_inativos = client.get("/api/v1/produtos/?incluir_inativos=true", headers=auth_headers)
+        assert listagem_inativos.status_code == 200
+        assert any(item["id"] == produto_id for item in listagem_inativos.json()["items"])
+
+    def test_deletar_produto_ja_desativado(self, client: TestClient, auth_headers: dict):
+        """Testa erro ao desativar produto já desativado."""
+        payload = {
+            "nome": "Produto Inativo",
+            "fornecedor": "Fornecedor D",
+            "preco_unitario": 7.0,
+            "preco_liquido": 6.0,
+        }
+        resp = client.post("/api/v1/produtos/", json=payload, headers=auth_headers)
+        produto_id = resp.json()["id"]
+
+        client.delete(f"/api/v1/produtos/{produto_id}", headers=auth_headers)
+        resp = client.delete(f"/api/v1/produtos/{produto_id}", headers=auth_headers)
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "produto_ja_desativado"
+
+    def test_reativar_produto(self, client: TestClient, auth_headers: dict):
+        """Testa reativação de produto desativado."""
+        payload = {
+            "nome": "Produto Reativar",
+            "fornecedor": "Fornecedor E",
+            "preco_unitario": 11.0,
+            "preco_liquido": 9.5,
+        }
+        resp = client.post("/api/v1/produtos/", json=payload, headers=auth_headers)
+        produto_id = resp.json()["id"]
+
+        client.delete(f"/api/v1/produtos/{produto_id}", headers=auth_headers)
+        resp = client.post(f"/api/v1/produtos/{produto_id}/reativar", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["id"] == produto_id
+        assert resp.json()["ativo"] is True
 
     def test_criar_produto_campos_invalidos(self, client: TestClient, auth_headers: dict):
         """Testa criação com campos obrigatórios faltando."""
