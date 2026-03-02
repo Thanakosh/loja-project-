@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
 
@@ -47,6 +48,7 @@ const Estoque = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [kardexProduto, setKardexProduto] = useState<Produto | null>(null)
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null)
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([])
   const [loadingMov, setLoadingMov] = useState(false)
@@ -100,7 +102,8 @@ const Estoque = () => {
   }, [searchInput, searchTerm])
 
   const handleOpenKardex = (produto: Produto) => {
-    setSelectedProduto(produto); fetchKardex(produto.id)
+    setKardexProduto(produto)
+    fetchKardex(produto.id)
   }
 
   const handleOpenNovaMov = (produto: Produto) => {
@@ -110,22 +113,26 @@ const Estoque = () => {
 
   const handleCloseNovaMov = () => {
     setIsNovaMovOpen(false)
-    if (!movimentacoes.length) setSelectedProduto(null)
+    setSelectedProduto(null)
   }
 
   const handleSubmitMov = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (novaMov.quantidade <= 0) { alert('A quantidade deve ser maior que zero.'); return }
+    if (novaMov.quantidade <= 0) {
+      toast.error('A quantidade deve ser maior que zero.')
+      return
+    }
     setSubmittingMov(true)
     try {
       await apiV2.post('/estoque/transacao', novaMov)
-      alert('Movimentação registrada com sucesso!')
+      toast.success('Movimentação registrada com sucesso!')
       fetchProdutos(page)
-      if (movimentacoes.length > 0) fetchKardex(novaMov.produto_id)
+      if (kardexProduto && kardexProduto.id === novaMov.produto_id) fetchKardex(novaMov.produto_id)
       setIsNovaMovOpen(false)
+      setSelectedProduto(null)
     } catch (error) {
       console.error('Erro ao registrar movimentação', error)
-      alert('Erro ao registrar movimentação. Verifique os dados.')
+      toast.error('Erro ao registrar movimentação. Verifique os dados.')
     } finally {
       setSubmittingMov(false)
     }
@@ -214,17 +221,17 @@ const Estoque = () => {
       </div>
 
       {/* Modal Kardex */}
-      {selectedProduto && (
+      {kardexProduto && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Kardex: {selectedProduto.nome}</h2>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Kardex: {kardexProduto.nome}</h2>
               <div className="flex gap-2">
-                <button onClick={() => handleOpenNovaMov(selectedProduto)}
+                <button onClick={() => handleOpenNovaMov(kardexProduto)}
                   className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition font-medium mr-2">
                   + Novo Lançamento
                 </button>
-                <button onClick={() => { setSelectedProduto(null); setMovimentacoes([]) }}
+                <button onClick={() => { setKardexProduto(null); setMovimentacoes([]) }}
                   className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl leading-none">
                   ×
                 </button>
@@ -282,7 +289,7 @@ const Estoque = () => {
             </div>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-right">
-              <button onClick={() => setSelectedProduto(null)}
+              <button onClick={() => setKardexProduto(null)}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">
                 Fechar
               </button>
@@ -321,7 +328,7 @@ const Estoque = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo / Observação</label>
                 <textarea value={novaMov.motivo} onChange={(e) => setNovaMov({ ...novaMov, motivo: e.target.value })}
                   className={inputCls} rows={3}
-                  placeholder="Ex: Nota fiscal 123, Ajuste contábil, Produto danificado..." required />
+                  placeholder="Ex: Nota fiscal 123, Ajuste contábil, Produto danificado..." />
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">

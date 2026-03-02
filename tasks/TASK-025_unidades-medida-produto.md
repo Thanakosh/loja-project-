@@ -2,6 +2,7 @@
 task_id: TASK-025
 title: "Unidades de medida flexíveis para produtos"
 status: concluída
+tested_by: TestUnidadeMedida (backend/tests/test_produto.py)
 priority: media
 agent_chat_executable: "sim"
 depends_on: []

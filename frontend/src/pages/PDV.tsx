@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import toast from 'react-hot-toast'
 
 import api from '../services/api'
 
@@ -107,6 +108,7 @@ const calcItemTotal = (item: ItemCarrinho) => {
 
 const PDV = () => {
   const [productSearch, setProductSearch] = useState('')
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [clientSearchInput, setClientSearchInput] = useState('')
   const [debouncedClientSearch, setDebouncedClientSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
@@ -120,6 +122,14 @@ const PDV = () => {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      setDebouncedProductSearch(productSearch.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [productSearch])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
       setDebouncedClientSearch(clientSearchInput.trim())
     }, 400)
 
@@ -127,13 +137,14 @@ const PDV = () => {
   }, [clientSearchInput])
 
   const produtosQuery = useQuery({
-    queryKey: ['pdv-produtos'],
+    queryKey: ['pdv-produtos', debouncedProductSearch],
     queryFn: async () => {
       const response = await api.get('/produtos/', {
         params: {
           page: 1,
-          page_size: 200,
-          incluir_inativos: false
+          page_size: 50,
+          incluir_inativos: false,
+          ...(debouncedProductSearch ? { search: debouncedProductSearch } : {})
         }
       })
       return response.data as ProdutoListResponse
@@ -162,6 +173,7 @@ const PDV = () => {
     onSuccess: (data) => {
       setSaleResult(data)
       setSubmitError('')
+      toast.success('Venda finalizada com sucesso!')
     },
     onError: (error) => {
       if (isAxiosError(error)) {
@@ -191,15 +203,8 @@ const PDV = () => {
   })
 
   const filteredProducts = useMemo(() => {
-    const search = productSearch.trim().toLowerCase()
-    const produtosAtivos = produtosQuery.data?.items?.filter((produto) => produto.ativo) ?? []
-
-    if (!search) {
-      return produtosAtivos
-    }
-
-    return produtosAtivos.filter((produto) => produto.nome.toLowerCase().includes(search))
-  }, [productSearch, produtosQuery.data?.items])
+    return produtosQuery.data?.items?.filter((produto) => produto.ativo) ?? []
+  }, [produtosQuery.data?.items])
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + calcItemTotal(item), 0), [cartItems])
   const descontoGeralNumber = Math.max(0, Number(descontoGeral) || 0)

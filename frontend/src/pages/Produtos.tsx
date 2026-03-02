@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 
 import api from '../services/api'
 
@@ -161,7 +162,7 @@ const Produtos = () => {
       const response = await api.post('/produtos/', payload)
       return response.data as Produto
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); closeModal() },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); closeModal(); toast.success('Produto criado com sucesso!') },
     onError: () => { setFormError('Não foi possível criar o produto. Verifique os dados e tente novamente.') }
   })
 
@@ -170,18 +171,18 @@ const Produtos = () => {
       const response = await api.put(`/produtos/${id}`, payload)
       return response.data as Produto
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); closeModal() },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); closeModal(); toast.success('Produto atualizado com sucesso!') },
     onError: () => { setFormError('Não foi possível atualizar o produto. Verifique os dados e tente novamente.') }
   })
 
   const deactivateMutation = useMutation({
     mutationFn: async (id: number) => { await api.delete(`/produtos/${id}`) },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }) }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); toast.success('Produto desativado com sucesso!') }
   })
 
   const reactivateMutation = useMutation({
     mutationFn: async (id: number) => { await api.post(`/produtos/${id}/reativar`) },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }) }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['produtos'] }); toast.success('Produto reativado com sucesso!') }
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending

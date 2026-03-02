@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 
 import api from '../services/api'
 
@@ -113,6 +114,7 @@ const Fornecedores = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
       closeModal()
+      toast.success('Fornecedor criado com sucesso!')
     },
     onError: () => {
       setFormError('Não foi possível criar o fornecedor. Verifique os dados e tente novamente.')
@@ -127,6 +129,7 @@ const Fornecedores = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
       closeModal()
+      toast.success('Fornecedor atualizado com sucesso!')
     },
     onError: () => {
       setFormError('Não foi possível atualizar o fornecedor. Verifique os dados e tente novamente.')

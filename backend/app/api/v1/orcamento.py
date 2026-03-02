@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
@@ -23,6 +24,7 @@ from ...schemas.pagination import PaginatedResponse
 from ...schemas.orcamento import OrcamentoCreate, OrcamentoRead, OrcamentoUpdate
 from ...schemas.pdv import VendaPDVCreate, VendaPDVItemCreate, VendaPDVRead
 from ...services import pdv_service
+from ...services.pdf_service import gerar_pdf_orcamento
 
 router = APIRouter(tags=["Orcamento"])
 logger = logging.getLogger(__name__)
@@ -189,6 +191,37 @@ def cancelar_orcamento(
     db_orcamento.status = StatusOrcamento.CANCELADO.value
     db.commit()
     return {"ok": True}
+
+
+@router.get("/{orcamento_id}/pdf", response_class=FastAPIResponse)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def exportar_orcamento_pdf(
+    request: Request,
+    response: Response,
+    orcamento_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Gera e retorna o PDF de um orçamento (requer autenticação)."""
+    orcamento = (
+        db.query(Orcamento)
+        .options(joinedload(Orcamento.itens))
+        .filter(Orcamento.id == orcamento_id)
+        .first()
+    )
+    if not orcamento:
+        raise OrcamentoNaoEncontradoError()
+
+    pdf_bytes = gerar_pdf_orcamento(orcamento)
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="orcamento-{orcamento_id:05d}.pdf"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )
 
 
 @router.post("/{orcamento_id}/converter", response_model=VendaPDVRead)

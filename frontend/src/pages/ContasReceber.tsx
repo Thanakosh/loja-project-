@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import api from '../services/api'
 
 interface ContaReceber {
@@ -69,10 +70,11 @@ export default function ContasReceber() {
             queryClient.invalidateQueries({ queryKey: ['contas-receber-resumo'] })
             setIsModalOpen(false)
             setSelectedConta(null)
+            toast.success('Conta baixada com sucesso!')
         },
         onError: (error) => {
             console.error('Erro ao baixar conta:', error)
-            alert("Ocorreu um erro ao baixar a conta.")
+            toast.error('Ocorreu um erro ao baixar a conta.')
         }
     })
 
