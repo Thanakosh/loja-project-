@@ -22,7 +22,13 @@ function createWindow() {
   });
 
   if (isDev) {
-    const devServerUrl = process.env.ELECTRON_START_URL ?? 'http://localhost:5173';
+    const configuredDevServerUrl = process.env.ELECTRON_START_URL;
+    const isLocalDevServer =
+      configuredDevServerUrl && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(configuredDevServerUrl);
+    if (configuredDevServerUrl && !isLocalDevServer) {
+      console.warn('Ignoring ELECTRON_START_URL because it is not a localhost URL.');
+    }
+    const devServerUrl = isLocalDevServer ? configuredDevServerUrl : 'http://localhost:5173';
     mainWindow.loadURL(devServerUrl);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {

@@ -6,6 +6,9 @@ on:
       - 'v*-desktop.*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-desktop-windows:
     runs-on: windows-latest
@@ -40,6 +43,7 @@ jobs:
           $installers = Get-ChildItem -Path "out/make" -Filter "*.exe" -Recurse
           if (-not $installers) {
             Write-Error "Nenhum instalador .exe encontrado em out/make"
+            exit 1
           }
 
           $hashLines = @()
@@ -50,7 +54,7 @@ jobs:
           }
 
           $hashFile = "$env:GITHUB_WORKSPACE/artifacts/SHA256SUMS.txt"
-          $hashLines | Out-File -FilePath $hashFile -Encoding utf8
+          $hashLines | Out-File -FilePath $hashFile -Encoding utf8NoBOM
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
