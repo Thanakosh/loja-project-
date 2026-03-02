@@ -6,7 +6,7 @@ scope: frontend/package.json, frontend/electron/, frontend/vite.config.ts
 branch: feat/electron-forge-setup
 commit_message: "feat(frontend): configura base Electron Forge para build desktop"
 estimated_effort: 60 minutos
-status: pendente
+status: em_andamento
 depends_on: []
 recomendacao_ref: "docs/validacao_apresentacao_cliente.md seção 6.1"
 ---

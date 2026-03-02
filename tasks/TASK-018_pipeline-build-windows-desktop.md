@@ -6,7 +6,7 @@ scope: .github/workflows/, frontend/package.json
 branch: ci/windows-desktop-pipeline
 commit_message: "ci(desktop): adiciona pipeline de build Windows com artefatos"
 estimated_effort: 45 minutos
-status: pendente
+status: em_andamento
 depends_on: ["TASK-017"]
 recomendacao_ref: "docs/validacao_apresentacao_cliente.md seção 6.1 e 6.2"
 ---
