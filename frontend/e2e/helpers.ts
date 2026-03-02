@@ -20,7 +20,7 @@ export const mockLoginApi = async (page: Page) => {
     const invalidCredentials = body.includes('username=invalido%40empresa.com')
 
     if (invalidCredentials) {
-      await json(route, { detail: 'Credenciais inválidas' }, 401)
+      await json(route, { detail: 'Email ou senha inválidos.' }, 401)
       return
     }
 
