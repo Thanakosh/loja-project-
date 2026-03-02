@@ -39,7 +39,7 @@ jobs:
           New-Item -Path "$env:GITHUB_WORKSPACE/artifacts" -ItemType Directory -Force | Out-Null
           $installers = Get-ChildItem -Path "out/make" -Filter "*.exe" -Recurse
           if (-not $installers) {
-            Write-Error "Nenhum instalador .exe encontrado em frontend/out/make"
+            Write-Error "Nenhum instalador .exe encontrado em out/make"
           }
 
           $hashLines = @()
