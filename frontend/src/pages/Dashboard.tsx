@@ -70,11 +70,13 @@ const Dashboard = () => {
         params: {
           start_date: hoje,
           end_date: hoje,
-          limit: 50
+          page: 1,
+          page_size: 200
         }
       })
 
-      const vendas = Array.isArray(response.data) ? (response.data as Venda[]) : []
+      const data = response.data
+      const vendas: Venda[] = Array.isArray(data) ? data : (data?.items ?? [])
       return vendas.reduce((accumulator, venda) => accumulator + getVendaTotal(venda), 0)
     },
     refetchInterval: 60_000
@@ -87,11 +89,13 @@ const Dashboard = () => {
         params: {
           start_date: inicioMes,
           end_date: hoje,
-          limit: 50
+          page: 1,
+          page_size: 200
         }
       })
 
-      const vendas = Array.isArray(response.data) ? (response.data as Venda[]) : []
+      const data = response.data
+      const vendas: Venda[] = Array.isArray(data) ? data : (data?.items ?? [])
       return vendas.reduce((accumulator, venda) => accumulator + getVendaTotal(venda), 0)
     },
     refetchInterval: 60_000

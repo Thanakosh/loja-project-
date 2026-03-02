@@ -11,7 +11,7 @@ Aplicação React + Vite com TailwindCSS para interface do **Loja Project**.
 - React Query
 - React Router
 
-## Como executar
+## Como executar (desenvolvimento)
 
 ```bash
 cd frontend
@@ -20,6 +20,50 @@ npm run dev
 ```
 
 Aplicação disponível em `http://localhost:5173` (padrão Vite).
+
+## Como buildar e instalar (produção)
+
+### 1. Build
+
+```powershell
+npx vite build
+npm run make
+```
+
+O instalador será gerado em:
+```
+out/make/squirrel.windows/x64/frontend-0.0.0 Setup.exe
+```
+
+### 2. Desinstalar versão antiga (se houver)
+
+```powershell
+Remove-Item -Recurse -Force "C:\Users\usuario\AppData\Local\LojaProject"
+```
+
+### 3. Instalar
+
+```powershell
+& "C:\Users\usuario\loja-project-\frontend\out\make\squirrel.windows\x64\frontend-0.0.0 Setup.exe"
+```
+
+> ⚠️ O Avast pode bloquear o executável por ser desconhecido. Caso isso aconteça, vá em **Avast → Proteção → Quarentena**, restaure o arquivo e adicione a pasta como exceção:
+> `C:\Users\usuario\AppData\Local\LojaProject\`
+
+### 4. Atalho na Área de Trabalho
+
+Caso precise recriar o atalho:
+
+```powershell
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut('C:\Users\usuario\Desktop\Loja Project.lnk')
+$Shortcut.TargetPath = 'C:\Users\usuario\AppData\Local\LojaProject\app-0.0.0\frontend.exe'
+$Shortcut.WorkingDirectory = 'C:\Users\usuario\AppData\Local\LojaProject\app-0.0.0'
+$Shortcut.Description = 'Loja Project'
+$Shortcut.Save()
+```
+
+> ⚠️ O atalho deve apontar para `app-0.0.0\frontend.exe` e não para `frontend.exe` na raiz — este último é apenas o launcher do Squirrel.
 
 ## Autenticação
 

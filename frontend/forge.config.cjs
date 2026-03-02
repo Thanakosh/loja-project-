@@ -7,6 +7,8 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: 'LojaProject',
+        authors: 'Thanakosh',
+        description: 'Sistema de Gerenciamento Comercial Inteligente',
       },
     },
     {

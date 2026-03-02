@@ -24,9 +24,17 @@ interface Venda {
     itens: VendaItem[]
 }
 
+interface VendasPaginadas {
+    items: Venda[]
+    total: number
+    page: number
+    page_size: number
+    pages: number
+}
+
 interface VendasParams {
-    limit: number
-    skip?: number
+    page: number
+    page_size: number
     start_date?: string
     end_date?: string
 }
@@ -40,7 +48,7 @@ const PAYMENT_LABELS: Record<number, string> = {
     6: 'A Prazo',
 }
 
-const LIMIT = 50
+const PAGE_SIZE = 50
 
 const Vendas = () => {
     const [vendas, setVendas] = useState<Venda[]>([])
@@ -51,19 +59,20 @@ const Vendas = () => {
     const [appliedEndDate, setAppliedEndDate] = useState('')
     const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null)
     const [modalLoading, setModalLoading] = useState(false)
-    const [skip, setSkip] = useState(0)
-    const [hasNextPage, setHasNextPage] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
 
-    const fetchVendas = useCallback(async (currentSkip: number, currentStartDate: string, currentEndDate: string) => {
+    const fetchVendas = useCallback(async (currentPage: number, currentStartDate: string, currentEndDate: string) => {
         setLoading(true)
         try {
-            const params: VendasParams = { limit: LIMIT, skip: currentSkip }
+            const params: VendasParams = { page: currentPage, page_size: PAGE_SIZE }
             if (currentStartDate) params.start_date = currentStartDate
             if (currentEndDate) params.end_date = currentEndDate
 
-            const response = await api.get('/vendas', { params })
-            setVendas(response.data)
-            setHasNextPage(response.data.length === LIMIT)
+            const response = await api.get('/vendas/', { params })
+            const data = response.data as VendasPaginadas
+            setVendas(data.items ?? [])
+            setTotalPages(data.pages ?? 1)
         } catch (error) {
             console.error('Erro ao buscar vendas', error)
         } finally {
@@ -72,14 +81,14 @@ const Vendas = () => {
     }, [])
 
     useEffect(() => {
-        fetchVendas(skip, appliedStartDate, appliedEndDate)
-    }, [appliedEndDate, appliedStartDate, fetchVendas, skip])
+        fetchVendas(page, appliedStartDate, appliedEndDate)
+    }, [appliedEndDate, appliedStartDate, fetchVendas, page])
 
     const handleFilter = (e: React.FormEvent) => {
         e.preventDefault()
         setAppliedStartDate(startDate)
         setAppliedEndDate(endDate)
-        setSkip(0)
+        setPage(1)
     }
 
     const handleOpenDetails = async (vendaId: number) => {
@@ -106,7 +115,7 @@ const Vendas = () => {
         try {
             await api.post(`/pdv/venda/${selectedVenda.id}/cancelar`)
             setSelectedVenda(null)
-            fetchVendas(skip, appliedStartDate, appliedEndDate)
+            fetchVendas(page, appliedStartDate, appliedEndDate)
         } catch (error) {
             console.error('Erro ao cancelar venda', error)
             window.alert('Não foi possível cancelar a venda. Tente novamente.')
@@ -197,22 +206,22 @@ const Vendas = () => {
 
             <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Exibindo {vendas.length} registro(s) na página {Math.floor(skip / LIMIT) + 1}
+                    Exibindo {vendas.length} registro(s) na página {page} de {totalPages}
                 </p>
                 <div className="flex gap-2">
                     <button
                         type="button"
                         className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 disabled:opacity-50"
-                        onClick={() => setSkip((prev) => Math.max(prev - LIMIT, 0))}
-                        disabled={loading || skip === 0}
+                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={loading || page <= 1}
                     >
                         Anterior
                     </button>
                     <button
                         type="button"
                         className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 disabled:opacity-50"
-                        onClick={() => setSkip((prev) => prev + LIMIT)}
-                        disabled={loading || !hasNextPage}
+                        onClick={() => setPage((prev) => prev + 1)}
+                        disabled={loading || page >= totalPages}
                     >
                         Próxima
                     </button>
