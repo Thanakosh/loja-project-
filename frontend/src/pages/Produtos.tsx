@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import api from '../services/api'
@@ -217,6 +217,18 @@ const Produtos = () => {
     event.preventDefault(); setPage(1); setSearchTerm(searchInput.trim())
   }
 
+  useEffect(() => {
+    const normalizedSearch = searchInput.trim()
+    const timeoutId = setTimeout(() => {
+      if (normalizedSearch !== searchTerm) {
+        setPage(1)
+        setSearchTerm(normalizedSearch)
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput, searchTerm])
+
   const handleInputChange = (field: keyof FormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }))
     if (field in formErrors) setFormErrors((prev) => ({ ...prev, [field]: undefined }))
@@ -402,14 +414,15 @@ const Produtos = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-800 shadow-xl">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl">
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo produto' : 'Editar produto'}
               </h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col px-6 py-5">
+              <div className="space-y-4 overflow-y-auto pr-1">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-nome">Nome *</label>
@@ -505,6 +518,7 @@ const Produtos = () => {
                 <textarea id="produto-descricao" value={formState.descricao} onChange={(e) => handleInputChange('descricao', e.target.value)}
                   className={`min-h-24 ${inputCls}`} placeholder="Descrição do produto" />
               </div>
+              </div>
 
               {formError && (
                 <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-900/30 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-400">
@@ -512,7 +526,7 @@ const Produtos = () => {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <button type="button" onClick={closeModal} disabled={isSaving}
                   className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700">
                   Cancelar

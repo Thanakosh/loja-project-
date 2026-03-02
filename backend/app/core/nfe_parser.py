@@ -78,6 +78,7 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     # ─── Emitente (fornecedor) ───
     emit = _first_not_none(inf_nfe.find("nfe:emit", ns_real), inf_nfe.find("emit"))
     fornecedor = _ft(emit, "nfe:xNome") or _ft(emit, "xNome") or "Não identificado"
+    nome_fantasia = _ft(emit, "nfe:xFant") or _ft(emit, "xFant")
     cnpj = _ft(emit, "nfe:CNPJ") or _ft(emit, "CNPJ") or ""
 
     # Formatar CNPJ
@@ -153,6 +154,7 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
 
     return NotaFiscalExtraida(
         fornecedor=fornecedor,
+        nome_fantasia_fornecedor=nome_fantasia if nome_fantasia else None,
         cnpj_fornecedor=cnpj if cnpj else None,
         numero_nota=numero_nota if numero_nota else None,
         data_emissao=data_emissao if data_emissao else None,

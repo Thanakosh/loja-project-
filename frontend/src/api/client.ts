@@ -34,6 +34,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean }
+    const requestUrl = originalRequest?.url ?? ''
+    const isAuthEndpoint = requestUrl.includes('/api/v1/users/token') || requestUrl.includes('/api/v1/users/refresh')
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error)
+    }
 
     if (error.response?.status === 401 && !originalRequest?._retry) {
       const refreshToken = getRefreshToken()

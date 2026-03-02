@@ -29,6 +29,7 @@ class ProdutoExtraido(BaseModel):
 
 class NotaFiscalExtraida(BaseModel):
     fornecedor: str
+    nome_fantasia_fornecedor: Optional[str] = None
     cnpj_fornecedor: Optional[str] = None
     numero_nota: Optional[str] = None
     data_emissao: Optional[str] = None

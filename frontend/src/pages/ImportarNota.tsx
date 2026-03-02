@@ -29,6 +29,7 @@ interface OCRTaskStatus {
         texto: string
         nota_fiscal?: {
             fornecedor: string
+            nome_fantasia_fornecedor?: string
             cnpj_fornecedor?: string
             numero_nota?: string
             data_emissao?: string
@@ -84,16 +85,17 @@ const ImportarNota = () => {
     /* State — OCR task */
     const [taskId, setTaskId] = useState<string | null>(null)
     const [taskStatus, setTaskStatus] = useState<OCRTaskStatus['status'] | null>(null)
-    const [textoExtraido, setTextoExtraido] = useState<string | null>(null)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
     /* State — items to review */
     const [itens, setItens] = useState<ItemExtraido[]>([])
     const [fornecedorGlobal, setFornecedorGlobal] = useState('')
+    const [nomeFantasiaFornecedor, setNomeFantasiaFornecedor] = useState('')
     const [cnpjFornecedor, setCnpjFornecedor] = useState('')
     const [numeroNota, setNumeroNota] = useState('')
-    const [showTextoExtraido, setShowTextoExtraido] = useState(false)
+    const [dataEmissaoNota, setDataEmissaoNota] = useState('')
+    const [valorTotalNota, setValorTotalNota] = useState<number>(0)
     const [fornecedorStatus, setFornecedorStatus] = useState<'novo' | 'existente' | null>(null)
     const [fornecedorId, setFornecedorId] = useState<number | null>(null)
 
@@ -135,13 +137,15 @@ const ImportarNota = () => {
     /* ─── Helper: process completed task data ─── */
     const handleTaskCompleted = useCallback((data: OCRTaskStatus) => {
         if (!data.result) return
-        setTextoExtraido(data.result.texto)
 
         if (data.result.nota_fiscal) {
             const nf = data.result.nota_fiscal
             setFornecedorGlobal(nf.fornecedor || '')
+            setNomeFantasiaFornecedor(nf.nome_fantasia_fornecedor || '')
             setCnpjFornecedor(nf.cnpj_fornecedor || '')
             setNumeroNota(nf.numero_nota || '')
+            setDataEmissaoNota(nf.data_emissao || '')
+            setValorTotalNota(nf.valor_total || 0)
             setFornecedorStatus(nf.fornecedor_status || null)
             setFornecedorId(nf.fornecedor_id || null)
 
@@ -373,13 +377,14 @@ const ImportarNota = () => {
         setFileKind('unknown')
         setTaskId(null)
         setTaskStatus(null)
-        setTextoExtraido(null)
         setErrorMsg(null)
         setItens([])
         setFornecedorGlobal('')
+        setNomeFantasiaFornecedor('')
         setCnpjFornecedor('')
         setNumeroNota('')
-        setShowTextoExtraido(false)
+        setDataEmissaoNota('')
+        setValorTotalNota(0)
         setFornecedorStatus(null)
         setFornecedorId(null)
         setStep('upload')
@@ -587,7 +592,7 @@ const ImportarNota = () => {
                                 </span>
                             )}
                         </div>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div>
                                 <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
                                     Fornecedor
@@ -598,6 +603,18 @@ const ImportarNota = () => {
                                     onChange={(e) => setFornecedorGlobal(e.target.value)}
                                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Nome do fornecedor"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    Nome Fantasia
+                                </label>
+                                <input
+                                    type="text"
+                                    value={nomeFantasiaFornecedor}
+                                    onChange={(e) => setNomeFantasiaFornecedor(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Nome fantasia (se houver)"
                                 />
                             </div>
                             <div>
@@ -624,26 +641,30 @@ const ImportarNota = () => {
                                     placeholder="Número da nota"
                                 />
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Raw text toggle */}
-                    <div className="rounded-lg bg-white shadow dark:bg-gray-800">
-                        <button
-                            type="button"
-                            onClick={() => setShowTextoExtraido((prev) => !prev)}
-                            className="flex w-full items-center justify-between px-5 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-200"
-                        >
-                            <span>📄 Texto bruto extraído pelo OCR</span>
-                            <span className="text-gray-400">{showTextoExtraido ? '▲' : '▼'}</span>
-                        </button>
-                        {showTextoExtraido && (
-                            <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-4">
-                                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 dark:bg-gray-900 p-4 text-xs text-gray-600 dark:text-gray-300 font-mono">
-                                    {textoExtraido || '(sem texto)'}
-                                </pre>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    Data de Emissão
+                                </label>
+                                <input
+                                    type="text"
+                                    value={dataEmissaoNota}
+                                    onChange={(e) => setDataEmissaoNota(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="YYYY-MM-DD"
+                                />
                             </div>
-                        )}
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    Valor Total da Nota
+                                </label>
+                                <input
+                                    type="text"
+                                    value={moneyFormatter.format(valorTotalNota || 0)}
+                                    readOnly
+                                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/70 px-3 py-2 text-sm font-medium text-gray-800 dark:text-gray-100"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Summary cards */}
