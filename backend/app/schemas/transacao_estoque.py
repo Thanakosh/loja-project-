@@ -7,7 +7,7 @@ from ..models.transacao_estoque import TipoTransacao
 class TransacaoEstoqueBase(BaseModel):
     produto_id: int
     tipo: TipoTransacao
-    quantidade: int
+    quantidade: float
     motivo: Optional[str] = None
 
 
@@ -27,7 +27,7 @@ class EstoqueAtual(BaseModel):
     """Schema para retornar o estoque atual de um produto"""
     produto_id: int
     nome_produto: str
-    quantidade_atual: int
+    quantidade_atual: float
     estoque_minimo: int
     estoque_baixo: bool
     ultima_movimentacao: Optional[datetime] = None

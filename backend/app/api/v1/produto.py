@@ -47,6 +47,9 @@ def criar_produto(
     # Extrair quantidade_inicial do schema antes de criar o modelo Produto
     produto_dict = produto.model_dump()
     quantidade_inicial = produto_dict.pop("quantidade_inicial", 0)
+    produto_dict["unidade_medida"] = (produto_dict.get("unidade_medida") or "UN").upper()
+    if not produto_dict.get("unidade"):
+        produto_dict["unidade"] = produto_dict["unidade_medida"]
     
     categoria_id = produto_dict.get("categoria_id")
     if categoria_id is not None:
@@ -190,6 +193,9 @@ def atualizar_produto(
     
     produto_dict = produto.model_dump()
     produto_dict.pop("quantidade_inicial", None) # Não atualizamos estoque por aqui
+    produto_dict["unidade_medida"] = (produto_dict.get("unidade_medida") or "UN").upper()
+    if not produto_dict.get("unidade"):
+        produto_dict["unidade"] = produto_dict["unidade_medida"]
     
     categoria_id = produto_dict.get("categoria_id")
     if categoria_id is not None:

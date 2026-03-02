@@ -11,6 +11,7 @@ class TestPDV:
             "preco_unitario": 25.0,
             "preco_liquido": 20.0,
             "unidade": "UN",
+            "unidade_medida": "UN",
             "estoque_minimo": 1,
         }
         resp = client.post("/api/v1/produtos/", json=payload, headers=auth_headers)
@@ -46,6 +47,53 @@ class TestPDV:
         resp = client.get(f"/api/v2/estoque/produto/{produto_id}", headers=auth_headers)
         assert resp.status_code == 200
         return resp.json()["quantidade_atual"]
+
+    def test_venda_fracionada_para_unidade_permitida(self, client: TestClient, auth_headers: dict):
+        produto_id = self._criar_produto(client, auth_headers, nome="Cabo Flexível")
+        update_resp = client.put(
+            f"/api/v1/produtos/{produto_id}",
+            json={
+                "nome": "Cabo Flexível",
+                "fornecedor": "Fornecedor PDV",
+                "preco_unitario": 25.0,
+                "preco_liquido": 20.0,
+                "unidade": "MT",
+                "unidade_medida": "MT",
+                "estoque_minimo": 1,
+                "quantidade_inicial": 0,
+            },
+            headers=auth_headers,
+        )
+        assert update_resp.status_code == 200
+
+        entrada_resp = client.post(
+            "/api/v2/estoque/transacao",
+            json={"produto_id": produto_id, "tipo": "entrada", "quantidade": 10.5, "motivo": "Carga inicial"},
+            headers=auth_headers,
+        )
+        assert entrada_resp.status_code == 200
+
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_id, "quantidade": 2.5, "preco_unitario": 25.0, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+
+        estoque_atual = self._obter_estoque(client, auth_headers, produto_id)
+        assert estoque_atual == 8.0
+
+    def test_venda_fracionada_para_unidade_nao_permitida_retorna_400(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_com_estoque, "quantidade": 1.5, "preco_unitario": 10, "desconto": 0}],
+        }
+
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "quantidade_invalida_para_unidade"
 
     def test_venda_dinheiro_cria_venda_item_e_saida(
         self, client: TestClient, auth_headers: dict, produto_com_estoque: int
