@@ -9,6 +9,8 @@ estimated_effort: 30 minutos
 status: pendente
 depends_on: ["TASK-018"]
 recomendacao_ref: "docs/validacao_apresentacao_cliente.md seção 7"
+agent_chat_executable: "nao"
+agent_chat_reason: "Requer validacao manual em VM Windows limpa com checklist e evidencias."
 ---
 
 # TASK-019: Gate obrigatório de instalação limpa

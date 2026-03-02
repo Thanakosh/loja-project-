@@ -113,3 +113,11 @@ def test_gitignore_protects_env_and_local_test_database():
     assert "\n.env.*\n" in content
     assert "\n!.env.example\n" in content
     assert "\ntest.db\n" in content
+
+
+def test_task_019_is_not_chat_executable():
+    task_file = Path(__file__).resolve().parents[2] / "tasks" / "TASK-019_gate-validacao-instalacao-limpa.md"
+    content = task_file.read_text(encoding="utf-8")
+
+    assert 'agent_chat_executable: "nao"' in content
+    assert "validacao manual em VM Windows limpa" in content
