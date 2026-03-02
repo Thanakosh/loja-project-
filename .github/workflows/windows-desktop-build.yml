@@ -1,0 +1,60 @@
+name: windows-desktop-build
+
+on:
+  push:
+    tags:
+      - 'v*-desktop.*'
+  workflow_dispatch:
+
+jobs:
+  build-desktop-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Package desktop app
+        run: npm run make
+
+      - name: Generate SHA256 for installers
+        shell: pwsh
+        run: |
+          New-Item -Path "$env:GITHUB_WORKSPACE/artifacts" -ItemType Directory -Force | Out-Null
+          $installers = Get-ChildItem -Path "out/make" -Filter "*.exe" -Recurse
+          if (-not $installers) {
+            Write-Error "Nenhum instalador .exe encontrado em frontend/out/make"
+          }
+
+          $hashLines = @()
+          foreach ($installer in $installers) {
+            $hash = (Get-FileHash -Path $installer.FullName -Algorithm SHA256).Hash.ToLower()
+            $hashLines += "$hash  $($installer.Name)"
+            Copy-Item -Path $installer.FullName -Destination "$env:GITHUB_WORKSPACE/artifacts/$($installer.Name)" -Force
+          }
+
+          $hashFile = "$env:GITHUB_WORKSPACE/artifacts/SHA256SUMS.txt"
+          $hashLines | Out-File -FilePath $hashFile -Encoding utf8
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-installers
+          path: artifacts/*
+          if-no-files-found: error
