@@ -56,7 +56,7 @@ def _build_file_hash(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
 
-def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str):
+def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str, nome_fantasia: str | None = None):
     """
     Verifica se o fornecedor já existe pelo CNPJ.
     Se não existir, cadastra automaticamente.
@@ -78,9 +78,19 @@ def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str):
         try:
             existente = db.query(Fornecedor).filter(Fornecedor.cnpj == cnpj_fmt).first()
             if existente:
+                houve_atualizacao = False
+                if razao_social and existente.razao_social != razao_social[:120]:
+                    existente.razao_social = razao_social[:120]
+                    houve_atualizacao = True
+                if nome_fantasia and existente.nome_fantasia != nome_fantasia[:80]:
+                    existente.nome_fantasia = nome_fantasia[:80]
+                    houve_atualizacao = True
+                if houve_atualizacao:
+                    db.commit()
                 return "existente", existente.id
             novo = Fornecedor(
                 razao_social=razao_social[:120],
+                nome_fantasia=nome_fantasia[:80] if nome_fantasia else None,
                 cnpj=cnpj_fmt,
                 ativo=True,
             )
@@ -210,7 +220,7 @@ async def upload_arquivo_nota_fiscal(
         fornecedor_status, fornecedor_id = None, None
         if nota.fornecedor and nota.cnpj_fornecedor:
             fornecedor_status, fornecedor_id = _auto_cadastrar_fornecedor(
-                nota.fornecedor, nota.cnpj_fornecedor
+                nota.fornecedor, nota.cnpj_fornecedor, nota.nome_fantasia_fornecedor
             )
 
         ocr_tasks[task_id] = {
@@ -224,6 +234,7 @@ async def upload_arquivo_nota_fiscal(
                 "texto": f"[XML NFe] Nota {nota.numero_nota or 'S/N'} — {nota.fornecedor}",
                 "nota_fiscal": {
                     "fornecedor": nota.fornecedor,
+                    "nome_fantasia_fornecedor": nota.nome_fantasia_fornecedor,
                     "cnpj_fornecedor": nota.cnpj_fornecedor,
                     "numero_nota": nota.numero_nota,
                     "data_emissao": nota.data_emissao,

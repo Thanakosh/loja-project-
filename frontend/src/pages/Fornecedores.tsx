@@ -5,19 +5,19 @@ import api from '../services/api'
 
 interface Fornecedor {
   id: number
-  nome: string
+  razao_social: string
+  nome_fantasia?: string | null
   cnpj: string
   email?: string | null
   telefone?: string | null
-  contato?: string | null
 }
 
 interface FornecedorPayload {
-  nome: string
+  razao_social: string
+  nome_fantasia?: string
   cnpj: string
   email?: string
   telefone?: string
-  contato?: string
 }
 
 const PAGE_SIZE = 20
@@ -36,13 +36,13 @@ const formatCnpj = (value: string) => {
 
 const normalizePayload = (formData: FormState): FornecedorPayload => {
   const payload: FornecedorPayload = {
-    nome: formData.nome.trim(),
+    razao_social: formData.nome.trim(),
     cnpj: removeNonDigits(formData.cnpj)
   }
 
   const email = formData.email.trim()
   const telefone = formData.telefone.trim()
-  const contato = formData.contato.trim()
+  const nomeFantasia = formData.contato.trim()
 
   if (email) {
     payload.email = email
@@ -52,8 +52,8 @@ const normalizePayload = (formData: FormState): FornecedorPayload => {
     payload.telefone = telefone
   }
 
-  if (contato) {
-    payload.contato = contato
+  if (nomeFantasia) {
+    payload.nome_fantasia = nomeFantasia
   }
 
   return payload
@@ -157,11 +157,11 @@ const Fornecedores = () => {
     setModalMode('edit')
     setEditingFornecedor(fornecedor)
     setFormState({
-      nome: fornecedor.nome ?? '',
+      nome: fornecedor.razao_social ?? fornecedor.nome_fantasia ?? '',
       cnpj: formatCnpj(fornecedor.cnpj ?? ''),
       email: fornecedor.email ?? '',
       telefone: fornecedor.telefone ?? '',
-      contato: fornecedor.contato ?? ''
+      contato: fornecedor.nome_fantasia ?? ''
     })
     setFormError('')
     setIsModalOpen(true)
@@ -260,9 +260,9 @@ const Fornecedores = () => {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Razão Social</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CNPJ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Contato</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome Fantasia</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
             </tr>
           </thead>
@@ -283,10 +283,10 @@ const Fornecedores = () => {
             ) : (
               fornecedores.map((fornecedor) => (
                 <tr key={fornecedor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{fornecedor.nome}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{fornecedor.razao_social || fornecedor.nome_fantasia || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCnpj(fornecedor.cnpj || '')}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    {fornecedor.contato || fornecedor.telefone || fornecedor.email || '-'}
+                    {fornecedor.nome_fantasia || '-'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     <button
@@ -347,13 +347,13 @@ const Fornecedores = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Nome *</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Razão Social *</label>
                 <input
                   type="text"
                   value={formState.nome}
                   onChange={(event) => handleInputChange('nome', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Razão social ou nome fantasia"
+                  placeholder="Razão social"
                   required
                 />
               </div>
@@ -385,13 +385,13 @@ const Fornecedores = () => {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Contato</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Fantasia</label>
                   <input
                     type="text"
                     value={formState.contato}
                     onChange={(event) => handleInputChange('contato', event.target.value)}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nome do contato"
+                    placeholder="Nome fantasia"
                   />
                 </div>
               </div>

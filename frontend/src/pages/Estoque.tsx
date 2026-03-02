@@ -87,6 +87,18 @@ const Estoque = () => {
     e.preventDefault(); setPage(1); setSearchTerm(searchInput.trim())
   }
 
+  useEffect(() => {
+    const normalizedSearch = searchInput.trim()
+    const timeoutId = setTimeout(() => {
+      if (normalizedSearch !== searchTerm) {
+        setPage(1)
+        setSearchTerm(normalizedSearch)
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput, searchTerm])
+
   const handleOpenKardex = (produto: Produto) => {
     setSelectedProduto(produto); fetchKardex(produto.id)
   }

@@ -1,10 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import api from '../services/api'
 
 type StatusOrcamento = 'aberto' | 'aprovado' | 'cancelado' | 'convertido'
+
+interface ClienteSugestao {
+  id: number
+  nome: string
+  cpf_cnpj?: string | null
+}
+
+interface ProdutoSugestao {
+  id: number
+  nome: string
+  preco_unitario: number
+  preco_liquido: number
+  unidade_medida?: string | null
+}
 
 // Enum espelhando backend/app/core/enums.py FormaPagamento (int)
 const FormaPagamento = {
@@ -56,19 +71,21 @@ interface OrcamentoListResponse {
   pages: number
 }
 
-interface ItemFormState {
-  descricao: string
-  quantidade: string
-  preco_unitario: string
-  desconto: string
-}
-
 interface OrcamentoFormState {
+  cliente_id: number | null
   cliente_nome: string
   desconto_geral: string
   data_validade: string
   observacao: string
   itens: ItemFormState[]
+}
+
+interface ItemFormState {
+  produto_id: number | null
+  descricao: string
+  quantidade: string
+  preco_unitario: string
+  desconto: string
 }
 
 const PAGE_SIZE = 20
@@ -93,6 +110,7 @@ const moneyFormatter = new Intl.NumberFormat('pt-BR', {
 })
 
 const createEmptyItem = (): ItemFormState => ({
+  produto_id: null,
   descricao: '',
   quantidade: '1',
   preco_unitario: '',
@@ -100,6 +118,7 @@ const createEmptyItem = (): ItemFormState => ({
 })
 
 const createInitialForm = (): OrcamentoFormState => ({
+  cliente_id: null,
   cliente_nome: '',
   desconto_geral: '0',
   data_validade: '',
@@ -114,6 +133,27 @@ const Orcamentos = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [formState, setFormState] = useState<OrcamentoFormState>(createInitialForm)
   const [formError, setFormError] = useState('')
+
+  // --- Autocomplete cliente ---
+  const [clienteSearch, setClienteSearch] = useState('')
+  const [showClienteSugestoes, setShowClienteSugestoes] = useState(false)
+  const clienteRef = useRef<HTMLDivElement>(null)
+
+  const clientesQuery = useQuery({
+    queryKey: ['clientes-sugestao', clienteSearch],
+    queryFn: async () => {
+      const resp = await api.get('/clientes/', { params: { search: clienteSearch, limit: 8 } })
+      return resp.data as ClienteSugestao[]
+    },
+    enabled: isCreateModalOpen && clienteSearch.length >= 1,
+  })
+
+  // --- Autocomplete produto: search por item ---
+  const [produtoSearches, setProdutoSearches] = useState<string[]>([''])
+  const [showProdutoSugestoes, setShowProdutoSugestoes] = useState<boolean[]>([false])
+  const [activeProdutoIndex, setActiveProdutoIndex] = useState<number | null>(null)
+  const [produtoResults, setProdutoResults] = useState<ProdutoSugestao[]>([])
+  const produtoSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const orcamentosQuery = useQuery({
     queryKey: ['orcamentos', statusFilter, page],
@@ -155,7 +195,31 @@ const Orcamentos = () => {
     }
   })
 
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null)
+
+  const handleExportarPdf = async (orcamento: Orcamento) => {
+    setDownloadingPdfId(orcamento.id)
+    try {
+      const response = await api.get(`/orcamentos/${orcamento.id}/pdf`, {
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `orcamento-${String(orcamento.id).padStart(5, '0')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Erro ao gerar PDF. Tente novamente.')
+    } finally {
+      setDownloadingPdfId(null)
+    }
+  }
+
   const [convertModal, setConvertModal] = useState<{ orcamentoId: number } | null>(null)
+  const [convertError, setConvertError] = useState('')
   const [convertForm, setConvertForm] = useState<{ forma_pagamento: FormaPagamentoValue; parcelas: number }>({
     forma_pagamento: FormaPagamento.PIX,
     parcelas: 1
@@ -168,12 +232,51 @@ const Orcamentos = () => {
         parcelas
       })
     },
-    onError: () => {
-      alert('Erro ao converter orçamento. Verifique se os itens possuem produto vinculado e estoque disponível.')
+    onError: (error) => {
+      let message = 'Não foi possível converter o orçamento. Tente novamente.'
+
+      if (isAxiosError(error)) {
+        const apiData = error.response?.data as {
+          message?: unknown
+          detail?: unknown
+          details?: {
+            produto_nome?: string
+            disponivel?: number
+            solicitado?: number
+          }
+        } | undefined
+
+        const detail = apiData?.message ?? apiData?.detail
+
+        if (typeof detail === 'string') {
+          if (apiData?.details?.produto_nome) {
+            const disponivel = apiData.details.disponivel ?? 0
+            const solicitado = apiData.details.solicitado ?? 0
+            message = `${detail}: ${apiData.details.produto_nome} (disponível: ${disponivel}, solicitado: ${solicitado}).`
+          } else {
+            message = detail
+          }
+        } else if (Array.isArray(detail)) {
+          const parsedDetail = detail
+            .map((item) => {
+              if (typeof item === 'string') {
+                return item
+              }
+              return (item as { msg?: string })?.msg
+            })
+            .filter(Boolean)
+            .join(' | ')
+
+          message = parsedDetail || 'Não foi possível converter o orçamento.'
+        }
+      }
+
+      setConvertError(message)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
       setConvertModal(null)
+      setConvertError('')
     }
   })
 
@@ -192,9 +295,30 @@ const Orcamentos = () => {
     return Math.max(0, subtotal - descontoGeral)
   }, [formState])
 
+  const buscarProdutos = (search: string, index: number) => {
+    if (produtoSearchTimeout.current) clearTimeout(produtoSearchTimeout.current)
+    if (!search.trim()) { setProdutoResults([]); return }
+    produtoSearchTimeout.current = setTimeout(async () => {
+      try {
+        const resp = await api.get('/produtos/', { params: { search: search.trim(), page_size: 8 } })
+        // Só atualiza se o índice ainda for o ativo
+        setActiveProdutoIndex((current) => {
+          if (current === index) setProdutoResults(resp.data.items ?? [])
+          return current
+        })
+      } catch { /* silencioso */ }
+    }, 250)
+  }
+
   const handleOpenModal = () => {
     setFormState(createInitialForm())
     setFormError('')
+    setClienteSearch('')
+    setShowClienteSugestoes(false)
+    setProdutoSearches([''])
+    setShowProdutoSugestoes([false])
+    setProdutoResults([])
+    setActiveProdutoIndex(null)
     setIsCreateModalOpen(true)
   }
 
@@ -213,11 +337,13 @@ const Orcamentos = () => {
     }
 
     const payload = {
+      cliente_id: formState.cliente_id || null,
       cliente_nome: formState.cliente_nome.trim(),
       desconto_geral: Number(formState.desconto_geral) || 0,
       observacao: formState.observacao.trim() || null,
       data_validade: formState.data_validade || null,
       itens: formState.itens.map((item) => ({
+        produto_id: item.produto_id || null,
         descricao: item.descricao.trim(),
         quantidade: Number(item.quantidade) || 0,
         preco_unitario: Number(item.preco_unitario) || 0,
@@ -243,17 +369,36 @@ const Orcamentos = () => {
   }
 
   const addItem = () => {
-    setFormState((previous) => ({
-      ...previous,
-      itens: [...previous.itens, createEmptyItem()]
-    }))
+    setFormState((previous) => ({ ...previous, itens: [...previous.itens, createEmptyItem()] }))
+    setProdutoSearches((prev) => [...prev, ''])
+    setShowProdutoSugestoes((prev) => [...prev, false])
   }
 
   const removeItem = (index: number) => {
-    setFormState((previous) => ({
-      ...previous,
-      itens: previous.itens.length === 1 ? previous.itens : previous.itens.filter((_, i) => i !== index)
+    if (formState.itens.length === 1) return
+    setFormState((previous) => ({ ...previous, itens: previous.itens.filter((_, i) => i !== index) }))
+    setProdutoSearches((prev) => prev.filter((_, i) => i !== index))
+    setShowProdutoSugestoes((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const selecionarCliente = (cliente: ClienteSugestao) => {
+    setFormState((prev) => ({ ...prev, cliente_id: cliente.id, cliente_nome: cliente.nome }))
+    setClienteSearch(cliente.nome)
+    setShowClienteSugestoes(false)
+  }
+
+  const selecionarProduto = (index: number, produto: ProdutoSugestao) => {
+    setFormState((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item, i) =>
+        i === index
+          ? { ...item, produto_id: produto.id, descricao: produto.nome, preco_unitario: String(produto.preco_unitario) }
+          : item
+      )
     }))
+    setProdutoSearches((prev) => prev.map((s, i) => i === index ? produto.nome : s))
+    setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? false : _))
+    setActiveProdutoIndex(null)
   }
 
   return (
@@ -345,12 +490,22 @@ const Orcamentos = () => {
                       <button
                         onClick={() => {
                           setConvertForm({ forma_pagamento: FormaPagamento.PIX, parcelas: 1 })
+                          setConvertError('')
                           setConvertModal({ orcamentoId: orcamento.id })
                         }}
                         disabled={(orcamento.status !== 'aberto' && orcamento.status !== 'aprovado') || convertMutation.isPending}
                         className="rounded border border-purple-200 dark:border-purple-700 px-2 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 transition hover:bg-purple-50 dark:hover:bg-purple-900/40 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Converter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExportarPdf(orcamento)}
+                        disabled={downloadingPdfId === orcamento.id}
+                        className="rounded border border-emerald-200 dark:border-emerald-700 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-50 dark:hover:bg-emerald-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Exportar PDF"
+                      >
+                        {downloadingPdfId === orcamento.id ? '...' : 'PDF'}
                       </button>
                     </div>
                   </td>
@@ -414,9 +569,17 @@ const Orcamentos = () => {
                   />
                 </label>
               )}
+              {convertError && (
+                <div className="rounded-md border border-rose-300/60 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                  {convertError}
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
-                  onClick={() => setConvertModal(null)}
+                  onClick={() => {
+                    setConvertModal(null)
+                    setConvertError('')
+                  }}
                   className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancelar
@@ -449,20 +612,41 @@ const Orcamentos = () => {
 
             <form onSubmit={handleCreateSubmit} className="space-y-5 px-6 py-5">
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm">
+                <div className="space-y-1 text-sm" ref={clienteRef}>
                   <span className="font-medium text-gray-700 dark:text-gray-300">Cliente</span>
-                  <input
-                    value={formState.cliente_nome}
-                    onChange={(event) =>
-                      setFormState((previous) => ({
-                        ...previous,
-                        cliente_nome: event.target.value
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nome do cliente"
-                  />
-                </label>
+                  <div className="relative">
+                    <input
+                      value={clienteSearch}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setClienteSearch(v)
+                        setFormState((prev) => ({ ...prev, cliente_id: null, cliente_nome: v }))
+                        setShowClienteSugestoes(true)
+                      }}
+                      onFocus={() => { if (clienteSearch) setShowClienteSugestoes(true) }}
+                      onBlur={() => setTimeout(() => setShowClienteSugestoes(false), 150)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Digite para buscar cliente..."
+                    />
+                    {showClienteSugestoes && clientesQuery.data && clientesQuery.data.length > 0 && (
+                      <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {clientesQuery.data.map((c) => (
+                          <li
+                            key={c.id}
+                            onMouseDown={() => selecionarCliente(c)}
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-800 dark:text-gray-100"
+                          >
+                            <span className="font-medium">{c.nome}</span>
+                            {c.cpf_cnpj && <span className="ml-2 text-xs text-gray-400">{c.cpf_cnpj}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {formState.cliente_id && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ Cliente vinculado (ID {formState.cliente_id})</p>
+                  )}
+                </div>
 
                 <label className="space-y-1 text-sm">
                   <span className="font-medium text-gray-700 dark:text-gray-300">Validade</span>
@@ -526,48 +710,105 @@ const Orcamentos = () => {
                 </div>
 
                 {formState.itens.map((item, index) => (
-                  <div key={`item-${index}`} className="grid gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3 md:grid-cols-12">
-                    <input
-                      value={item.descricao}
-                      onChange={(event) => updateItem(index, 'descricao', event.target.value)}
-                      placeholder="Descrição"
-                      className="md:col-span-5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.quantidade}
-                      onChange={(event) => updateItem(index, 'quantidade', event.target.value)}
-                      placeholder="Qtd"
-                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.preco_unitario}
-                      onChange={(event) => updateItem(index, 'preco_unitario', event.target.value)}
-                      placeholder="Preço"
-                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={item.desconto}
-                      onChange={(event) => updateItem(index, 'desconto', event.target.value)}
-                      placeholder="Desc.%"
-                      className="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="md:col-span-1 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-2 text-sm text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      −
-                    </button>
+                  <div key={`item-${index}`} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                    {/* Linha 1: busca de produto + botão remover */}
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          value={produtoSearches[index] ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setProdutoSearches((prev) => prev.map((s, i) => i === index ? v : s))
+                            updateItem(index, 'descricao', v)
+                            setFormState((prev) => ({
+                              ...prev,
+                              itens: prev.itens.map((it, i) => i === index ? { ...it, produto_id: null } : it)
+                            }))
+                            setActiveProdutoIndex(index)
+                            setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? true : _))
+                            buscarProdutos(v, index)
+                          }}
+                          onFocus={() => {
+                            setActiveProdutoIndex(index)
+                            if ((produtoSearches[index]?.length ?? 0) >= 1) {
+                              setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? true : _))
+                              buscarProdutos(produtoSearches[index] ?? '', index)
+                            }
+                          }}
+                          onBlur={() => setTimeout(() => {
+                            setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? false : _))
+                          }, 150)}
+                          placeholder="Buscar produto ou digitar descrição..."
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {showProdutoSugestoes[index] && activeProdutoIndex === index && produtoResults.length > 0 && (
+                          <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            {produtoResults.map((p) => (
+                              <li
+                                key={p.id}
+                                onMouseDown={() => selecionarProduto(index, p)}
+                                className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-800 dark:text-gray-100"
+                              >
+                                <span className="font-medium">{p.nome}</span>
+                                <span className="ml-2 text-xs text-gray-400">{moneyFormatter.format(p.preco_unitario)}</span>
+                                {p.unidade_medida && <span className="ml-1 text-xs text-gray-400">/ {p.unidade_medida}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        disabled={formState.itens.length === 1}
+                        className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                      >
+                        −
+                      </button>
+                    </div>
+                    {item.produto_id && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ Produto vinculado</p>
+                    )}
+                    {/* Linha 2: qtd, preço, desconto */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span>Quantidade</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.quantidade}
+                          onChange={(event) => updateItem(index, 'quantidade', event.target.value)}
+                          placeholder="Qtd"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span>Preço Unitário (R$)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.preco_unitario}
+                          onChange={(event) => updateItem(index, 'preco_unitario', event.target.value)}
+                          placeholder="Preço unitário"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span>Desconto (%)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={item.desconto}
+                          onChange={(event) => updateItem(index, 'desconto', event.target.value)}
+                          placeholder="Desc.%"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
                   </div>
                 ))}
               </section>
