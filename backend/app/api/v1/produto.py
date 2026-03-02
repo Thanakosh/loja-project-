@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, File
 from sqlalchemy.orm import Session
 from ...core.config import settings
 from ...core.database import get_db
@@ -6,6 +6,7 @@ from ...core.exceptions import ProdutoJaAtivoError, ProdutoJaDesativadoError, Pr
 from ...core.limiter import limiter
 from ...core.pagination import paginate
 from ...core.security import get_current_active_user
+from ...models.categoria import Categoria
 from ...models.produto import Produto
 from ...models.user import User
 from ...models.transacao_estoque import TransacaoEstoque, TipoTransacao
@@ -15,6 +16,23 @@ from ...schemas.produto_ncm import LoteNCMUpdate
 from sqlalchemy import or_
 
 router = APIRouter(tags=["Produto"])
+
+
+def _collect_descendant_ids(db: Session, categoria_id: int) -> set[int]:
+    categorias = db.query(Categoria.id, Categoria.parent_id).all()
+    children_map: dict[int | None, list[int]] = {}
+    for item_id, parent_id in categorias:
+        children_map.setdefault(parent_id, []).append(item_id)
+
+    ids = {categoria_id}
+    stack = [categoria_id]
+    while stack:
+        current = stack.pop()
+        for child_id in children_map.get(current, []):
+            if child_id not in ids:
+                ids.add(child_id)
+                stack.append(child_id)
+    return ids
 
 @router.post("/", response_model=ProdutoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
@@ -30,6 +48,12 @@ def criar_produto(
     produto_dict = produto.model_dump()
     quantidade_inicial = produto_dict.pop("quantidade_inicial", 0)
     
+    categoria_id = produto_dict.get("categoria_id")
+    if categoria_id is not None:
+        categoria = db.query(Categoria).filter(Categoria.id == categoria_id, Categoria.ativo.is_(True)).first()
+        if not categoria:
+            raise HTTPException(status_code=404, detail="Categoria não encontrada")
+
     db_produto = Produto(**produto_dict)
     db.add(db_produto)
     db.commit()
@@ -59,6 +83,7 @@ def listar_produtos(
     page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     incluir_inativos: bool = False,
     search: str = Query(None, description="Buscar por nome do produto"),
+    categoria_id: int | None = Query(None, description="Filtrar por categoria e subcategorias"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -68,6 +93,12 @@ def listar_produtos(
         query = query.filter(Produto.ativo.is_(True))
     if search:
         query = query.filter(Produto.nome.ilike(f"%{search}%"))
+    if categoria_id is not None:
+        categoria = db.query(Categoria).filter(Categoria.id == categoria_id, Categoria.ativo.is_(True)).first()
+        if not categoria:
+            raise HTTPException(status_code=404, detail="Categoria não encontrada")
+        categoria_ids = _collect_descendant_ids(db, categoria_id)
+        query = query.filter(Produto.categoria_id.in_(categoria_ids))
     return paginate(query, page=page, page_size=page_size)
 
 @router.get("/sem-ncm", response_model=PaginatedResponse[ProdutoRead])
@@ -78,6 +109,7 @@ def listar_produtos_sem_ncm(
     page: int = Query(1, ge=1, description="Número da página"),
     page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     search: str = Query(None, description="Buscar por nome do produto"),
+    categoria_id: int | None = Query(None, description="Filtrar por categoria e subcategorias"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -93,6 +125,12 @@ def listar_produtos_sem_ncm(
     )
     if search:
         query = query.filter(Produto.nome.ilike(f"%{search}%"))
+    if categoria_id is not None:
+        categoria = db.query(Categoria).filter(Categoria.id == categoria_id, Categoria.ativo.is_(True)).first()
+        if not categoria:
+            raise HTTPException(status_code=404, detail="Categoria não encontrada")
+        categoria_ids = _collect_descendant_ids(db, categoria_id)
+        query = query.filter(Produto.categoria_id.in_(categoria_ids))
     return paginate(query, page=page, page_size=page_size)
 
 @router.get("/{produto_id}", response_model=ProdutoRead)
@@ -153,6 +191,12 @@ def atualizar_produto(
     produto_dict = produto.model_dump()
     produto_dict.pop("quantidade_inicial", None) # Não atualizamos estoque por aqui
     
+    categoria_id = produto_dict.get("categoria_id")
+    if categoria_id is not None:
+        categoria = db.query(Categoria).filter(Categoria.id == categoria_id, Categoria.ativo.is_(True)).first()
+        if not categoria:
+            raise HTTPException(status_code=404, detail="Categoria não encontrada")
+
     for key, value in produto_dict.items():
         setattr(db_produto, key, value)
     db.commit()

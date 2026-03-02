@@ -13,6 +13,7 @@ from app.api.v1.ocr import router as ocr_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.api.v1.produto import router as produto_router
 from app.api.v1.users import router as users_router
+from app.api.v1.categorias import router as categorias_router
 from app.api.v1.clientes import router as clientes_router
 from app.api.v1.vendas import router as vendas_router
 from app.api.v1.pdv import router as pdv_router
@@ -116,6 +117,7 @@ app.include_router(ocr_router, prefix="/api/v1/ocr", tags=["OCR"])
 app.include_router(llm_router, prefix="/api/v1/llm", tags=["LLM"])
 app.include_router(orcamento_router, prefix="/api/v1/orcamentos", tags=["Orcamentos"])
 app.include_router(clientes_router, prefix="/api/v1/clientes", tags=["Clientes (Histórico)"])
+app.include_router(categorias_router, prefix="/api/v1/categorias", tags=["Categorias"])
 app.include_router(vendas_router, prefix="/api/v1/vendas", tags=["Vendas (Histórico)"])
 app.include_router(pdv_router, prefix="/api/v1/pdv", tags=["PDV"])
 app.include_router(movimentacao_router, prefix="/api/v1/movimentacao", tags=["Estoque - Movimentação"])

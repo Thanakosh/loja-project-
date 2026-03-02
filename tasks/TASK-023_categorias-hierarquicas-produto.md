@@ -1,7 +1,7 @@
 ---
 task_id: TASK-023
 title: "Categorias hierárquicas de produtos"
-status: pendente
+status: concluido
 priority: media
 agent_chat_executable: "sim"
 depends_on: []
