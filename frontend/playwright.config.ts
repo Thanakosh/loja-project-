@@ -1,34 +1,28 @@
-import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './tests',
-  timeout: 30000,
+  testDir: './e2e',
+  timeout: 30_000,
   retries: 1,
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
-
   use: {
-    // Captura screenshot e vídeo em caso de falha
+    baseURL: 'http://127.0.0.1:5173',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'on-first-retry',
   },
-
+  webServer: {
+    command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+    port: 5173,
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
   projects: [
-    // Testes rodando no Electron (app empacotado)
     {
-      name: 'electron',
+      name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-      },
-    },
-    // Testes rodando no browser (dev server Vite) — mais rápido para desenvolvimento
-    {
-      name: 'browser',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: 'http://localhost:5173',
       },
     },
   ],
-});
+})
