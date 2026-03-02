@@ -1,7 +1,7 @@
 ---
 task_id: TASK-026
 title: "Geração de PDF para orçamentos"
-status: pendente
+status: concluída
 priority: media
 agent_chat_executable: "sim"
 depends_on: []

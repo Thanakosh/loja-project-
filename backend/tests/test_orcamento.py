@@ -175,3 +175,128 @@ class TestOrcamento:
 
         converter_resp = client.post("/api/v1/orcamentos/1/converter", json={"forma_pagamento": 1})
         assert converter_resp.status_code == 401
+
+
+class TestOrcamentoPDF:
+    """Testes para geração de PDF de orçamentos (TASK-026)."""
+
+    def _criar_orcamento(self, client: TestClient, auth_headers: dict, produto_id: int | None = None) -> dict:
+        payload = {
+            "cliente_nome": "Cliente PDF Teste",
+            "desconto_geral": 10.0,
+            "observacao": "Orçamento para teste de PDF",
+            "data_validade": "2026-12-31",
+            "itens": [
+                {
+                    "produto_id": produto_id,
+                    "descricao": "Produto Alpha",
+                    "quantidade": 3,
+                    "preco_unitario": 100.0,
+                    "desconto": 5.0,
+                },
+                {
+                    "produto_id": produto_id,
+                    "descricao": "Produto Beta",
+                    "quantidade": 1.5,
+                    "preco_unitario": 200.0,
+                    "desconto": 0.0,
+                },
+            ],
+        }
+        resp = client.post("/api/v1/orcamentos/", json=payload, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Critérios de aceite da task
+    # ------------------------------------------------------------------
+
+    def test_exportar_pdf_retorna_200_e_content_type_correto(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        """Endpoint deve retornar HTTP 200 com Content-Type application/pdf."""
+        orcamento = self._criar_orcamento(client, auth_headers, produto_com_estoque)
+        resp = client.get(f"/api/v1/orcamentos/{orcamento['id']}/pdf", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/pdf"
+
+    def test_exportar_pdf_retorna_bytes_nao_vazios(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        """O corpo da resposta deve conter bytes de um PDF válido (magic bytes %PDF)."""
+        orcamento = self._criar_orcamento(client, auth_headers, produto_com_estoque)
+        resp = client.get(f"/api/v1/orcamentos/{orcamento['id']}/pdf", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert len(resp.content) > 0
+        assert resp.content[:4] == b"%PDF", "Resposta não começa com magic bytes de PDF"
+
+    def test_exportar_pdf_content_disposition_com_nome_correto(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        """Content-Disposition deve conter o nome do arquivo com ID do orçamento."""
+        orcamento = self._criar_orcamento(client, auth_headers, produto_com_estoque)
+        orcamento_id = orcamento["id"]
+        resp = client.get(f"/api/v1/orcamentos/{orcamento_id}/pdf", headers=auth_headers)
+
+        assert resp.status_code == 200
+        disposition = resp.headers.get("content-disposition", "")
+        assert f"orcamento-{orcamento_id:05d}.pdf" in disposition
+
+    def test_exportar_pdf_orcamento_inexistente_retorna_404(
+        self, client: TestClient, auth_headers: dict
+    ):
+        """Orçamento não existente deve retornar 404."""
+        resp = client.get("/api/v1/orcamentos/999999/pdf", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_exportar_pdf_sem_autenticacao_retorna_401(self, client: TestClient):
+        """Endpoint deve exigir autenticação."""
+        resp = client.get("/api/v1/orcamentos/1/pdf")
+        assert resp.status_code == 401
+
+    def test_exportar_pdf_com_observacao(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        """PDF de orçamento com observação deve ser gerado sem erros."""
+        orcamento = self._criar_orcamento(client, auth_headers, produto_com_estoque)
+        resp = client.get(f"/api/v1/orcamentos/{orcamento['id']}/pdf", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.content[:4] == b"%PDF"
+
+    def test_exportar_pdf_orcamento_sem_desconto(
+        self, client: TestClient, auth_headers: dict
+    ):
+        """PDF deve ser gerado corretamente mesmo sem desconto geral."""
+        payload = {
+            "cliente_nome": "Cliente Sem Desconto",
+            "desconto_geral": 0.0,
+            "itens": [
+                {
+                    "descricao": "Item Único",
+                    "quantidade": 1,
+                    "preco_unitario": 50.0,
+                    "desconto": 0.0,
+                }
+            ],
+        }
+        resp_create = client.post("/api/v1/orcamentos/", json=payload, headers=auth_headers)
+        assert resp_create.status_code == 201
+        orcamento_id = resp_create.json()["id"]
+
+        resp = client.get(f"/api/v1/orcamentos/{orcamento_id}/pdf", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.content[:4] == b"%PDF"
+
+    def test_exportar_pdf_tamanho_minimo_razoavel(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        """PDF deve ter tamanho mínimo razoável (> 1 KB), indicando conteúdo real."""
+        orcamento = self._criar_orcamento(client, auth_headers, produto_com_estoque)
+        resp = client.get(f"/api/v1/orcamentos/{orcamento['id']}/pdf", headers=auth_headers)
+
+        assert resp.status_code == 200
+        assert len(resp.content) > 1_000, (
+            f"PDF muito pequeno ({len(resp.content)} bytes), pode estar vazio ou corrompido"
+        )

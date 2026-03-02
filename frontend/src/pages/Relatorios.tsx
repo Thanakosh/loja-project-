@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import toast from 'react-hot-toast'
 
 import api from '../services/api'
 import { getToken } from '../utils/auth'
@@ -13,6 +14,7 @@ apiV2.interceptors.request.use((config) => {
 })
 
 interface VendaItem {
+  nome_produto?: string | null
   quantidade: number
 }
 
@@ -52,10 +54,26 @@ interface EstoqueAtual {
   ultima_movimentacao: string | null
 }
 
-type Tab = 'vendas' | 'estoque' | 'resumo'
+type Tab = 'vendas' | 'estoque' | 'resumo' | 'itens-mais-vendidos'
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+
+const downloadPdf = async (endpoint: string, filename: string, params?: Record<string, string>) => {
+  const response = await api.get(endpoint, {
+    params,
+    responseType: 'blob'
+  })
+
+  const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
@@ -89,6 +107,7 @@ const AbaVendas = () => {
   const [dataInicio, setDataInicio] = useState(getFirstDayOfMonth())
   const [dataFim, setDataFim] = useState(getTodayDate())
   const [page, setPage] = useState(1)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [filterQuery, setFilterQuery] = useState({ start: getFirstDayOfMonth(), end: getTodayDate() })
 
   const { data, isLoading } = useQuery({
@@ -121,6 +140,21 @@ const AbaVendas = () => {
   const totalPages = data?.pages || 0
   const totalRegistros = data?.total || 0
 
+  const handleExportarPdf = async () => {
+    setDownloadingPdf(true)
+    try {
+      await downloadPdf(
+        '/relatorios/vendas/pdf',
+        `relatorio-vendas-${filterQuery.start}-a-${filterQuery.end}.pdf`,
+        { start_date: filterQuery.start, end_date: filterQuery.end }
+      )
+    } catch {
+      toast.error('Erro ao gerar PDF de vendas. Tente novamente.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -136,6 +170,14 @@ const AbaVendas = () => {
         </div>
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent">
           Gerar
+        </button>
+        <button
+          type="button"
+          onClick={handleExportarPdf}
+          disabled={downloadingPdf}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
         </button>
       </form>
 
@@ -224,6 +266,7 @@ const AbaVendas = () => {
 }
 
 const AbaEstoque = () => {
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['estoque-baixo'],
     queryFn: async () => {
@@ -239,6 +282,26 @@ const AbaEstoque = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={async () => {
+            setDownloadingPdf(true)
+            try {
+              await downloadPdf('/relatorios/estoque-baixo/pdf', 'relatorio-estoque-baixo.pdf')
+            } catch {
+              toast.error('Erro ao gerar PDF de estoque baixo. Tente novamente.')
+            } finally {
+              setDownloadingPdf(false)
+            }
+          }}
+          disabled={downloadingPdf}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+        </button>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow w-full md:w-1/3 border border-gray-200 dark:border-gray-700">
         <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do Mínimo</p>
         <p className="text-3xl font-bold mt-1 text-red-600 dark:text-red-400">{isError ? '-' : (data?.total || 0)}</p>
@@ -292,6 +355,7 @@ const AbaEstoque = () => {
 }
 
 const AbaResumoMes = () => {
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const dataHoje = getTodayDate()
   const dataInicioMes = getFirstDayOfMonth()
 
@@ -359,6 +423,30 @@ const AbaResumoMes = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={async () => {
+            setDownloadingPdf(true)
+            try {
+              await downloadPdf(
+                '/relatorios/resumo-mes/pdf',
+                `relatorio-resumo-${dataInicioMes}-a-${dataHoje}.pdf`,
+                { start_date: dataInicioMes, end_date: dataHoje }
+              )
+            } catch {
+              toast.error('Erro ao gerar PDF do resumo do mês. Tente novamente.')
+            } finally {
+              setDownloadingPdf(false)
+            }
+          }}
+          disabled={downloadingPdf}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Faturamento Bruto', value: formatCurrency(resumo?.total_bruto || 0), color: 'text-gray-900 dark:text-gray-100' },
@@ -406,6 +494,172 @@ const AbaResumoMes = () => {
   )
 }
 
+const AbaItensMaisVendidos = () => {
+  const [dataInicio, setDataInicio] = useState(getFirstDayOfMonth())
+  const [dataFim, setDataFim] = useState(getTodayDate())
+  const [filterQuery, setFilterQuery] = useState({ start: getFirstDayOfMonth(), end: getTodayDate() })
+
+  const { data: vendas = [], isLoading, isError } = useQuery({
+    queryKey: ['itens-mais-vendidos', filterQuery.start, filterQuery.end],
+    queryFn: async () => {
+      const paramsBase = {
+        start_date: filterQuery.start,
+        end_date: filterQuery.end,
+        page_size: 200
+      }
+
+      const firstResponse = await api.get('/vendas/', {
+        params: {
+          ...paramsBase,
+          page: 1
+        }
+      })
+
+      const firstPage = (firstResponse.data || {
+        items: [],
+        total: 0,
+        page: 1,
+        page_size: 200,
+        pages: 0
+      }) as VendasPaginadas
+
+      const allVendas = [...(firstPage.items || [])]
+      const pages = firstPage.pages || 0
+
+      for (let currentPage = 2; currentPage <= pages; currentPage += 1) {
+        const pageResponse = await api.get('/vendas/', {
+          params: {
+            ...paramsBase,
+            page: currentPage
+          }
+        })
+
+        const pageData = pageResponse.data as VendasPaginadas
+        allVendas.push(...(pageData.items || []))
+      }
+
+      return allVendas
+    }
+  })
+
+  const ranking = useMemo(() => {
+    const itensMap = new Map<string, { nome: string; quantidade: number; vendas: number }>()
+
+    vendas
+      .filter((venda) => !venda.cancelada)
+      .forEach((venda) => {
+        const itensMarcadosNaVenda = new Set<string>()
+
+        venda.itens?.forEach((item) => {
+          const nome = (item.nome_produto || 'Produto sem nome').trim() || 'Produto sem nome'
+          const quantidade = Number(item.quantidade) || 0
+
+          if (quantidade <= 0) {
+            return
+          }
+
+          const atual = itensMap.get(nome) || { nome, quantidade: 0, vendas: 0 }
+          atual.quantidade += quantidade
+
+          if (!itensMarcadosNaVenda.has(nome)) {
+            atual.vendas += 1
+            itensMarcadosNaVenda.add(nome)
+          }
+
+          itensMap.set(nome, atual)
+        })
+      })
+
+    return Array.from(itensMap.values()).sort((a, b) => b.quantidade - a.quantidade)
+  }, [vendas])
+
+  const top10 = ranking.slice(0, 10)
+  const totalUnidades = ranking.reduce((acc, item) => acc + item.quantidade, 0)
+
+  const handleGerar = (e: React.FormEvent) => {
+    e.preventDefault()
+    setFilterQuery({ start: dataInicio, end: dataFim })
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
+          <input
+            type="date"
+            value={dataInicio}
+            onChange={(e) => setDataInicio(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Fim</label>
+          <input
+            type="date"
+            value={dataFim}
+            onChange={(e) => setDataFim(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition border border-transparent">
+          Gerar
+        </button>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Itens Distintos Vendidos</p>
+          <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-gray-100">{ranking.length}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Unidades Vendidas</p>
+          <p className="text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{totalUnidades.toLocaleString('pt-BR')}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Top Exibido</p>
+          <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">{Math.min(10, ranking.length)}</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posição</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidades Vendidas</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nº de Vendas</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading ? (
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
+              ) : isError ? (
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar itens mais vendidos.</td></tr>
+              ) : top10.length === 0 ? (
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum item vendido no período.</td></tr>
+              ) : (
+                top10.map((item, index) => (
+                  <tr key={`${item.nome}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">#{index + 1}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{item.nome}</td>
+                    <td className="px-6 py-4 text-sm text-right font-medium text-emerald-600 dark:text-emerald-400">{item.quantidade.toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-sm text-right text-gray-600 dark:text-gray-300">{item.vendas.toLocaleString('pt-BR')}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const Relatorios = () => {
   const [activeTab, setActiveTab] = useState<Tab>('vendas')
 
@@ -444,6 +698,15 @@ const Relatorios = () => {
           >
             Resumo do Mês
           </button>
+          <button
+            onClick={() => setActiveTab('itens-mais-vendidos')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'itens-mais-vendidos'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+          >
+            Itens Mais Vendidos
+          </button>
         </nav>
       </div>
 
@@ -451,6 +714,7 @@ const Relatorios = () => {
         {activeTab === 'vendas' && <AbaVendas />}
         {activeTab === 'estoque' && <AbaEstoque />}
         {activeTab === 'resumo' && <AbaResumoMes />}
+        {activeTab === 'itens-mais-vendidos' && <AbaItensMaisVendidos />}
       </div>
     </div>
   )

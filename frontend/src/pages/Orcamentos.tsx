@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 
 import api from '../services/api'
 
@@ -180,6 +181,7 @@ const Orcamentos = () => {
       setIsCreateModalOpen(false)
       setFormState(createInitialForm())
       setFormError('')
+      toast.success('Orçamento criado com sucesso!')
     },
     onError: () => {
       setFormError('Não foi possível criar o orçamento. Revise os dados e tente novamente.')
@@ -192,6 +194,7 @@ const Orcamentos = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
+      toast.success('Orçamento cancelado com sucesso!')
     }
   })
 
@@ -212,7 +215,7 @@ const Orcamentos = () => {
       link.remove()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Erro ao gerar PDF. Tente novamente.')
+      toast.error('Erro ao gerar PDF. Tente novamente.')
     } finally {
       setDownloadingPdfId(null)
     }
@@ -277,6 +280,7 @@ const Orcamentos = () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
       setConvertModal(null)
       setConvertError('')
+      toast.success('Orçamento convertido em venda com sucesso!')
     }
   })
 
