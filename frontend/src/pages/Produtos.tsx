@@ -19,6 +19,15 @@ interface Produto {
   data_emissao?: string | null
   numero_nota?: string | null
   cnpj_fornecedor?: string | null
+  categoria_id?: number | null
+}
+
+interface CategoriaTreeNode {
+  id: number
+  nome: string
+  parent_id?: number | null
+  ativo: boolean
+  children: CategoriaTreeNode[]
 }
 
 interface ProdutoFormPayload {
@@ -31,6 +40,7 @@ interface ProdutoFormPayload {
   unidade?: string
   codigo_ncm?: string
   descricao?: string
+  categoria_id?: number
 }
 
 interface ProdutoListResponse {
@@ -50,6 +60,7 @@ interface FormState {
   unidade: string
   codigo_ncm: string
   descricao: string
+  categoria_id: string
 }
 
 interface FormErrors {
@@ -77,7 +88,8 @@ const emptyFormState: FormState = {
   quantidade_inicial: '0',
   unidade: '',
   codigo_ncm: '',
-  descricao: ''
+  descricao: '',
+  categoria_id: ''
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -88,6 +100,7 @@ const Produtos = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(1)
   const [incluirInativos, setIncluirInativos] = useState(false)
+  const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<ModalMode>('create')
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null)
@@ -96,14 +109,28 @@ const Produtos = () => {
   const [formError, setFormError] = useState('')
 
   const produtosQuery = useQuery({
-    queryKey: ['produtos', page, searchTerm, incluirInativos],
+    queryKey: ['produtos', page, searchTerm, incluirInativos, categoriaFiltro],
     queryFn: async () => {
       const response = await api.get('/produtos/', {
-        params: { page, page_size: PAGE_SIZE, incluir_inativos: incluirInativos, search: searchTerm || undefined }
+        params: {
+          page,
+          page_size: PAGE_SIZE,
+          incluir_inativos: incluirInativos,
+          search: searchTerm || undefined,
+          categoria_id: categoriaFiltro ? Number(categoriaFiltro) : undefined
+        }
       })
       return response.data as ProdutoListResponse
     },
     placeholderData: (previousData) => previousData
+  })
+
+  const categoriasQuery = useQuery({
+    queryKey: ['categorias-arvore'],
+    queryFn: async () => {
+      const response = await api.get('/categorias/arvore')
+      return response.data as CategoriaTreeNode[]
+    }
   })
 
   const produtos = produtosQuery.data?.items ?? []
@@ -150,7 +177,8 @@ const Produtos = () => {
       nome: produto.nome ?? '', fornecedor: produto.fornecedor ?? '',
       preco_unitario: String(produto.preco_unitario ?? ''), preco_liquido: String(produto.preco_liquido ?? ''),
       estoque_minimo: String(produto.estoque_minimo ?? 0), quantidade_inicial: '0',
-      unidade: produto.unidade ?? '', codigo_ncm: produto.codigo_ncm ?? '', descricao: produto.descricao ?? ''
+      unidade: produto.unidade ?? '', codigo_ncm: produto.codigo_ncm ?? '', descricao: produto.descricao ?? '',
+      categoria_id: produto.categoria_id ? String(produto.categoria_id) : ''
     })
     setFormErrors({}); setFormError(''); setIsModalOpen(true)
   }
@@ -196,8 +224,18 @@ const Produtos = () => {
     if (unidade) payload.unidade = unidade
     if (codigoNcm) payload.codigo_ncm = codigoNcm
     if (descricao) payload.descricao = descricao
+    if (formState.categoria_id) payload.categoria_id = Number(formState.categoria_id)
     return payload
   }
+
+  const flattenCategorias = (nodes: CategoriaTreeNode[], level = 0): Array<{ id: number; nome: string; level: number }> => {
+    return nodes.flatMap((node) => [
+      { id: node.id, nome: node.nome, level },
+      ...flattenCategorias(node.children ?? [], level + 1)
+    ])
+  }
+
+  const categoriaOptions = flattenCategorias(categoriasQuery.data ?? [])
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setFormError('')
@@ -244,6 +282,19 @@ const Produtos = () => {
             />
             Mostrar inativos
           </label>
+
+          <select
+            value={categoriaFiltro}
+            onChange={(event) => { setPage(1); setCategoriaFiltro(event.target.value) }}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas categorias</option>
+            {categoriaOptions.map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {'— '.repeat(categoria.level)}{categoria.nome}
+              </option>
+            ))}
+          </select>
 
           <button type="button" onClick={openCreateModal} className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700">
             + Novo Produto
@@ -339,6 +390,17 @@ const Produtos = () => {
                   <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-fornecedor">Fornecedor *</label>
                   <input id="produto-fornecedor" type="text" value={formState.fornecedor} onChange={(e) => handleInputChange('fornecedor', e.target.value)} className={inputCls} placeholder="Nome do fornecedor" />
                   {formErrors.fornecedor && <p className="mt-1 text-xs text-red-600">{formErrors.fornecedor}</p>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-categoria">Categoria</label>
+                  <select id="produto-categoria" value={formState.categoria_id} onChange={(e) => handleInputChange('categoria_id', e.target.value)} className={inputCls}>
+                    <option value="">Sem categoria</option>
+                    {categoriaOptions.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {'— '.repeat(categoria.level)}{categoria.nome}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

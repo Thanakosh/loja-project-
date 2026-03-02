@@ -43,6 +43,9 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orçamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
 
 ### ✨ Adicionado
+- Backend: suporte a categorias hierárquicas de produtos com CRUD em `/api/v1/categorias`, endpoint de árvore (`/api/v1/categorias/arvore`) e vínculo opcional `categoria_id` em produtos.
+- Frontend: tela de Produtos com seleção em árvore de categoria no cadastro/edição e filtro por categoria (incluindo subcategorias) na listagem.
+
 - Backend: novos endpoints de Notas Fiscais (`GET /api/v1/notas-fiscais/` e `GET /api/v1/notas-fiscais/{nota_id}`) com filtros por cliente e período, incluindo retorno de itens.
 - Frontend: nova página "Notas Fiscais" com filtros por data, paginação, resumo de totais e modal de itens da NF.
 - Frontend: módulo de Orçamentos expandido com listagem paginada, filtro por status, criação em modal com múltiplos itens e ações de cancelar/converter.

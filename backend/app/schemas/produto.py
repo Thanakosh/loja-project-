@@ -14,6 +14,7 @@ class ProdutoBase(BaseModel):
     numero_nota: Optional[str] = None
     cnpj_fornecedor: Optional[str] = None
     estoque_minimo: Optional[int] = 0
+    categoria_id: Optional[int] = None
 
 class ProdutoCreate(ProdutoBase):
     quantidade_inicial: Optional[int] = 0  # Usado para criar transação inicial

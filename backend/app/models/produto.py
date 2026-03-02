@@ -20,6 +20,7 @@ class Produto(Base):
     numero_nota = Column(String)
     cnpj_fornecedor = Column(String)
     fornecedor_id = Column(Integer, ForeignKey("fornecedor.id"), nullable=True, index=True)
+    categoria_id = Column(Integer, ForeignKey("categoria.id"), nullable=True, index=True)
     
     # Campos adicionais
     ativo = Column(Boolean, default=True, nullable=False)  # Soft delete
@@ -28,6 +29,7 @@ class Produto(Base):
     # Relacionamentos
     transacoes = relationship("TransacaoEstoque", back_populates="produto", cascade="all, delete-orphan")
     fornecedor_rel = relationship("Fornecedor", back_populates="produtos")
+    categoria = relationship("Categoria", back_populates="produtos")
     
     @property
     def estoque_atual(self):
