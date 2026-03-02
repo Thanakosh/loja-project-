@@ -20,6 +20,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate clean install gate (TASK-019)
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        run: |
+          $checklistFile = "docs/evidencias/TASK-019_validacao-vm-limpa.md"
+          if (-not (Test-Path $checklistFile)) {
+            Write-Error "Arquivo de evidências do gate de instalação limpa não encontrado: $checklistFile"
+            exit 1
+          }
+          $content = Get-Content $checklistFile -Raw
+          if ($content -match '- \[ \]') {
+            Write-Error "Gate de instalação limpa com itens incompletos. Conclua o checklist em: $checklistFile"
+            exit 1
+          }
+          Write-Output "Gate de instalação limpa validado com sucesso. Todos os itens aprovados."
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

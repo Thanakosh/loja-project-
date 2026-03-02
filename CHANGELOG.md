@@ -37,6 +37,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### 🔄 Alterado
+- CI: workflow `windows-desktop-build` agora inclui gate obrigatório de validação de instalação limpa (TASK-019): o build falha automaticamente se o checklist de evidências (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
 - Docs: adicionados release notes desktop, checklist de entrega ao cliente e arquivo de evidências do gate de instalação limpa.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orçamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
