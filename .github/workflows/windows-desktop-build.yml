@@ -62,3 +62,10 @@ jobs:
           name: windows-desktop-installers
           path: artifacts/*
           if-no-files-found: error
+
+      - name: Upload SHA256 checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-sha256
+          path: artifacts/SHA256SUMS.txt
+          if-no-files-found: error
