@@ -41,7 +41,7 @@ test('PDV permite adicionar item e finalizar venda no fluxo feliz', async ({ pag
   await page.goto('/#/pdv')
 
   await page.getByRole('button', { name: /Disjuntor 20A/ }).click()
-  await expect(page.getByText('Disjuntor 20A')).toBeVisible()
+  await expect(page.getByText('Disjuntor 20A').first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Finalizar Venda' }).click()
 

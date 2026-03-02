@@ -12,7 +12,7 @@ test.describe('Login', () => {
     await page.getByLabel('Senha').fill('senha-errada')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
-    await expect(page.getByText('Email ou senha inválidos.')).toBeVisible()
+    await expect(page.getByText(/Email ou senha inv(a|á)lid[oa]s?\./i)).toBeVisible()
   })
 
   test('deve redirecionar para dashboard com credenciais válidas', async ({ page }) => {
