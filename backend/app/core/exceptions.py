@@ -37,6 +37,16 @@ class EstoqueInsuficienteError(BusinessException):
         )
 
 
+class QuantidadeInvalidaParaUnidadeError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="quantidade_invalida_para_unidade",
+            message="Quantidade inválida para a unidade de medida do produto",
+            status_code=400,
+            details=details,
+        )
+
+
 class VendaNaoEncontradaError(BusinessException):
     def __init__(self, *, details: Any | None = None) -> None:
         super().__init__(

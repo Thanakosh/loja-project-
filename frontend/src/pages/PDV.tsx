@@ -10,6 +10,7 @@ interface Produto {
   preco_unitario: number
   preco_liquido: number
   unidade?: string | null
+  unidade_medida?: string | null
   estoque_atual: number
   ativo: boolean
 }
@@ -25,6 +26,16 @@ interface ItemCarrinho {
   quantidade: number
   preco_unitario: number
   desconto: number
+}
+
+const unidadesFracionaveis = new Set(['MT', 'KG', 'LT', 'M2', 'M3'])
+
+const permiteFracionado = (produto: Produto) => unidadesFracionaveis.has((produto.unidade_medida ?? 'UN').toUpperCase())
+
+const formatQuantidade = (produto: Produto, quantidade: number) => {
+  const unidade = (produto.unidade_medida ?? produto.unidade ?? 'UN').toUpperCase()
+  const valor = permiteFracionado(produto) ? quantidade.toFixed(3).replace(/\.?0+$/, '') : String(Math.trunc(quantidade))
+  return `${valor} ${unidade}`
 }
 
 interface ProdutoListResponse {
@@ -227,7 +238,9 @@ const PDV = () => {
         if (field === 'quantidade') {
           return {
             ...item,
-            quantidade: Math.max(1, Number.isNaN(numericValue) ? 1 : Math.floor(numericValue))
+            quantidade: permiteFracionado(item.produto)
+              ? Math.max(0.001, Number.isNaN(numericValue) ? 1 : numericValue)
+              : Math.max(1, Number.isNaN(numericValue) ? 1 : Math.floor(numericValue))
           }
         }
 
@@ -334,7 +347,7 @@ const PDV = () => {
                   <div>
                     <p className="font-medium text-gray-800 dark:text-gray-100">{produto.nome}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {moneyFormatter.format(produto.preco_unitario)} • Estoque: {produto.estoque_atual}
+                      {moneyFormatter.format(produto.preco_unitario)} • Estoque: {formatQuantidade(produto, produto.estoque_atual)}
                     </p>
                   </div>
                   {produto.estoque_atual <= 0 ? (
@@ -445,11 +458,13 @@ const PDV = () => {
                       <td className="px-3 py-2">
                         <input
                           type="number"
-                          min={1}
+                          min={permiteFracionado(item.produto) ? 0.001 : 1}
+                          step={permiteFracionado(item.produto) ? 0.001 : 1}
                           value={item.quantidade}
                           onChange={(event) => updateItem(item.produto.id, 'quantidade', event.target.value)}
                           className="w-20 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
                         />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{(item.produto.unidade_medida ?? item.produto.unidade ?? 'UN').toUpperCase()}</p>
                       </td>
                       <td className="px-3 py-2">
                         <input

@@ -12,6 +12,7 @@ interface Produto {
   preco_liquido: number
   codigo_ncm?: string | null
   unidade?: string | null
+  unidade_medida?: string | null
   estoque_atual: number
   estoque_baixo: boolean
   estoque_minimo: number
@@ -38,6 +39,7 @@ interface ProdutoFormPayload {
   estoque_minimo: number
   quantidade_inicial?: number
   unidade?: string
+  unidade_medida?: string
   codigo_ncm?: string
   descricao?: string
   categoria_id?: number
@@ -58,6 +60,7 @@ interface FormState {
   estoque_minimo: string
   quantidade_inicial: string
   unidade: string
+  unidade_medida: string
   codigo_ncm: string
   descricao: string
   categoria_id: string
@@ -87,6 +90,7 @@ const emptyFormState: FormState = {
   estoque_minimo: '0',
   quantidade_inicial: '0',
   unidade: '',
+  unidade_medida: 'UN',
   codigo_ncm: '',
   descricao: '',
   categoria_id: ''
@@ -178,6 +182,7 @@ const Produtos = () => {
       preco_unitario: String(produto.preco_unitario ?? ''), preco_liquido: String(produto.preco_liquido ?? ''),
       estoque_minimo: String(produto.estoque_minimo ?? 0), quantidade_inicial: '0',
       unidade: produto.unidade ?? '', codigo_ncm: produto.codigo_ncm ?? '', descricao: produto.descricao ?? '',
+      unidade_medida: produto.unidade_medida ?? 'UN',
       categoria_id: produto.categoria_id ? String(produto.categoria_id) : ''
     })
     setFormErrors({}); setFormError(''); setIsModalOpen(true)
@@ -219,6 +224,7 @@ const Produtos = () => {
     }
     if (modalMode === 'create') payload.quantidade_inicial = Math.max(0, Number(formState.quantidade_inicial) || 0)
     const unidade = formState.unidade.trim()
+    payload.unidade_medida = (formState.unidade_medida || 'UN').trim().toUpperCase()
     const codigoNcm = formState.codigo_ncm.trim()
     const descricao = formState.descricao.trim()
     if (unidade) payload.unidade = unidade
@@ -431,7 +437,15 @@ const Produtos = () => {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-unidade">Unidade</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-unidade-medida">Unidade de medida</label>
+                  <select id="produto-unidade-medida" value={formState.unidade_medida} onChange={(e) => handleInputChange('unidade_medida', e.target.value)} className={inputCls}>
+                    {['UN', 'CX', 'MT', 'KG', 'LT', 'PC', 'M2', 'M3'].map((unidade) => (
+                      <option key={unidade} value={unidade}>{unidade}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-unidade">Sigla exibida</label>
                   <input id="produto-unidade" type="text" value={formState.unidade} onChange={(e) => handleInputChange('unidade', e.target.value)} className={inputCls} placeholder="UN, KG, CX" />
                 </div>
                 <div>

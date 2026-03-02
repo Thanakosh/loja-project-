@@ -2,6 +2,9 @@ from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
+
+UNIDADES_FRACIONAVEIS = {"MT", "KG", "LT", "M2", "M3"}
+
 class Produto(Base):
     __tablename__ = "produto"
     
@@ -16,6 +19,7 @@ class Produto(Base):
     preco_liquido = Column(Float, nullable=False)
     codigo_ncm = Column(String, index=True)
     unidade = Column(String)
+    unidade_medida = Column(String(10), nullable=False, default="UN", server_default="UN")
     data_emissao = Column(Date)
     numero_nota = Column(String)
     cnpj_fornecedor = Column(String)
@@ -45,3 +49,8 @@ class Produto(Base):
     
     def __repr__(self):
         return f"<Produto(id={self.id}, nome='{self.nome}', estoque={self.estoque_atual})>"
+
+    @property
+    def permite_fracionado(self) -> bool:
+        unidade = (self.unidade_medida or "UN").upper()
+        return unidade in UNIDADES_FRACIONAVEIS

@@ -4,9 +4,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from ..core.enums import FormaPagamento
-from ..core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
+from ..core.exceptions import (
+    EstoqueInsuficienteError,
+    ProdutoNaoEncontradoError,
+    QuantidadeInvalidaParaUnidadeError,
+)
 from ..models.conta_receber import ContaReceber
-from ..models.produto import Produto
+from ..models.produto import Produto, UNIDADES_FRACIONAVEIS
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
@@ -30,6 +34,18 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
 
         totais_por_item: list[float] = []
         for item in venda_in.itens:
+            produto = produtos_by_id[item.produto_id]
+            unidade = (produto.unidade_medida or "UN").upper()
+            if unidade not in UNIDADES_FRACIONAVEIS and not float(item.quantidade).is_integer():
+                raise QuantidadeInvalidaParaUnidadeError(
+                    details={
+                        "produto_id": produto.id,
+                        "produto_nome": produto.nome,
+                        "unidade_medida": unidade,
+                        "quantidade": item.quantidade,
+                    }
+                )
+
             estoque_atual = (
                 db.query(func.coalesce(func.sum(TransacaoEstoque.quantidade), 0))
                 .filter(TransacaoEstoque.produto_id == item.produto_id)
@@ -41,7 +57,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                 raise EstoqueInsuficienteError(
                     details={
                         "produto_id": item.produto_id,
-                        "produto_nome": produtos_by_id[item.produto_id].nome,
+                        "produto_nome": produto.nome,
                         "disponivel": estoque_atual,
                         "solicitado": item.quantidade,
                     }
