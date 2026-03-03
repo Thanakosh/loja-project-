@@ -13,8 +13,8 @@ if getattr(sys, 'frozen', False):
     # Adicionar o diretório ao PATH para encontrar dependências
     sys.path.insert(0, base_dir)
 
-# Configurar variáveis de ambiente para demo
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(os.getcwd(), 'demo.db')}")
+# Configurar variáveis de ambiente (loja.db como banco principal)
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(os.getcwd(), 'loja.db')}")
 os.environ.setdefault("JWT_SECRET", "demo-secret-key-apenas-para-demonstracao-2026")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("CORS_ORIGINS", '["*"]')

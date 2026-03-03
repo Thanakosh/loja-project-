@@ -1,14 +1,14 @@
 """caixa_diario
 
 Revision ID: 20260303_caixa_diario
-Revises: 20260302_unidade_medida_produto
+Revises: 20260303_add_username_to_user
 Create Date: 2026-03-03
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "20260303_caixa_diario"
-down_revision = "20260302_unidade_medida_produto"
+down_revision = "20260303_add_username_to_user"
 branch_labels = None
 depends_on = None
 
