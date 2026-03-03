@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
@@ -8,12 +8,14 @@ import api from '../services/api'
 interface Produto {
   id: number
   nome: string
+  codigo_barras?: string | null
   preco_unitario: number
   preco_liquido: number
   unidade?: string | null
   unidade_medida?: string | null
   estoque_atual: number
   ativo: boolean
+  permite_fracionado?: boolean
   preco_varejo?: number | null
   preco_atacado?: number | null
   qtd_minima_atacado?: number | null
@@ -23,6 +25,8 @@ interface Cliente {
   id: number
   nome: string
   cpf_cnpj?: string | null
+  observacao?: string | null
+  historico_observacoes?: string | null
 }
 
 interface ItemCarrinho {
@@ -32,9 +36,31 @@ interface ItemCarrinho {
   desconto: number
 }
 
-const unidadesFracionaveis = new Set(['MT', 'KG', 'LT', 'M2', 'M3'])
+interface FaixaDesconto {
+  id: number
+  produto_id: number
+  qtd_minima: number
+  desconto_maximo_percentual: number
+  descricao?: string | null
+}
 
-const permiteFracionado = (produto: Produto) => unidadesFracionaveis.has((produto.unidade_medida ?? 'UN').toUpperCase())
+interface PoliticaDescontoProduto {
+  produto_id: number
+  faixas: FaixaDesconto[]
+}
+
+/** Dada uma lista de faixas e a quantidade, retorna o desconto máximo permitido ou null (sem política = livre). */
+const getDescontoMaximo = (faixas: FaixaDesconto[] | undefined, quantidade: number): number | null => {
+  if (!faixas || faixas.length === 0) return null
+  // Faixas ordenadas desc por qtd_minima para pegar a maior faixa aplicável
+  const sorted = [...faixas].sort((a, b) => b.qtd_minima - a.qtd_minima)
+  for (const f of sorted) {
+    if (quantidade >= f.qtd_minima) return f.desconto_maximo_percentual
+  }
+  return 0 // quantidade abaixo da menor faixa → sem desconto
+}
+
+const permiteFracionado = (produto: Produto) => produto.permite_fracionado === true
 
 const getPrecoEfetivo = (produto: Produto, quantidade: number): number => {
   if (
@@ -69,6 +95,9 @@ interface VendaPDVCreate {
   forma_pagamento: number
   desconto_geral: number
   observacao?: string
+  autorizacao_terceiro_nome?: string
+  autorizacao_terceiro_documento?: string
+  autorizacao_terceiro_observacao?: string
   parcelas: number
   itens: {
     produto_id: number
@@ -106,19 +135,63 @@ const calcItemTotal = (item: ItemCarrinho) => {
   return item.quantidade * item.preco_unitario * (1 - descontoPercentual / 100)
 }
 
+const SCANNER_BURST_MS = 80 // intervalo máximo entre teclas para considerar rajada de scanner
+
 const PDV = () => {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch, setDebouncedProductSearch] = useState('')
   const [clientSearchInput, setClientSearchInput] = useState('')
   const [debouncedClientSearch, setDebouncedClientSearch] = useState('')
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const barcodeRef = useRef<HTMLInputElement>(null)
+  const lastKeystrokeRef = useRef<number>(0)
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [cartItems, setCartItems] = useState<ItemCarrinho[]>([])
   const [descontoGeral, setDescontoGeral] = useState('0')
   const [formaPagamento, setFormaPagamento] = useState(1)
   const [parcelas, setParcelas] = useState(1)
   const [observacao, setObservacao] = useState('')
+  const [autorizacaoTerceiroNome, setAutorizacaoTerceiroNome] = useState('')
+  const [autorizacaoTerceiroDocumento, setAutorizacaoTerceiroDocumento] = useState('')
+  const [autorizacaoTerceiroObservacao, setAutorizacaoTerceiroObservacao] = useState('')
+  const [highlightedItemId, setHighlightedItemId] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState('')
   const [saleResult, setSaleResult] = useState<VendaPDVRead | null>(null)
+  const [politicasDesconto, setPoliticasDesconto] = useState<Record<number, FaixaDesconto[]>>({})
+
+  // Busca bulk de políticas de desconto quando o carrinho muda
+  const cartProductIds = useMemo(() => cartItems.map((i) => i.produto.id), [cartItems])
+  useEffect(() => {
+    if (cartProductIds.length === 0) {
+      setPoliticasDesconto({})
+      return
+    }
+    const idsToFetch = cartProductIds.filter((id) => !(id in politicasDesconto))
+    if (idsToFetch.length === 0) return
+
+    void (async () => {
+      try {
+        const res = await api.get('/politica-desconto/produtos/bulk', {
+          params: { produto_ids: idsToFetch.join(',') }
+        })
+        const data = res.data as PoliticaDescontoProduto[]
+        setPoliticasDesconto((prev) => {
+          const next = { ...prev }
+          for (const p of data) {
+            next[p.produto_id] = p.faixas
+          }
+          // Marcar produtos sem política retornada
+          for (const id of idsToFetch) {
+            if (!(id in next)) next[id] = []
+          }
+          return next
+        })
+      } catch {
+        // silencioso — desconto livre em caso de falha
+      }
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartProductIds.join(',')])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -235,6 +308,11 @@ const PDV = () => {
     setFormaPagamento(1)
     setParcelas(1)
     setObservacao('')
+    setAutorizacaoTerceiroNome('')
+    setAutorizacaoTerceiroDocumento('')
+    setAutorizacaoTerceiroObservacao('')
+    setBarcodeInput('')
+    setHighlightedItemId(null)
     setSubmitError('')
     setSaleResult(null)
   }
@@ -248,10 +326,19 @@ const PDV = () => {
       const existing = previous.find((item) => item.produto.id === produto.id)
 
       if (existing) {
+        const novaQuantidade = existing.quantidade + 1
+        const precoAtualizado = getPrecoEfetivo(produto, novaQuantidade)
+        setHighlightedItemId(produto.id)
+        window.setTimeout(() => setHighlightedItemId(null), 500)
+        toast.success(`Quantidade atualizada: ${formatQuantidade(produto, novaQuantidade)}`)
         return previous.map((item) =>
-          item.produto.id === produto.id ? { ...item, quantidade: item.quantidade + 1 } : item
+          item.produto.id === produto.id ? { ...item, quantidade: novaQuantidade, preco_unitario: precoAtualizado } : item
         )
       }
+
+      setHighlightedItemId(produto.id)
+      window.setTimeout(() => setHighlightedItemId(null), 500)
+      toast.success(`${produto.nome} adicionado ao carrinho`)
 
       return [
         ...previous,
@@ -264,6 +351,65 @@ const PDV = () => {
       ]
     })
   }
+
+  const handleBarcodeSubmit = async () => {
+    const barcode = barcodeInput.trim()
+    if (!barcode) {
+      return
+    }
+
+    try {
+      const response = await api.get('/produtos/', {
+        params: {
+          page: 1,
+          page_size: 1,
+          incluir_inativos: false,
+          barcode
+        }
+      })
+
+      const result = response.data as ProdutoListResponse
+      const produto = result.items?.[0]
+      if (!produto) {
+        toast.error('Código de barras não encontrado')
+        return
+      }
+
+      addProductToCart(produto)
+      setBarcodeInput('')
+      barcodeRef.current?.focus()
+    } catch {
+      toast.error('Falha ao buscar código de barras')
+      barcodeRef.current?.focus()
+    }
+  }
+
+  // Atalho global F2 → foco no campo de código de barras
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault()
+        barcodeRef.current?.focus()
+        barcodeRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // Detecta rajada de scanner — se digitação chega em ≤80ms limpa texto antigo
+  const handleBarcodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const now = Date.now()
+    const elapsed = now - lastKeystrokeRef.current
+    lastKeystrokeRef.current = now
+
+    if (elapsed > 500 && barcodeInput.length > 0) {
+      // Primeira tecla após pausa longa e campo já tem texto → scanner novo, limpa
+      setBarcodeInput(e.target.value.slice(-1))
+    } else {
+      setBarcodeInput(e.target.value)
+    }
+  }, [barcodeInput.length])
 
   const updateItem = (productId: number, field: 'quantidade' | 'preco_unitario' | 'desconto', value: string) => {
     setCartItems((previous) =>
@@ -302,6 +448,57 @@ const PDV = () => {
 
   const removeItem = (productId: number) => {
     setCartItems((previous) => previous.filter((item) => item.produto.id !== productId))
+  }
+
+  const decreaseItem = (productId: number) => {
+    setCartItems((previous) => {
+      const current = previous.find((item) => item.produto.id === productId)
+      if (!current) {
+        return previous
+      }
+
+      const step = permiteFracionado(current.produto) ? 0.001 : 1
+      const min = permiteFracionado(current.produto) ? 0.001 : 1
+      const nextQty = Number((current.quantidade - step).toFixed(3))
+
+      if (nextQty < min) {
+        toast.success(`${current.produto.nome} removido do carrinho`)
+        return previous.filter((item) => item.produto.id !== productId)
+      }
+
+      setHighlightedItemId(productId)
+      window.setTimeout(() => setHighlightedItemId(null), 500)
+      toast.success(`Quantidade atualizada: ${formatQuantidade(current.produto, nextQty)}`)
+
+      return previous.map((item) => {
+        if (item.produto.id !== productId) {
+          return item
+        }
+        return {
+          ...item,
+          quantidade: nextQty,
+          preco_unitario: getPrecoEfetivo(item.produto, nextQty)
+        }
+      })
+    })
+  }
+
+  const imprimirComprovantePdf = async () => {
+    if (!saleResult?.id) {
+      return
+    }
+
+    try {
+      const response = await api.get(`/pdv/venda/${saleResult.id}/comprovante`, {
+        responseType: 'blob'
+      })
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      window.setTimeout(() => URL.revokeObjectURL(url), 15000)
+    } catch {
+      toast.error('Não foi possível gerar o comprovante em PDF')
+    }
   }
 
   const selectClient = (cliente: Cliente) => {
@@ -344,6 +541,16 @@ const PDV = () => {
       payload.observacao = observacao.trim()
     }
 
+    if (autorizacaoTerceiroNome.trim()) {
+      payload.autorizacao_terceiro_nome = autorizacaoTerceiroNome.trim()
+    }
+    if (autorizacaoTerceiroDocumento.trim()) {
+      payload.autorizacao_terceiro_documento = autorizacaoTerceiroDocumento.trim()
+    }
+    if (autorizacaoTerceiroObservacao.trim()) {
+      payload.autorizacao_terceiro_observacao = autorizacaoTerceiroObservacao.trim()
+    }
+
     vendaMutation.mutate(payload)
   }
 
@@ -379,6 +586,37 @@ const PDV = () => {
               placeholder="Buscar produto..."
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             />
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="codigo-barras">
+              Lançar por código de barras
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                ref={barcodeRef}
+                id="codigo-barras"
+                type="text"
+                autoComplete="off"
+                value={barcodeInput}
+                onChange={handleBarcodeChange}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void handleBarcodeSubmit()
+                  }
+                }}
+                placeholder="Bipe ou digite e pressione Enter (F2 = foco)"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              />
+              <button
+                type="button"
+                onClick={() => void handleBarcodeSubmit()}
+                className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+              >
+                Lançar
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1">
@@ -469,9 +707,16 @@ const PDV = () => {
 
           <div className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm">
             {selectedClient ? (
-              <p className="text-gray-700 dark:text-gray-300">
-                Cliente selecionado: <span className="font-semibold">{selectedClient.nome}</span>
-              </p>
+              <div className="space-y-1 text-gray-700 dark:text-gray-300">
+                <p>
+                  Cliente selecionado: <span className="font-semibold">{selectedClient.nome}</span>
+                </p>
+                {selectedClient.observacao ? (
+                  <p className="text-xs rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-1 text-amber-700 dark:text-amber-300">
+                    Observação atual: {selectedClient.observacao}
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <p className="text-gray-500 dark:text-gray-400">Venda sem cliente</p>
             )}
@@ -504,7 +749,14 @@ const PDV = () => {
                   </tr>
                 ) : (
                   cartItems.map((item) => (
-                    <tr key={item.produto.id}>
+                    <tr
+                      key={item.produto.id}
+                      className={
+                        highlightedItemId === item.produto.id
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 transition-colors'
+                          : ''
+                      }
+                    >
                       <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-100">
                         {item.produto.nome}
                         {isAtacado(item.produto, item.quantidade) && (
@@ -512,14 +764,30 @@ const PDV = () => {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          min={permiteFracionado(item.produto) ? 0.001 : 1}
-                          step={permiteFracionado(item.produto) ? 0.001 : 1}
-                          value={item.quantidade}
-                          onChange={(event) => updateItem(item.produto.id, 'quantidade', event.target.value)}
-                          className="w-20 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
-                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => decreaseItem(item.produto.id)}
+                            className="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={permiteFracionado(item.produto) ? 0.001 : 1}
+                            step={permiteFracionado(item.produto) ? 0.001 : 1}
+                            value={item.quantidade}
+                            onChange={(event) => updateItem(item.produto.id, 'quantidade', event.target.value)}
+                            className="w-20 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addProductToCart(item.produto)}
+                            className="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            +
+                          </button>
+                        </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{(item.produto.unidade_medida ?? item.produto.unidade ?? 'UN').toUpperCase()}</p>
                       </td>
                       <td className="px-3 py-2">
@@ -533,15 +801,32 @@ const PDV = () => {
                         />
                       </td>
                       <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step="0.01"
-                          value={item.desconto}
-                          onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
-                          className="w-24 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
-                        />
+                        {(() => {
+                          const maxDesc = getDescontoMaximo(politicasDesconto[item.produto.id], item.quantidade)
+                          const excedido = maxDesc !== null && item.desconto > maxDesc
+                          return (
+                            <div>
+                              <input
+                                type="number"
+                                min={0}
+                                max={maxDesc !== null ? maxDesc : 100}
+                                step="0.01"
+                                value={item.desconto}
+                                onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
+                                className={`w-24 rounded-md border px-2 py-1 ${
+                                  excedido
+                                    ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+                                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                                }`}
+                              />
+                              {maxDesc !== null && (
+                                <p className={`text-xs mt-0.5 ${excedido ? 'text-rose-500 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  máx {maxDesc}%
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300">{moneyFormatter.format(calcItemTotal(item))}</td>
                       <td className="px-3 py-2">
@@ -622,6 +907,41 @@ const PDV = () => {
                   placeholder="Observação opcional"
                 />
               </label>
+
+              {formaPagamento === 6 ? (
+                <>
+                  <label className="block">
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Autorizado por (nome)</span>
+                    <input
+                      type="text"
+                      value={autorizacaoTerceiroNome}
+                      onChange={(event) => setAutorizacaoTerceiroNome(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                      placeholder="Ex.: Zé Eletricista"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Documento (opcional)</span>
+                    <input
+                      type="text"
+                      value={autorizacaoTerceiroDocumento}
+                      onChange={(event) => setAutorizacaoTerceiroDocumento(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                      placeholder="CPF/RG"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observação da autorização</span>
+                    <textarea
+                      value={autorizacaoTerceiroObservacao}
+                      onChange={(event) => setAutorizacaoTerceiroObservacao(event.target.value)}
+                      rows={2}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                      placeholder="Ex.: autorizado a retirar materiais no prazo"
+                    />
+                  </label>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -652,6 +972,14 @@ const PDV = () => {
                 Forma de pagamento: <strong>{formatPayment(saleResult.forma_pagamento ?? formaPagamento)}</strong>
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => void imprimirComprovantePdf()}
+              className="mt-4 w-full rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 font-semibold text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+            >
+              Gerar comprovante (PDF)
+            </button>
 
             <button
               type="button"

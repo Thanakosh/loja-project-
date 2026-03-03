@@ -86,6 +86,7 @@ def listar_produtos(
     page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
     incluir_inativos: bool = False,
     search: str = Query(None, description="Buscar por nome do produto"),
+    barcode: str | None = Query(None, description="Buscar por código de barras exato"),
     categoria_id: int | None = Query(None, description="Filtrar por categoria e subcategorias"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -96,6 +97,8 @@ def listar_produtos(
         query = query.filter(Produto.ativo.is_(True))
     if search:
         query = query.filter(Produto.nome.ilike(f"%{search}%"))
+    if barcode:
+        query = query.filter(Produto.codigo_barras == barcode.strip())
     if categoria_id is not None:
         categoria = db.query(Categoria).filter(Categoria.id == categoria_id, Categoria.ativo.is_(True)).first()
         if not categoria:

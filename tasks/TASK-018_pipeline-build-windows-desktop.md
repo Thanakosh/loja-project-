@@ -6,7 +6,7 @@ scope: .github/workflows/, frontend/package.json
 branch: ci/windows-desktop-pipeline
 commit_message: "ci(desktop): adiciona pipeline de build Windows com artefatos"
 estimated_effort: 45 minutos
-status: em_andamento
+status: concluída
 depends_on: ["TASK-017"]
 recomendacao_ref: "docs/validacao_apresentacao_cliente.md seção 6.1 e 6.2"
 ---
@@ -21,8 +21,8 @@ frontend desktop e publicação de instalador `.exe`.
 Criar workflow de CI/CD para gerar artefatos mínimos do release desktop.
 
 ## Critérios de aceite
-- [ ] Workflow acionado por tag de release (ex.: `v*-desktop.*`)
-- [ ] Job em `windows-latest` executa `npm ci`, `npm run build`, `npm run make`
-- [ ] Instalador `.exe` publicado como artifact
-- [ ] SHA256 do instalador gerado e publicado como artifact
-- [ ] Fail fast quando etapa de build ou empacotamento falhar
+- [x] Workflow acionado por tag de release (ex.: `v*-desktop.*`)
+- [x] Job em `windows-latest` executa `npm ci`, `npm run build`, `npm run make`
+- [x] Instalador `.exe` publicado como artifact
+- [x] SHA256 do instalador gerado e publicado como artifact
+- [x] Fail fast quando etapa de build ou empacotamento falhar

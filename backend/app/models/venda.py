@@ -22,6 +22,9 @@ class Venda(Base):
     cancelada = Column(Boolean, default=False)
     cupom = Column(Integer, default=0)
     observacao = Column(String(120))
+    autorizacao_terceiro_nome = Column(String(120), nullable=True)
+    autorizacao_terceiro_documento = Column(String(30), nullable=True)
+    autorizacao_terceiro_observacao = Column(String(255), nullable=True)
     entrega = Column(String(80))
     entrega_data = Column(Date)
 

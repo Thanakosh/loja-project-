@@ -6,7 +6,7 @@ scope: backend/app/core/ (config.py, security.py, main.py)
 branch: fix/security-hardening
 commit_message: "fix(security): CORS restrito por ambiente e validação de segredos no startup"
 estimated_effort: 15 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-007: Hardening de segurança — CORS por ambiente e validação de startup
@@ -175,11 +175,11 @@ detail="Email já cadastrado"
 6. Commit seguindo Conventional Commits
 
 ## Critérios de aceite
-- [ ] Servidor **recusa iniciar** se `JWT_SECRET` tiver menos de 16 caracteres
-- [ ] Servidor **recusa iniciar** se `JWT_SECRET` for um valor trivial ("secret", "password", etc.)
-- [ ] Warning no log quando CORS tem wildcard `*`
-- [ ] Warning no log quando `DEBUG=True`
-- [ ] Testes passam sem erros (ajustar `.env` de teste se necessário)
+- [x] Servidor **recusa iniciar** se `JWT_SECRET` tiver menos de 16 caracteres
+- [x] Servidor **recusa iniciar** se `JWT_SECRET` for um valor trivial ("secret", "password", etc.)
+- [x] Warning no log quando CORS tem wildcard `*`
+- [x] Warning no log quando `DEBUG=True`
+- [x] Testes passam sem erros (ajustar `.env` de teste se necessário)
 
 ## ⚠️ Cuidado com os testes
 Os testes atuais usam `conftest.py` que pode definir o `JWT_SECRET` via variável de ambiente.

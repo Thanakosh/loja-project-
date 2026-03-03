@@ -9,16 +9,16 @@ Use este checklist antes de marcar uma release desktop como pronta para entrega.
 - [ ] `SHA256SUMS.txt` publicado como artifact
 
 ## 2) Validação funcional
-- [ ] Aplicativo abre sem erro após instalação
-- [ ] Login com usuário válido funciona
-- [ ] Navegação principal (Dashboard, Produtos, Estoque, PDV, Relatórios)
-- [ ] Fechar e reabrir app mantém comportamento esperado
+- [x] Aplicativo abre sem erro após instalação
+- [x] Login com usuário válido funciona
+- [x] Navegação principal (Dashboard, Produtos, Estoque, PDV, Relatórios)
+- [x] Fechar e reabrir app mantém comportamento esperado
 
 ## 3) Documentação de entrega
-- [ ] Release notes atualizada em `docs/releases/desktop-release-notes.md`
-- [ ] Requisitos mínimos informados
-- [ ] Instruções de instalação revisadas
-- [ ] Evidências do gate de VM limpa vinculadas
+- [x] Release notes atualizada em `docs/releases/desktop-release-notes.md`
+- [x] Requisitos mínimos informados
+- [x] Instruções de instalação revisadas
+- [x] Evidências do gate de VM limpa vinculadas
 
 ## 4) Aprovação final
 - [ ] Responsável técnico aprovou a release

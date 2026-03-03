@@ -265,3 +265,13 @@ class CaixaJaFechadoError(BusinessException):
             status_code=400,
             details=details,
         )
+
+
+class DescontoExcedidoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="desconto_excedido",
+            message="Desconto excede o máximo permitido pela política do produto",
+            status_code=400,
+            details=details,
+        )

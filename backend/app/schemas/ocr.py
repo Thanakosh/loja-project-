@@ -26,6 +26,7 @@ class ProdutoExtraido(BaseModel):
     preco_unitario: float
     unidade: Optional[str] = None
     codigo_ncm: Optional[str] = None
+    codigo_barras: Optional[str] = None
 
 class NotaFiscalExtraida(BaseModel):
     fornecedor: str

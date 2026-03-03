@@ -277,22 +277,25 @@ def entrada_lote_produtos(
 ):
     """Registra entrada em lote de múltiplos produtos."""
     resultado = []
+    try:
+        for transacao in transacoes:
+            produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
+            if not produto:
+                raise ProdutoNaoEncontradoError(details={"produto_id": transacao.produto_id})
 
-    for transacao in transacoes:
-        produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
-        if not produto:
-            raise ProdutoNaoEncontradoError(details={"produto_id": transacao.produto_id})
+            db_transacao = TransacaoEstoque(
+                **transacao.model_dump(),
+                usuario_id=current_user.id
+            )
+            db.add(db_transacao)
+            resultado.append(db_transacao)
 
-        db_transacao = TransacaoEstoque(
-            **transacao.model_dump(),
-            usuario_id=current_user.id
-        )
-        db.add(db_transacao)
-        resultado.append(db_transacao)
+        db.commit()
 
-    db.commit()
+        for transacao in resultado:
+            db.refresh(transacao)
 
-    for transacao in resultado:
-        db.refresh(transacao)
-
-    return resultado
+        return resultado
+    except Exception:
+        db.rollback()
+        raise

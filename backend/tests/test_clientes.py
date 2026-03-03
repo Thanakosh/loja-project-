@@ -12,6 +12,7 @@ def test_create_cliente_com_codigo_automatico(client, db_session, auth_headers):
         'telefone': '11999999999',
         'cidade': 'São Paulo',
         'uf': 'SP',
+        'observacao': 'Autorizado João para retirada',
     }
 
     response = client.post('/api/v1/clientes/', json=payload, headers=auth_headers)
@@ -20,6 +21,8 @@ def test_create_cliente_com_codigo_automatico(client, db_session, auth_headers):
     data = response.json()
     assert data['nome'] == payload['nome']
     assert data['codigo_legado'] == 11
+    assert data['observacao'] == 'Autorizado João para retirada'
+    assert 'Autorizado João para retirada' in (data.get('historico_observacoes') or '')
 
 
 def test_update_cliente(client, db_session, auth_headers):
@@ -44,7 +47,7 @@ def test_update_cliente(client, db_session, auth_headers):
         'cep': None,
         'inscricao_estadual': None,
         'email': None,
-        'observacao': None,
+        'observacao': 'Atualizou autorização para retirada por terceiro',
     }
 
     response = client.put(f'/api/v1/clientes/{cliente.id}', json=payload, headers=auth_headers)
@@ -55,6 +58,8 @@ def test_update_cliente(client, db_session, auth_headers):
     assert data['cidade'] == 'Belo Horizonte'
     assert data['uf'] == 'MG'
     assert data['codigo_legado'] == 77
+    assert data['observacao'] == 'Atualizou autorização para retirada por terceiro'
+    assert 'Atualizou autorização para retirada por terceiro' in (data.get('historico_observacoes') or '')
 def test_create_cliente_requer_autenticacao(client):
     response = client.post('/api/v1/clientes/', json={'nome': 'Sem Auth'})
     assert response.status_code == 401

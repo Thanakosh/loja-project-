@@ -124,6 +124,17 @@ cd backend
 pip install -r requirements.txt
 ```
 
+#### Perfil opcional OCR/ML
+
+Para habilitar dependências pesadas de OCR/IA em ambientes que precisem desses recursos:
+
+```bash
+cd backend
+pip install -r requirements-ocr.txt
+```
+
+> O perfil `requirements-ocr.txt` é opcional e separado do core para manter o setup base mais leve.
+
 ### 4. Configurar variáveis de ambiente
 
 Copie o exemplo e ajuste:

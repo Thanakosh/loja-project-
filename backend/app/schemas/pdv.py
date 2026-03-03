@@ -40,6 +40,9 @@ class VendaPDVCreate(BaseModel):
     forma_pagamento: FormaPagamento
     desconto_geral: float = 0.0
     observacao: Optional[str] = None
+    autorizacao_terceiro_nome: Optional[str] = None
+    autorizacao_terceiro_documento: Optional[str] = None
+    autorizacao_terceiro_observacao: Optional[str] = None
     itens: List[VendaPDVItemCreate] = Field(min_length=1)
     parcelas: int = 1
 
@@ -68,6 +71,10 @@ class VendaPDVRead(BaseModel):
     forma_pagamento_label: Optional[str] = None
     cliente_id: Optional[int] = None
     caixa_id: Optional[int] = None
+    observacao: Optional[str] = None
+    autorizacao_terceiro_nome: Optional[str] = None
+    autorizacao_terceiro_documento: Optional[str] = None
+    autorizacao_terceiro_observacao: Optional[str] = None
     itens: List[VendaItemRead] = []
     cancelada: bool
 

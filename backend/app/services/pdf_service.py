@@ -402,3 +402,154 @@ def gerar_pdf_orcamento(orcamento) -> bytes:
 
     doc.build(content)
     return buffer.getvalue()
+
+
+def gerar_pdf_comprovante_venda(venda) -> bytes:
+    """Gera comprovante simples de venda em PDF."""
+    buffer = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=MARGIN,
+        rightMargin=MARGIN,
+        topMargin=MARGIN,
+        bottomMargin=MARGIN,
+        title=f"Comprovante Venda #{venda.numero_legado}",
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "ComprovanteTitle",
+        parent=styles["Normal"],
+        fontSize=18,
+        textColor=AZUL_PRIMARIO,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
+    )
+    normal_style = ParagraphStyle(
+        "ComprovanteNormal",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=CINZA_TEXTO,
+        fontName="Helvetica",
+        alignment=TA_LEFT,
+    )
+    right_style = ParagraphStyle(
+        "ComprovanteRight",
+        parent=normal_style,
+        alignment=TA_RIGHT,
+    )
+
+    content = []
+    usable_width = PAGE_W - 2 * MARGIN
+
+    header_data = [
+        [
+            _build_header_logo(styles),
+            Paragraph(
+                f"<font color='#1E40AF'><b>COMPROVANTE DE VENDA</b></font><br/>"
+                f"<font size='11' color='#6B7280'>#{venda.numero_legado:05d}</font>",
+                ParagraphStyle("CompNumStyle", parent=styles["Normal"], fontSize=9, alignment=TA_RIGHT),
+            ),
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[usable_width * 0.6, usable_width * 0.4])
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    content.append(header_table)
+    content.append(HRFlowable(width="100%", thickness=2, color=AZUL_PRIMARIO, spaceAfter=8))
+
+    forma_pagamento_map = {
+        1: "Dinheiro",
+        2: "Cartão Débito",
+        3: "Cartão Crédito",
+        4: "PIX",
+        5: "Boleto",
+        6: "A Prazo",
+    }
+    forma_pagamento = forma_pagamento_map.get(venda.forma_pagamento, "Não informado")
+    info = [
+        [Paragraph("Data", normal_style), Paragraph(_fmt_date(venda.data), right_style)],
+        [Paragraph("Cliente", normal_style), Paragraph(venda.cliente.nome if venda.cliente else "Consumidor final", right_style)],
+        [Paragraph("Pagamento", normal_style), Paragraph(forma_pagamento, right_style)],
+    ]
+    if venda.autorizacao_terceiro_nome:
+        info.append([
+            Paragraph("Autorizado para retirada", normal_style),
+            Paragraph(venda.autorizacao_terceiro_nome, right_style),
+        ])
+    info_table = Table(info, colWidths=[usable_width * 0.45, usable_width * 0.55])
+    info_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), CINZA_SUAVE),
+        ("BOX", (0, 0), (-1, -1), 0.5, CINZA_BORDA),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, CINZA_BORDA),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    content.append(info_table)
+    content.append(Spacer(1, 10))
+
+    rows = [["#", "Produto", "Qtd", "Unit.", "Desc%", "Total"]]
+    for idx, item in enumerate(venda.itens, start=1):
+        rows.append([
+            str(idx),
+            item.nome_produto or "",
+            f"{item.quantidade:g}",
+            _money(item.preco_unitario),
+            f"{(item.desconto or 0.0):.1f}%",
+            _money(item.preco_total),
+        ])
+
+    subtotal = sum(i.preco_total for i in venda.itens)
+    rows.append(["", "", "", "", "Subtotal", _money(subtotal)])
+    if (venda.desconto or 0.0) > 0:
+        rows.append(["", "", "", "", "Desconto", f"- {_money(venda.desconto)}"])
+    rows.append(["", "", "", "", "TOTAL", _money(venda.total)])
+
+    item_table = Table(
+        rows,
+        colWidths=[usable_width * 0.06, usable_width * 0.42, usable_width * 0.1, usable_width * 0.16, usable_width * 0.1, usable_width * 0.16],
+        repeatRows=1,
+    )
+    item_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL_PRIMARIO),
+        ("TEXTCOLOR", (0, 0), (-1, 0), BRANCO),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [BRANCO, CINZA_SUAVE]),
+        ("BOX", (0, 0), (-1, -1), 0.5, CINZA_BORDA),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, CINZA_BORDA),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    content.append(item_table)
+    content.append(Spacer(1, 10))
+
+    if venda.observacao or venda.autorizacao_terceiro_observacao:
+        texto_obs = venda.observacao or ""
+        if venda.autorizacao_terceiro_observacao:
+            texto_obs = f"{texto_obs}\nAutorização: {venda.autorizacao_terceiro_observacao}".strip()
+        content.append(Paragraph("<b>Observações</b>", normal_style))
+        content.append(Paragraph(texto_obs, normal_style))
+        content.append(Spacer(1, 8))
+
+    content.append(HRFlowable(width="100%", thickness=0.5, color=CINZA_BORDA, spaceBefore=4, spaceAfter=6))
+    content.append(Paragraph("Documento não fiscal de conferência da compra.", ParagraphStyle(
+        "ComprovanteFooter",
+        parent=styles["Normal"],
+        fontSize=8,
+        textColor=colors.HexColor("#9CA3AF"),
+        alignment=TA_CENTER,
+    )))
+
+    doc.build(content)
+    return buffer.getvalue()
