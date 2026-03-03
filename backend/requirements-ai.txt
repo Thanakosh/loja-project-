@@ -1,0 +1,14 @@
+# Dependências opcionais para perfil IA/ML.
+#
+# Instalação opcional:
+#   pip install -r requirements-ai.txt
+#
+# Estas bibliotecas ficam separadas do core para reduzir o tamanho
+# do ambiente base da API (sentence-transformers puxa PyTorch ~2GB).
+
+# Embeddings de texto (detecção de duplicatas, similaridade)
+sentence-transformers>=2.6.0
+numpy>=1.26.0
+
+# Fallback TF-IDF (usado se sentence-transformers não estiver disponível)
+scikit-learn>=1.4.0

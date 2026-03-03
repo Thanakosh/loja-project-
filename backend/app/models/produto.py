@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -36,6 +36,9 @@ class Produto(Base):
     # Campos adicionais
     ativo = Column(Boolean, default=True, nullable=False)  # Soft delete
     estoque_minimo = Column(Integer, default=0)  # Alerta de estoque baixo
+
+    # Embedding vetorial da descrição (JSON array de floats) para detecção de duplicatas
+    embedding = Column(Text, nullable=True)
     
     # Relacionamentos
     transacoes = relationship("TransacaoEstoque", back_populates="produto", cascade="all, delete-orphan")
