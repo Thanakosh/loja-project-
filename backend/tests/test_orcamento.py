@@ -110,7 +110,7 @@ class TestOrcamento:
         assert get_resp.json()["status"] == "cancelado"
 
     def test_converter_orcamento_em_venda_cria_venda_baixa_estoque_e_converte_status(
-        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int, caixa_aberto: dict
     ):
         created = self._criar_orcamento(client, auth_headers, produto_com_estoque).json()
 

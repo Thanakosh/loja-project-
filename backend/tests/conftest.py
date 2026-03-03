@@ -97,6 +97,18 @@ def auth_headers(client: TestClient, test_user: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture(scope="function")
+def caixa_aberto(client: TestClient, auth_headers: dict) -> dict:
+    """Abre um caixa diário para testes que registram vendas."""
+    resp = client.post(
+        "/api/v1/caixa/abrir",
+        json={"valor_abertura": 100.0},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
 @pytest.fixture
 def produto_com_estoque(client: TestClient, auth_headers: dict) -> int:
     payload_produto = {
