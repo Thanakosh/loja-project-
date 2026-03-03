@@ -12,6 +12,8 @@ class VendaItemBase(BaseModel):
     preco_unitario: float
     preco_total: float
     desconto: float = 0.0
+    desconto_motivo: Optional[str] = None
+    desconto_autorizado_por: Optional[str] = None
 
 class VendaItemRead(VendaItemBase):
     id: int

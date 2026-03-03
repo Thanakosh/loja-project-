@@ -151,6 +151,8 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     preco_unitario=_calcular_preco_pdv(produto, item.quantidade, item.preco_unitario),
                     preco_total=preco_total,
                     desconto=item.desconto,
+                    desconto_motivo=item.motivo_desconto,
+                    desconto_autorizado_por=item.autorizacao_desconto,
                 )
             )
 
@@ -176,6 +178,9 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                         data_vencimento=data_venda + timedelta(days=30 * parcela),
                         valor=valor_parcela,
                         historico=f"PDV Venda #{numero_legado}",
+                        autorizacao_nome=venda_in.autorizacao_terceiro_nome,
+                        autorizacao_documento=venda_in.autorizacao_terceiro_documento,
+                        autorizacao_observacao=venda_in.autorizacao_terceiro_observacao,
                     )
                 )
 

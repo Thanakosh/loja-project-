@@ -12,6 +12,8 @@ class VendaPDVItemCreate(BaseModel):
     quantidade: float
     preco_unitario: float
     desconto: float = 0.0
+    motivo_desconto: Optional[str] = None
+    autorizacao_desconto: Optional[str] = None
 
     @field_validator("quantidade")
     @classmethod
