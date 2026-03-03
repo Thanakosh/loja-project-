@@ -1,7 +1,7 @@
 ---
 task_id: TASK-031
 title: "Implementar engine determinístico de custo e preço mínimo"
-status: pendente
+status: concluido
 priority: alta
 agent_chat_executable: "sim"
 depends_on: ["TASK-030"]

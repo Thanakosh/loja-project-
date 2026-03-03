@@ -45,6 +45,8 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orçamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
 
 ### ✨ Adicionado
+- Backend: engine determinístico de custo e preço mínimo (`app/fiscal/cost_calculator.py`) com regra explícita de bloqueio para sugestões abaixo do preço mínimo absoluto e auditoria por `versao_motor`.
+- Backend: novo endpoint autenticado `POST /api/v1/fiscal-ai/suggest-price/{product_id}` para sugestão de faixa de preço com mínimo garantido por regra determinística.
 - Backend: novo normalizador fiscal canônico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
 - Backend: suporte a categorias hierárquicas de produtos com CRUD em `/api/v1/categorias`, endpoint de árvore (`/api/v1/categorias/arvore`) e vínculo opcional `categoria_id` em produtos.
 - Frontend: tela de Produtos com seleção em árvore de categoria no cadastro/edição e filtro por categoria (incluindo subcategorias) na listagem.
@@ -59,6 +61,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Módulo PDV com registro de venda, baixa automática de estoque, geração de contas a receber para pagamentos a prazo e cancelamento com estorno.
 
 ### ✅ Testes
+- Adicionados testes unitários e de API para cálculo de custo/preço mínimo, bloqueio de sugestão abaixo do mínimo, autenticação obrigatória e cenários de borda (`backend/tests/test_fiscal_ai.py`).
 - Adicionados testes unitários para o parser XML cobrindo tributação completa por item, ausência de blocos fiscais opcionais e fallback seguro em valores fiscais inválidos (`backend/tests/test_nfe_parser.py`).
 - Adicionados testes para o normalizador de payload fiscal interno e para retorno do payload normalizado no fluxo de OCR XML (`backend/tests/test_fiscal_normalizer.py`, `backend/tests/test_ocr.py`).
 - Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
@@ -102,6 +105,8 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 Esta é uma atualização major com mudanças significativas na arquitetura e funcionalidades do sistema.
 
 ### ✨ Adicionado
+- Backend: engine determinístico de custo e preço mínimo (`app/fiscal/cost_calculator.py`) com regra explícita de bloqueio para sugestões abaixo do preço mínimo absoluto e auditoria por `versao_motor`.
+- Backend: novo endpoint autenticado `POST /api/v1/fiscal-ai/suggest-price/{product_id}` para sugestão de faixa de preço com mínimo garantido por regra determinística.
 - Backend: novo normalizador fiscal canônico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
 
 #### Sistema de Transações de Estoque
