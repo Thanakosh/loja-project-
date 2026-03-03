@@ -1,10 +1,9 @@
 ---
 task_id: TASK-022
 title: "Implementar controle de caixa diário (abertura/fechamento)"
-status: pendente
+status: concluída
 priority: media
-agent_chat_executable: "nao"
-reason: "Requer definição de regras de negócio com o usuário"
+agent_chat_executable: "sim"
 depends_on: []
 ---
 

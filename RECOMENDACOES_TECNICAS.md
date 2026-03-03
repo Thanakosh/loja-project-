@@ -159,13 +159,13 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
  
  - [x] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
  - [x] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
- - [ ] **Categorias Hierárquicas:** Ex: Fios > Cabo 2.5mm²
- - [ ] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
- - [ ] **Unidades de Medida:** Venda por metro ou unidade
+ - [x] **Categorias Hierárquicas:** Ex: Fios > Cabo 2.5mm²
+ - [x] **Precificação Avançada:** Custo, Varejo, Atacado (múltiplos preços)
+ - [x] **Unidades de Medida:** Venda por metro ou unidade
  - [x] **PDV (Ponto de Venda):** Registro de venda com baixa automática
  - [x] **Orçamentos:** Criação e conversão automática em venda
 - [x] **Contas a Receber:** Parcelamento e acompanhamento de valores pendentes
- - [ ] **Financeiro:** Controle de caixa diário (abertura/fechamento)
+ - [x] **Financeiro:** Controle de caixa diário (abertura/fechamento)
  - [x] **Relatórios:** Estoque baixo, Vendas por período
 - [x] **Dashboard:** Alertas de estoque para operação diária
  

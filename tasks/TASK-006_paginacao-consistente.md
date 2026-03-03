@@ -6,7 +6,7 @@ scope: backend/app/ (schemas + endpoints de listagem)
 branch: feat/paginacao-consistente
 commit_message: "feat(api): implementa paginação consistente com metadados em todos os endpoints de listagem"
 estimated_effort: 25 minutos
-status: pendente
+status: concluída
 ---
 
 # TASK-006: Implementar paginação consistente nos endpoints de listagem
@@ -237,10 +237,10 @@ assert isinstance(data["items"], list)
 7. Commit seguindo Conventional Commits
 
 ## Critérios de aceite
-- [ ] Todos os endpoints de listagem retornam `{ items, total, page, page_size, pages }`
-- [ ] Parâmetros `page` e `page_size` funcionam corretamente
-- [ ] Testes atualizados e passando
-- [ ] Endpoint legado `/api/v1/estoque` NÃO foi alterado (manter retrocompatibilidade)
+- [x] Todos os endpoints de listagem retornam `{ items, total, page, page_size, pages }`
+- [x] Parâmetros `page` e `page_size` funcionam corretamente
+- [x] Testes atualizados e passando
+- [x] Endpoint legado `/api/v1/estoque` NÃO foi alterado (manter retrocompatibilidade)
 
 ## Notas
 - **NÃO alterar** o endpoint legado `GET /api/v1/estoque` — ele será depreciado
