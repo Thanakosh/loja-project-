@@ -1,7 +1,7 @@
 ---
 task_id: TASK-029
 title: "Evoluir parser XML com campos fiscais por item"
-status: concluida
+status: concluída
 priority: alta
 agent_chat_executable: "sim"
 depends_on: []

@@ -24,6 +24,11 @@ def _prepend_historico(existing: Optional[str], observacao: str) -> str:
     return f"{entrada}\n{existing}"
 
 
+def _append_autorizacao(existing: Optional[str], observacao: str) -> str:
+    """Registra autorização/observação de terceiro no topo do histórico."""
+    return _prepend_historico(existing, observacao)
+
+
 def _next_codigo_legado(db: Session) -> int:
     ultimo_codigo = db.query(func.max(Cliente.codigo_legado)).scalar()
     return (ultimo_codigo or 0) + 1
@@ -96,6 +101,7 @@ def create_cliente(
         email=cliente_in.email,
         observacao=cliente_in.observacao,
         historico_observacoes=_prepend_historico(None, cliente_in.observacao) if cliente_in.observacao else None,
+        historico_autorizacoes=_append_autorizacao(None, cliente_in.autorizacao_observacao) if cliente_in.autorizacao_observacao else None,
         inscricao_estadual=cliente_in.inscricao_estadual,
     )
 
@@ -139,6 +145,10 @@ def update_cliente(
         cliente.observacao = cliente.observacao
     else:
         cliente.observacao = None
+
+    nova_autorizacao = (cliente_in.autorizacao_observacao or "").strip()
+    if nova_autorizacao:
+        cliente.historico_autorizacoes = _append_autorizacao(cliente.historico_autorizacoes, nova_autorizacao)
 
     db.commit()
     db.refresh(cliente)

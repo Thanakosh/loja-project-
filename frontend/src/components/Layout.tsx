@@ -29,6 +29,7 @@ const Layout = () => {
         { name: 'Clientes', path: '/clientes', icon: '👥' },
         { name: 'Contas a Receber', path: '/contas-receber', icon: '💳' },
         { name: 'Relatórios', path: '/relatorios', icon: '📈' },
+        { name: 'Usuários', path: '/usuarios', icon: '👤' },
     ]
 
     return (

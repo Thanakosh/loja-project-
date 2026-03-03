@@ -3,6 +3,7 @@ from typing import Optional
 
 class UserBase(BaseModel):
     email: EmailStr
+    username: Optional[str] = None
     full_name: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: bool = False
@@ -17,6 +18,11 @@ class User(UserBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserList(BaseModel):
+    users: list["User"]
+    total: int
 
 class UserInDBBase(UserBase):
     id: int

@@ -47,7 +47,7 @@ class TestRelatoriosPdf:
         resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
         assert resp.status_code == 201
 
-    def test_exportar_pdf_vendas_periodo(self, client: TestClient, auth_headers: dict):
+    def test_exportar_pdf_vendas_periodo(self, client: TestClient, auth_headers: dict, caixa_aberto: dict):
         produto_id = self._criar_produto(client, auth_headers, nome="Produto PDF Vendas")
         self._entrada_estoque(client, auth_headers, produto_id, 30)
         self._criar_venda(client, auth_headers, produto_id)
@@ -72,7 +72,7 @@ class TestRelatoriosPdf:
         assert resp.headers["content-type"] == "application/pdf"
         assert resp.content[:4] == b"%PDF"
 
-    def test_exportar_pdf_resumo_mes(self, client: TestClient, auth_headers: dict):
+    def test_exportar_pdf_resumo_mes(self, client: TestClient, auth_headers: dict, caixa_aberto: dict):
         produto_id = self._criar_produto(client, auth_headers, nome="Produto PDF Resumo")
         self._entrada_estoque(client, auth_headers, produto_id, 50)
         self._criar_venda(client, auth_headers, produto_id)

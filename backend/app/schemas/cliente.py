@@ -12,7 +12,9 @@ class ClienteBase(BaseModel):
     email: Optional[str] = None
     observacao: Optional[str] = None
     historico_observacoes: Optional[str] = None
+    historico_autorizacoes: Optional[str] = None
     inscricao_estadual: Optional[str] = None
+    autorizacao_observacao: Optional[str] = None
 
 class ClienteCreate(ClienteBase):
     codigo_legado: Optional[int] = None

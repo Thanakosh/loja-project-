@@ -102,6 +102,20 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     if data_emissao and "T" in data_emissao:
         data_emissao = data_emissao.split("T")[0]
 
+    # ─── Frete total da nota (para rateio por item) — lido de ICMSTot/vFrete ───
+    frete_total = 0.0
+    total_node_tmp = _first_not_none(inf_nfe.find("nfe:total", ns_real), inf_nfe.find("total"))
+    if total_node_tmp is not None:
+        icms_tot_tmp = _first_not_none(
+            total_node_tmp.find("nfe:ICMSTot", ns_real), total_node_tmp.find("ICMSTot")
+        )
+        if icms_tot_tmp is not None:
+            frete_str = _ft(icms_tot_tmp, "nfe:vFrete") or _ft(icms_tot_tmp, "vFrete") or "0"
+            try:
+                frete_total = float(frete_str)
+            except (ValueError, TypeError):
+                frete_total = 0.0
+
     # ─── Produtos/Itens ───
     produtos: List[ProdutoExtraido] = []
 

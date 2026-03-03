@@ -52,6 +52,8 @@ class VendaItem(Base):
     preco_total = Column(Float, default=0)
     custo = Column(Float, default=0)
     desconto = Column(Float, default=0)
+    desconto_motivo = Column(String(255))
+    desconto_autorizado_por = Column(String(120))
     marca = Column(String(15))
     grupo = Column(Integer, default=0)
 

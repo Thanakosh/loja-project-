@@ -25,6 +25,7 @@ from app.api.v1.relatorios import router as relatorios_router
 from app.api.v1.caixa import router as caixa_router
 from app.api.v1.politica_desconto import router as politica_desconto_router
 from app.api.v1.fiscal_ai import router as fiscal_ai_router
+from app.api.v1.ai import router as ai_router
 from app.api.endpoints.ncm import router as ncm_router
 from app.core.limiter import limiter
 
@@ -133,6 +134,7 @@ app.include_router(caixa_router, prefix="/api/v1/caixa", tags=["Caixa Diário"])
 app.include_router(politica_desconto_router, prefix="/api/v1/politica-desconto", tags=["Política de Desconto"])
 app.include_router(ncm_router, prefix="/api/v1/ncm", tags=["NCM"])
 app.include_router(fiscal_ai_router, prefix="/api/v1/fiscal-ai", tags=["Fiscal AI"])
+app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
 
 
 @app.get("/")

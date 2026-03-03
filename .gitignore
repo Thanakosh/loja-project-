@@ -28,6 +28,7 @@ venv.bak/
 *.db-wal
 *.sqlite
 test.db
+demo.db
 data/
 
 # Node

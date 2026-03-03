@@ -19,6 +19,7 @@ class Cliente(Base):
     email = Column(String(120))
     observacao = Column(String(255))
     historico_observacoes = Column(Text)
+    historico_autorizacoes = Column(Text)
     inscricao_estadual = Column(String(20))
     ativo = Column(Boolean, default=True, nullable=False)
 

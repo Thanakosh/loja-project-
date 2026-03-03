@@ -16,9 +16,9 @@ interface LoggedUser {
   is_superuser: boolean
 }
 
-export const login = async (email: string, password: string): Promise<LoggedUser> => {
+export const login = async (username: string, password: string): Promise<LoggedUser> => {
   const formData = new URLSearchParams()
-  formData.append('username', email)
+  formData.append('username', username)
   formData.append('password', password)
 
   const tokenResponse = await apiClient.post<TokenResponse>('/api/v1/users/token', formData.toString(), {

@@ -56,6 +56,39 @@ def _fmt_date(d) -> str:
         return str(d)
 
 
+def _header_block(titulo: str, numero: str, styles):
+    """Cria bloco de cabeçalho com logo e número do documento."""
+    usable_width = PAGE_W - 2 * MARGIN
+    header_data = [
+        [
+            _build_header_logo(styles),
+            Paragraph(
+                f"<font color='#1E40AF'><b>{titulo}</b></font><br/>"
+                f"<font size='11' color='#6B7280'>#{numero}</font>",
+                ParagraphStyle(
+                    "DocNumStyle",
+                    parent=styles["Normal"],
+                    fontSize=9,
+                    alignment=TA_RIGHT,
+                    fontName="Helvetica",
+                ),
+            ),
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[usable_width * 0.6, usable_width * 0.4])
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return header_table
+
+
 def _build_header_logo(styles):
     """Retorna flowable da logo do login para o cabeçalho do PDF."""
     if LOGIN_LOGO_PATH.exists():

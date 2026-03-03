@@ -9,14 +9,14 @@ const Login = () => {
   const navigate = useNavigate()
   const { login, isLoading, error } = useLogin()
 
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     try {
-      await login(email, password)
+      await login(username, password)
       navigate('/dashboard', { replace: true })
     } catch {
       // Erro já tratado no hook
@@ -34,16 +34,16 @@ const Login = () => {
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-300" htmlFor="email">
-              Email
+            <label className="mb-1 block text-sm font-medium text-gray-300" htmlFor="username">
+              Usuário ou e-mail
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
               className="w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100 outline-none ring-emerald-500 transition focus:ring placeholder:text-gray-400"
-              placeholder="voce@empresa.com"
+              placeholder="seu.usuario ou voce@empresa.com"
               required
             />
           </div>
@@ -67,7 +67,7 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={isLoading || !email || !password}
+            disabled={isLoading || !username || !password}
             className="w-full rounded-md bg-emerald-600 px-4 py-2 font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isLoading ? 'Entrando...' : 'Entrar'}
