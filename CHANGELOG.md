@@ -37,6 +37,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### 🔄 Alterado
+- Backend (OCR/XML): parser de NFe evoluído para extrair por item os campos fiscais `CFOP`, `CST/CSOSN`, `vBC/pICMS/vICMS` e rateio de frete por item, mantendo compatibilidade com o payload atual.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatório de validação de instalação limpa (TASK-019): o build falha automaticamente se o checklist de evidências (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
 - Docs: adicionados release notes desktop, checklist de entrega ao cliente e arquivo de evidências do gate de instalação limpa.
@@ -56,6 +57,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Módulo PDV com registro de venda, baixa automática de estoque, geração de contas a receber para pagamentos a prazo e cancelamento com estorno.
 
 ### ✅ Testes
+- Adicionados testes unitários para o parser XML cobrindo tributação completa por item, ausência de blocos fiscais opcionais e fallback seguro em valores fiscais inválidos (`backend/tests/test_nfe_parser.py`).
 - Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validação de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), além de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criação e atualização de clientes na API (`backend/tests/test_clientes.py`).

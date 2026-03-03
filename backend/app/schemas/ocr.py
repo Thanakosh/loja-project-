@@ -27,6 +27,13 @@ class ProdutoExtraido(BaseModel):
     unidade: Optional[str] = None
     codigo_ncm: Optional[str] = None
     codigo_barras: Optional[str] = None
+    cfop: Optional[str] = None
+    cst: Optional[str] = None
+    csosn: Optional[str] = None
+    icms_base_calculo: Optional[float] = None
+    icms_aliquota: Optional[float] = None
+    icms_valor: Optional[float] = None
+    frete_rateado: Optional[float] = None
 
 class NotaFiscalExtraida(BaseModel):
     fornecedor: str
