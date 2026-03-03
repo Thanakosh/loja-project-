@@ -30,6 +30,15 @@ def _first_not_none(*elements: Optional[ET.Element]) -> Optional[ET.Element]:
             return element
     return None
 
+
+def _parse_float(value: Optional[str]) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return round(float(value.replace(",", ".")), 4)
+    except (ValueError, TypeError, AttributeError):
+        return None
+
 def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     """
     Faz o parse de um XML de NFe brasileira e retorna dados estruturados.
@@ -100,6 +109,8 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     dets = inf_nfe.findall("nfe:det", ns_real)
     if not dets:
         dets = inf_nfe.findall("det")
+    itens_com_valor_total: list[tuple[ProdutoExtraido, float]] = []
+
     for det in dets:
         prod = _first_not_none(det.find("nfe:prod", ns_real), det.find("prod"))
         if prod is None:
@@ -126,6 +137,30 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
 
         # NCM
         ncm = _ft(prod, "nfe:NCM") or _ft(prod, "NCM") or ""
+        cfop = _ft(prod, "nfe:CFOP") or _ft(prod, "CFOP")
+
+        item_total = _parse_float(_ft(prod, "nfe:vProd") or _ft(prod, "vProd"))
+        if item_total is None:
+            item_total = round(quantidade * preco_unitario, 2)
+
+        imposto = _first_not_none(det.find("nfe:imposto", ns_real), det.find("imposto"))
+        icms_node = None
+        cst = None
+        csosn = None
+        icms_base = None
+        icms_aliquota = None
+        icms_valor = None
+        if imposto is not None:
+            icms_group = _first_not_none(imposto.find("nfe:ICMS", ns_real), imposto.find("ICMS"))
+            if icms_group is not None:
+                icms_node = next(iter(icms_group), None)
+
+        if icms_node is not None:
+            cst = _ft(icms_node, "nfe:CST") or _ft(icms_node, "CST")
+            csosn = _ft(icms_node, "nfe:CSOSN") or _ft(icms_node, "CSOSN")
+            icms_base = _parse_float(_ft(icms_node, "nfe:vBC") or _ft(icms_node, "vBC"))
+            icms_aliquota = _parse_float(_ft(icms_node, "nfe:pICMS") or _ft(icms_node, "pICMS"))
+            icms_valor = _parse_float(_ft(icms_node, "nfe:vICMS") or _ft(icms_node, "vICMS"))
 
         # Código de barras (EAN/GTIN)
         cean_raw = _ft(prod, "nfe:cEAN") or _ft(prod, "cEAN") or ""
@@ -137,16 +172,22 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         elif cean_trib and cean_trib.strip().isdigit() and len(cean_trib.strip()) >= 8:
             codigo_barras = cean_trib.strip()
 
-        produtos.append(
-            ProdutoExtraido(
-                nome=nome,
-                quantidade=quantidade,
-                preco_unitario=preco_unitario,
-                unidade=unidade.upper(),
-                codigo_ncm=ncm,
-                codigo_barras=codigo_barras,
-            )
+        produto_extraido = ProdutoExtraido(
+            nome=nome,
+            quantidade=quantidade,
+            preco_unitario=preco_unitario,
+            unidade=unidade.upper(),
+            codigo_ncm=ncm,
+            codigo_barras=codigo_barras,
+            cfop=cfop,
+            cst=cst,
+            csosn=csosn,
+            icms_base_calculo=icms_base,
+            icms_aliquota=icms_aliquota,
+            icms_valor=icms_valor,
         )
+        produtos.append(produto_extraido)
+        itens_com_valor_total.append((produto_extraido, item_total))
 
     # ─── Valor total ───
     total_node = _first_not_none(inf_nfe.find("nfe:total", ns_real), inf_nfe.find("total"))
@@ -157,6 +198,13 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     valor_total_str = "0"
     if icms_tot is not None:
         valor_total_str = _ft(icms_tot, "nfe:vNF") or _ft(icms_tot, "vNF") or "0"
+
+    frete_total = _parse_float(_ft(icms_tot, "nfe:vFrete") or _ft(icms_tot, "vFrete")) if icms_tot is not None else None
+
+    soma_itens = sum(item_total for _, item_total in itens_com_valor_total)
+    if frete_total is not None and frete_total > 0 and soma_itens > 0:
+        for produto, item_total in itens_com_valor_total:
+            produto.frete_rateado = round((item_total / soma_itens) * frete_total, 2)
 
     try:
         valor_total = round(float(valor_total_str), 2)
