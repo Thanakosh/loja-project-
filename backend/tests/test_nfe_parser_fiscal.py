@@ -31,7 +31,7 @@ def test_parse_nfe_minima_sem_campos_fiscais_nao_quebra():
     assert produto.cfop is None
     assert produto.cst is None
     assert produto.csosn is None
-    assert produto.icms_base is None
+    assert produto.icms_base_calculo is None
     assert produto.icms_aliquota is None
     assert produto.icms_valor is None
     assert produto.frete_rateado is None
@@ -64,7 +64,7 @@ def test_parse_nfe_fiscal_completa_icms_base_aliquota_valor():
     """Base de cálculo, alíquota e valor de ICMS devem ser extraídos."""
     result = parse_nfe_xml(_load("nfe_fiscal_completa.xml"))
     produto = result.produtos[0]
-    assert produto.icms_base == pytest.approx(500.00)
+    assert produto.icms_base_calculo == pytest.approx(500.00)
     assert produto.icms_aliquota == pytest.approx(12.00)
     assert produto.icms_valor == pytest.approx(60.00)
 
@@ -75,7 +75,7 @@ def test_parse_nfe_fiscal_completa_csosn_simples_nacional():
     produto = result.produtos[1]
     assert produto.csosn == "102"
     assert produto.cst is None
-    assert produto.icms_base is None
+    assert produto.icms_base_calculo is None
     assert produto.icms_aliquota is None
     assert produto.icms_valor is None
 

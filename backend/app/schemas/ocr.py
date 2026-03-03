@@ -27,11 +27,10 @@ class ProdutoExtraido(BaseModel):
     unidade: Optional[str] = None
     codigo_ncm: Optional[str] = None
     codigo_barras: Optional[str] = None
-    # Campos fiscais por item (TASK-029)
     cfop: Optional[str] = None
     cst: Optional[str] = None
     csosn: Optional[str] = None
-    icms_base: Optional[float] = None
+    icms_base_calculo: Optional[float] = None
     icms_aliquota: Optional[float] = None
     icms_valor: Optional[float] = None
     frete_rateado: Optional[float] = None
