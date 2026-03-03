@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..core.enums import FormaPagamento
 from ..core.exceptions import (
+    CaixaNaoAbertoError,
     EstoqueInsuficienteError,
     ProdutoNaoEncontradoError,
     QuantidadeInvalidaParaUnidadeError,
 )
+from ..models.caixa_diario import CaixaDiario
 from ..models.conta_receber import ContaReceber
 from ..models.produto import Produto, UNIDADES_FRACIONAVEIS
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
@@ -28,6 +30,11 @@ def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: floa
 
 
 def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
+    # ── Verifica se há caixa aberto ──────────────────────────────────────────
+    caixa = db.query(CaixaDiario).filter(CaixaDiario.status == "aberto").first()
+    if not caixa:
+        raise CaixaNaoAbertoError()
+
     data_venda = date.today()
     produto_ids = [item.produto_id for item in venda_in.itens]
 
@@ -88,6 +95,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
             numero_legado=numero_legado,
             data=data_venda,
             cliente_id=venda_in.cliente_id,
+            caixa_id=caixa.id,
             total=total_venda,
             desconto=venda_in.desconto_geral,
             forma_pagamento=venda_in.forma_pagamento.value,

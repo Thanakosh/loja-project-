@@ -12,6 +12,7 @@ class Venda(Base):
     data = Column(Date, nullable=False, index=True)
     hora = Column(String(5))
     cliente_id = Column(Integer, ForeignKey("cliente.id"), index=True)
+    caixa_id = Column(Integer, ForeignKey("caixa_diario.id"), nullable=True, index=True)
     vendedor = Column(String(10))
     total = Column(Float, default=0)
     desconto = Column(Float, default=0)

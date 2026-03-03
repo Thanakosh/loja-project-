@@ -225,3 +225,43 @@ class SemItensElegiveisError(BusinessException):
             status_code=400,
             details=details,
         )
+
+
+class CaixaNaoEncontradoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="caixa_nao_encontrado",
+            message="Caixa não encontrado",
+            status_code=404,
+            details=details,
+        )
+
+
+class CaixaJaAbertoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="caixa_ja_aberto",
+            message="Já existe um caixa aberto para hoje",
+            status_code=400,
+            details=details,
+        )
+
+
+class CaixaNaoAbertoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="caixa_nao_aberto",
+            message="Não há caixa aberto. Abra o caixa antes de registrar vendas",
+            status_code=400,
+            details=details,
+        )
+
+
+class CaixaJaFechadoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="caixa_ja_fechado",
+            message="Este caixa já foi fechado",
+            status_code=400,
+            details=details,
+        )

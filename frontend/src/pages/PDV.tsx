@@ -165,6 +165,21 @@ const PDV = () => {
     enabled: debouncedClientSearch.length > 0 && selectedClient === null
   })
 
+  const caixaQuery = useQuery({
+    queryKey: ['caixa-atual'],
+    queryFn: async () => {
+      try {
+        const r = await api.get('/caixa/atual')
+        return r.data as { id: number; status: string }
+      } catch {
+        return null
+      }
+    },
+    retry: false,
+  })
+
+  const caixaAberto = caixaQuery.data?.status === 'aberto'
+
   const vendaMutation = useMutation({
     mutationFn: async (payload: VendaPDVCreate) => {
       const response = await api.post('/pdv/venda', payload)
@@ -338,6 +353,16 @@ const PDV = () => {
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">PDV</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">Registre vendas rápidas e acompanhe o total em tempo real.</p>
       </header>
+
+      {!caixaQuery.isLoading && !caixaAberto && (
+        <div className="flex items-center gap-3 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-yellow-800 dark:text-yellow-300">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <p className="font-semibold text-sm">Caixa não está aberto</p>
+            <p className="text-xs">As vendas serão bloqueadas. <a href="/caixa" className="underline font-medium">Abrir o caixa agora →</a></p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">

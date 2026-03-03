@@ -13,3 +13,4 @@ from .fornecedor import Fornecedor
 from .orcamento import Orcamento, OrcamentoItem
 
 from .categoria import Categoria
+from .caixa_diario import CaixaDiario
