@@ -23,6 +23,9 @@ class ContaReceber(Base):
     historico = Column(String(40))
     cheque = Column(String(10))
     cobranca = Column(String(15))
+    autorizacao_nome = Column(String(120))
+    autorizacao_documento = Column(String(30))
+    autorizacao_observacao = Column(String(255))
 
     # Relationships
     cliente = relationship("Cliente", back_populates="contas_receber")
