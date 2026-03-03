@@ -12,6 +12,7 @@ interface ItemExtraido {
     preco_unitario: number
     unidade: string
     codigo_ncm: string
+    codigo_barras: string
     fornecedor: string
     selecionado: boolean
 }
@@ -39,6 +40,7 @@ interface OCRTaskStatus {
                 preco_unitario: number
                 unidade?: string
                 codigo_ncm?: string
+                codigo_barras?: string
             }>
             valor_total: number
             fornecedor_status?: 'novo' | 'existente' | null
@@ -156,6 +158,7 @@ const ImportarNota = () => {
                 preco_unitario: p.preco_unitario,
                 unidade: p.unidade || 'UN',
                 codigo_ncm: p.codigo_ncm || '',
+                codigo_barras: p.codigo_barras || '',
                 fornecedor: nf.fornecedor || '',
                 selecionado: true,
             }))
@@ -171,6 +174,7 @@ const ImportarNota = () => {
                 preco_unitario: valores[i] || 0,
                 unidade: 'UN',
                 codigo_ncm: '',
+                codigo_barras: '',
                 fornecedor: '',
                 selecionado: true,
             }))
@@ -296,6 +300,7 @@ const ImportarNota = () => {
                 preco_unitario: 0,
                 unidade: 'UN',
                 codigo_ncm: '',
+                codigo_barras: '',
                 fornecedor: fornecedorGlobal,
                 selecionado: true,
             },
@@ -318,6 +323,7 @@ const ImportarNota = () => {
                 preco_unitario: item.preco_unitario,
                 preco_liquido: item.preco_unitario,
                 codigo_ncm: item.codigo_ncm || undefined,
+                codigo_barras: item.codigo_barras || undefined,
                 unidade: item.unidade || 'UN',
                 numero_nota: numeroNota || undefined,
                 cnpj_fornecedor: cnpjFornecedor || undefined,
