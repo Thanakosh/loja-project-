@@ -147,7 +147,7 @@ const PDV = () => {
   const lastKeystrokeRef = useRef<number>(0)
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [cartItems, setCartItems] = useState<ItemCarrinho[]>([])
-  const [descontoGeral, setDescontoGeral] = useState('0')
+  const [descontoGeral, setDescontoGeral] = useState('')
   const [formaPagamento, setFormaPagamento] = useState(1)
   const [parcelas, setParcelas] = useState(1)
   const [observacao, setObservacao] = useState('')
@@ -304,7 +304,7 @@ const PDV = () => {
     setClientSearchInput('')
     setDebouncedClientSearch('')
     setProductSearch('')
-    setDescontoGeral('0')
+    setDescontoGeral('')
     setFormaPagamento(1)
     setParcelas(1)
     setObservacao('')
@@ -571,10 +571,10 @@ const PDV = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Produtos</h2>
-          <div className="mt-4 space-y-2">
+      <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1.5 shadow-sm flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Produtos</h2>
+          <div className="mt-0.5 space-y-0.5">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="buscar-produto">
               Buscar produto
             </label>
@@ -588,7 +588,7 @@ const PDV = () => {
             />
           </div>
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-0.5 space-y-0.5">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="codigo-barras">
               Lançar por código de barras
             </label>
@@ -619,7 +619,7 @@ const PDV = () => {
             </div>
           </div>
 
-          <div className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+          <div className="mt-1 max-h-[4.5rem] space-y-1.5 overflow-y-auto pr-1 sm:max-h-[5rem] xl:max-h-[5.5rem]">
             {produtosQuery.isLoading ? (
               <p className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Carregando produtos...</p>
             ) : filteredProducts.length === 0 ? (
@@ -650,10 +650,10 @@ const PDV = () => {
           </div>
         </section>
 
-        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Cliente (opcional)</h2>
+        <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1.5 shadow-sm flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Cliente (opcional)</h2>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-0.5 space-y-0.5">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="buscar-cliente">
               Buscar cliente
             </label>
@@ -705,7 +705,7 @@ const PDV = () => {
             </div>
           </div>
 
-          <div className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm">
+          <div className="mt-1 rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm">
             {selectedClient ? (
               <div className="space-y-1 text-gray-700 dark:text-gray-300">
                 <p>
@@ -806,19 +806,20 @@ const PDV = () => {
                           const excedido = maxDesc !== null && item.desconto > maxDesc
                           return (
                             <div>
-                              <input
-                                type="number"
-                                min={0}
-                                max={maxDesc !== null ? maxDesc : 100}
-                                step="0.01"
-                                value={item.desconto}
-                                onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
-                                className={`w-24 rounded-md border px-2 py-1 ${
-                                  excedido
-                                    ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-                                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-                                }`}
-                              />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={maxDesc !== null ? maxDesc : 100}
+                                  step="0.01"
+                                  value={item.desconto === 0 ? '' : item.desconto}
+                                  onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
+                                  placeholder="%"
+                                  className={`w-24 rounded-md border px-2 py-1 ${
+                                    excedido
+                                      ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+                                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                                  }`}
+                                />
                               {maxDesc !== null && (
                                 <p className={`text-xs mt-0.5 ${excedido ? 'text-rose-500 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
                                   máx {maxDesc}%
@@ -859,6 +860,7 @@ const PDV = () => {
                   step="0.01"
                   value={descontoGeral}
                   onChange={(event) => setDescontoGeral(event.target.value)}
+                  placeholder="Informe o desconto"
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                 />
               </label>
