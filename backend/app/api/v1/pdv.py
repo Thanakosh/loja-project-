@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 
 from ...core.config import settings
@@ -13,6 +14,7 @@ from ...models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ...models.user import User
 from ...models.venda import Venda
 from ...schemas.pdv import VendaPDVCreate, VendaPDVRead
+from ...services.pdf_service import gerar_pdf_comprovante_venda
 from ...services.pdv_service import registrar_venda
 
 router = APIRouter(tags=["PDV"])
@@ -56,6 +58,33 @@ def buscar_venda_pdv(
     if not venda:
         raise VendaNaoEncontradaError()
     return venda
+
+
+@router.get("/venda/{venda_id}/comprovante")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def gerar_comprovante_venda(
+    request: Request,
+    response: Response,
+    venda_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    venda = (
+        db.query(Venda)
+        .options(joinedload(Venda.itens), joinedload(Venda.cliente))
+        .filter(Venda.id == venda_id)
+        .first()
+    )
+    if not venda:
+        raise VendaNaoEncontradaError()
+
+    pdf_bytes = gerar_pdf_comprovante_venda(venda)
+    filename = f"comprovante-venda-{venda.numero_legado}.pdf"
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.post("/venda/{venda_id}/cancelar")

@@ -18,6 +18,7 @@ class Produto(Base):
     preco_unitario = Column(Float, nullable=False)
     preco_liquido = Column(Float, nullable=False)
     codigo_ncm = Column(String, index=True)
+    codigo_barras = Column(String(32), unique=True, nullable=True, index=True)
     unidade = Column(String)
     unidade_medida = Column(String(10), nullable=False, default="UN", server_default="UN")
     data_emissao = Column(Date)
@@ -40,6 +41,7 @@ class Produto(Base):
     transacoes = relationship("TransacaoEstoque", back_populates="produto", cascade="all, delete-orphan")
     fornecedor_rel = relationship("Fornecedor", back_populates="produtos")
     categoria = relationship("Categoria", back_populates="produtos")
+    politicas_desconto = relationship("PoliticaDescontoProduto", back_populates="produto", cascade="all, delete-orphan")
     
     @property
     def estoque_atual(self):

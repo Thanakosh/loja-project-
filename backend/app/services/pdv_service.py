@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..core.enums import FormaPagamento
 from ..core.exceptions import (
     CaixaNaoAbertoError,
+    DescontoExcedidoError,
     EstoqueInsuficienteError,
     ProdutoNaoEncontradoError,
     QuantidadeInvalidaParaUnidadeError,
@@ -13,6 +14,7 @@ from ..core.exceptions import (
 from ..models.caixa_diario import CaixaDiario
 from ..models.conta_receber import ContaReceber
 from ..models.produto import Produto, UNIDADES_FRACIONAVEIS
+from ..models.politica_desconto import PoliticaDescontoProduto
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
@@ -81,6 +83,31 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     }
                 )
 
+            # ── Valida desconto contra política progressiva ──────────
+            if item.desconto > 0:
+                faixas = (
+                    db.query(PoliticaDescontoProduto)
+                    .filter(PoliticaDescontoProduto.produto_id == item.produto_id)
+                    .order_by(PoliticaDescontoProduto.qtd_minima.desc())
+                    .all()
+                )
+                if faixas:
+                    desconto_max = 0.0
+                    for faixa in faixas:
+                        if item.quantidade >= faixa.qtd_minima:
+                            desconto_max = faixa.desconto_maximo_percentual
+                            break
+                    if item.desconto > desconto_max:
+                        raise DescontoExcedidoError(
+                            details={
+                                "produto_id": item.produto_id,
+                                "produto_nome": produto.nome,
+                                "desconto_solicitado": item.desconto,
+                                "desconto_maximo": desconto_max,
+                                "quantidade": item.quantidade,
+                            }
+                        )
+
             preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
             preco_total = item.quantidade * preco_efetivo * (1 - (item.desconto / 100))
             totais_por_item.append(preco_total)
@@ -100,6 +127,9 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
             desconto=venda_in.desconto_geral,
             forma_pagamento=venda_in.forma_pagamento.value,
             observacao=venda_in.observacao,
+            autorizacao_terceiro_nome=venda_in.autorizacao_terceiro_nome,
+            autorizacao_terceiro_documento=venda_in.autorizacao_terceiro_documento,
+            autorizacao_terceiro_observacao=venda_in.autorizacao_terceiro_observacao,
             cancelada=False,
         )
         db.add(venda)
@@ -115,6 +145,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     produto_id=item.produto_id,
                     codigo_legado=produto.id,
                     nome_produto=produto.nome,
+                    codigo_barras=produto.codigo_barras,
                     unidade=produto.unidade,
                     quantidade=item.quantidade,
                     preco_unitario=_calcular_preco_pdv(produto, item.quantidade, item.preco_unitario),

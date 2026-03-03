@@ -9,6 +9,7 @@ class ProdutoBase(BaseModel):
     preco_unitario: float
     preco_liquido: float
     codigo_ncm: Optional[str] = None
+    codigo_barras: Optional[str] = None
     unidade: Optional[str] = None
     unidade_medida: str = "UN"
     data_emissao: Optional[date] = None
@@ -36,6 +37,7 @@ class ProdutoRead(ProdutoBase):
     ativo: bool
     estoque_atual: float  # Calculado dinamicamente
     estoque_baixo: bool  # Calculado dinamicamente
+    permite_fracionado: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +48,7 @@ class ProdutoUpdate(BaseModel):
     preco_unitario: Optional[float] = None
     preco_liquido: Optional[float] = None
     codigo_ncm: Optional[str] = None
+    codigo_barras: Optional[str] = None
     unidade: Optional[str] = None
     unidade_medida: Optional[str] = None
     estoque_minimo: Optional[int] = None

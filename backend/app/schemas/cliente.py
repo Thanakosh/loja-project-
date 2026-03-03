@@ -11,6 +11,7 @@ class ClienteBase(BaseModel):
     telefone: Optional[str] = None
     email: Optional[str] = None
     observacao: Optional[str] = None
+    historico_observacoes: Optional[str] = None
     inscricao_estadual: Optional[str] = None
 
 class ClienteCreate(ClienteBase):

@@ -127,6 +127,16 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         # NCM
         ncm = _ft(prod, "nfe:NCM") or _ft(prod, "NCM") or ""
 
+        # Código de barras (EAN/GTIN)
+        cean_raw = _ft(prod, "nfe:cEAN") or _ft(prod, "cEAN") or ""
+        cean_trib = _ft(prod, "nfe:cEANTrib") or _ft(prod, "cEANTrib") or ""
+        # cEAN pode vir como "SEM GTIN" — ignorar nesses casos
+        codigo_barras: str | None = None
+        if cean_raw and cean_raw.strip().isdigit() and len(cean_raw.strip()) >= 8:
+            codigo_barras = cean_raw.strip()
+        elif cean_trib and cean_trib.strip().isdigit() and len(cean_trib.strip()) >= 8:
+            codigo_barras = cean_trib.strip()
+
         produtos.append(
             ProdutoExtraido(
                 nome=nome,
@@ -134,6 +144,7 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
                 preco_unitario=preco_unitario,
                 unidade=unidade.upper(),
                 codigo_ncm=ncm,
+                codigo_barras=codigo_barras,
             )
         )
 
@@ -171,7 +182,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     if importlib.util.find_spec("pdfplumber") is None:
         raise ImportError(
             "Dependência 'pdfplumber' não instalada. "
-            "Instale com: pip install pdfplumber"
+            "Instale com: pip install -r requirements-ocr.txt"
         )
 
     import pdfplumber
