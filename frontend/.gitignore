@@ -27,3 +27,15 @@ dist-ssr
 .env.test
 playwright-report
 test-results
+
+# Build outputs
+out/
+*.log
+err.log
+vite-err.log
+vite-out.log
+vite.log
+package-full.log
+make-error.log
+eslint-report.json
+package-lock.json

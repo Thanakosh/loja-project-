@@ -67,6 +67,7 @@ class VendaPDVRead(BaseModel):
     forma_pagamento: Optional[int] = None
     forma_pagamento_label: Optional[str] = None
     cliente_id: Optional[int] = None
+    caixa_id: Optional[int] = None
     itens: List[VendaItemRead] = []
     cancelada: bool
 

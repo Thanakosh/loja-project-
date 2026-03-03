@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import NotasFiscais from './pages/NotasFiscais'
 import Orcamentos from './pages/Orcamentos'
 import PDV from './pages/PDV'
+import CaixaDiario from './pages/CaixaDiario'
 import Produtos from './pages/Produtos'
 import Relatorios from './pages/Relatorios'
 import Vendas from './pages/Vendas'
@@ -29,6 +30,7 @@ const App = () => {
             <Route path="/" element={<Navigate replace to="/dashboard" />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/pdv" element={<PDV />} />
+            <Route path="/caixa" element={<CaixaDiario />} />
             <Route path="/vendas" element={<Vendas />} />
             <Route path="/produtos" element={<Produtos />} />
             <Route path="/estoque" element={<Estoque />} />

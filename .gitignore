@@ -52,6 +52,9 @@ yarn.lock
 # OS
 .DS_Store
 Thumbs.db
+# Entrega cliente (binários Electron)
+entrega-cliente/
+
 # Arquivos criados acidentalmente pelo Windows Explorer
 "Novo(a)*"
 "New *"
