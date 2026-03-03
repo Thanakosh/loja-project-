@@ -93,6 +93,20 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     if data_emissao and "T" in data_emissao:
         data_emissao = data_emissao.split("T")[0]
 
+    # ─── Frete total da nota (para rateio por item) — lido de ICMSTot/vFrete ───
+    frete_total = 0.0
+    total_node_tmp = _first_not_none(inf_nfe.find("nfe:total", ns_real), inf_nfe.find("total"))
+    if total_node_tmp is not None:
+        icms_tot_tmp = _first_not_none(
+            total_node_tmp.find("nfe:ICMSTot", ns_real), total_node_tmp.find("ICMSTot")
+        )
+        if icms_tot_tmp is not None:
+            frete_str = _ft(icms_tot_tmp, "nfe:vFrete") or _ft(icms_tot_tmp, "vFrete") or "0"
+            try:
+                frete_total = float(frete_str)
+            except (ValueError, TypeError):
+                frete_total = 0.0
+
     # ─── Produtos/Itens ───
     produtos: List[ProdutoExtraido] = []
 
@@ -100,6 +114,22 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     dets = inf_nfe.findall("nfe:det", ns_real)
     if not dets:
         dets = inf_nfe.findall("det")
+
+    # Pré-calcular valor total dos produtos para rateio de frete proporcional
+    def _safe_float(value: Optional[str], default: float = 0.0) -> float:
+        try:
+            return float(value) if value else default
+        except (ValueError, TypeError):
+            return default
+
+    # Primeira passagem: coletar vProd para rateio de frete
+    valor_total_produtos = 0.0
+    for det in dets:
+        prod_tmp = _first_not_none(det.find("nfe:prod", ns_real), det.find("prod"))
+        if prod_tmp is not None:
+            vp = _ft(prod_tmp, "nfe:vProd") or _ft(prod_tmp, "vProd") or "0"
+            valor_total_produtos += _safe_float(vp)
+
     for det in dets:
         prod = _first_not_none(det.find("nfe:prod", ns_real), det.find("prod"))
         if prod is None:
@@ -137,6 +167,49 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         elif cean_trib and cean_trib.strip().isdigit() and len(cean_trib.strip()) >= 8:
             codigo_barras = cean_trib.strip()
 
+        # ─── CFOP ───
+        cfop = _ft(prod, "nfe:CFOP") or _ft(prod, "CFOP") or None
+
+        # ─── Frete rateado por item (proporcional ao vProd) ───
+        frete_rateado: Optional[float] = None
+        if frete_total > 0.0 and valor_total_produtos > 0.0:
+            vprod = _safe_float(_ft(prod, "nfe:vProd") or _ft(prod, "vProd"))
+            frete_rateado = round(frete_total * vprod / valor_total_produtos, 4)
+
+        # ─── ICMS por item ───
+        cst: Optional[str] = None
+        csosn: Optional[str] = None
+        icms_base: Optional[float] = None
+        icms_aliquota: Optional[float] = None
+        icms_valor: Optional[float] = None
+
+        imposto = _first_not_none(det.find("nfe:imposto", ns_real), det.find("imposto"))
+        if imposto is not None:
+            icms_group = _first_not_none(imposto.find("nfe:ICMS", ns_real), imposto.find("ICMS"))
+            if icms_group is not None:
+                # Iterar sobre filhos do grupo ICMS (ICMS00, ICMS10, ..., ICMSSN101, etc.)
+                children = list(icms_group)
+                for icms_node in children:
+                    # CST (regime normal) ou CSOSN (Simples Nacional)
+                    cst_val = _ft(icms_node, "nfe:CST") or _ft(icms_node, "CST")
+                    csosn_val = _ft(icms_node, "nfe:CSOSN") or _ft(icms_node, "CSOSN")
+                    if cst_val:
+                        cst = cst_val
+                    if csosn_val:
+                        csosn = csosn_val
+                    # Base de cálculo ICMS
+                    vbc = _ft(icms_node, "nfe:vBC") or _ft(icms_node, "vBC")
+                    if vbc is not None:
+                        icms_base = _safe_float(vbc)
+                    # Alíquota ICMS
+                    picms = _ft(icms_node, "nfe:pICMS") or _ft(icms_node, "pICMS")
+                    if picms is not None:
+                        icms_aliquota = _safe_float(picms)
+                    # Valor ICMS
+                    vicms = _ft(icms_node, "nfe:vICMS") or _ft(icms_node, "vICMS")
+                    if vicms is not None:
+                        icms_valor = _safe_float(vicms)
+
         produtos.append(
             ProdutoExtraido(
                 nome=nome,
@@ -145,6 +218,13 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
                 unidade=unidade.upper(),
                 codigo_ncm=ncm,
                 codigo_barras=codigo_barras,
+                cfop=cfop,
+                cst=cst,
+                csosn=csosn,
+                icms_base=icms_base,
+                icms_aliquota=icms_aliquota,
+                icms_valor=icms_valor,
+                frete_rateado=frete_rateado,
             )
         )
 
