@@ -137,3 +137,25 @@ def test_ocr_xml_idempotente(client: TestClient, auth_headers: dict[str, str]):
     assert first_response.status_code == 200
     assert second_response.status_code == 200
     assert first_response.json()["task_id"] == second_response.json()["task_id"]
+
+
+def test_ocr_xml_retorna_payload_fiscal_normalizado(client: TestClient, auth_headers: dict[str, str]):
+    xml_content = _load_fixture_bytes("nfe_minima.xml")
+
+    upload_response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_minima.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+
+    assert upload_response.status_code == 200
+    task_id = upload_response.json()["task_id"]
+
+    status_response = client.get(f"/api/v1/ocr/status/{task_id}", headers=auth_headers)
+
+    assert status_response.status_code == 200
+    body = status_response.json()
+    payload = body["result"]["payload_fiscal_normalizado"]
+    assert payload["versao_payload"] == "1.0.0"
+    assert payload["fornecedor_nome"] == "Fornecedor Exemplo LTDA"
+    assert len(payload["itens"]) == 1
