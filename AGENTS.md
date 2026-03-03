@@ -8,7 +8,7 @@
 ## 🗂️ Visão Geral do Projeto
 
 **Loja Project** é um sistema de gerenciamento comercial com backend em FastAPI + PostgreSQL.
-Versão atual: `2.0.0` | Branch principal: `main`
+Versão atual: `2.1.0` | Branch principal: `main`
 
 ```
 loja-project-/

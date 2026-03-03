@@ -6,7 +6,7 @@ scope: frontend/package.json, frontend/electron/, frontend/vite.config.ts
 branch: feat/electron-forge-setup
 commit_message: "feat(frontend): configura base Electron Forge para build desktop"
 estimated_effort: 60 minutos
-status: em_andamento
+status: concluída
 depends_on: []
 recomendacao_ref: "docs/validacao_apresentacao_cliente.md seção 6.1"
 ---
@@ -22,7 +22,7 @@ Criar base mínima de Electron Forge para permitir `npm run make` e gerar
 artefato instalável em Windows.
 
 ## Critérios de aceite
-- [ ] Electron Forge instalado e configurado no frontend
-- [ ] Scripts de desktop adicionados no `package.json` (`start`, `package`, `make`)
-- [ ] Build web (`npm run build`) continua funcionando
-- [ ] `npm run make` executa localmente sem quebrar o projeto
+- [x] Electron Forge instalado e configurado no frontend
+- [x] Scripts de desktop adicionados no `package.json` (`start`, `package`, `make`)
+- [x] Build web (`npm run build`) continua funcionando
+- [x] `npm run make` executa localmente sem quebrar o projeto

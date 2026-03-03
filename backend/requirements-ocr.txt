@@ -1,15 +1,18 @@
-# Dependências opcionais para OCR/ML — RESERVADAS PARA VERSÃO FUTURA
+# Dependências opcionais para perfil OCR/ML.
 #
-# Estas dependências serão reintroduzidas quando o processamento de
-# imagens e PDFs via IA for implementado com arquitetura de filas.
+# Instalação opcional:
+#   pip install -r requirements-ocr.txt
 #
-# NÃO instalar neste momento.
-#
-# Itens planejados para versão futura:
-#   easyocr>=1.7.1          # OCR de imagens
-#   Pillow==10.2.0          # Manipulação de imagens
-#   pdfplumber>=0.10.0      # Extração de texto de PDFs
-#   lxml>=5.0.0             # Parsing XML avançado
-#   google-generativeai     # Gemini API
-#
+# Estas bibliotecas ficam separadas do core para reduzir tempo de build
+# e custo operacional do ambiente base da API.
+
+# OCR e processamento de documentos
+easyocr>=1.7.1
+Pillow>=10.2.0
+pdfplumber>=0.10.0
+lxml>=5.0.0
+
+# IA generativa (integração futura)
+google-generativeai>=0.8.0
+
 # A dependência 'ollama' foi removida do projeto.

@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -13,6 +14,14 @@ from app.models.user import User
 from app.schemas.cliente import ClienteRead, ClienteCreate, ClienteUpdate
 
 router = APIRouter()
+
+
+def _prepend_historico(existing: Optional[str], observacao: str) -> str:
+    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+    entrada = f"[{timestamp}] {observacao.strip()}"
+    if not existing:
+        return entrada
+    return f"{entrada}\n{existing}"
 
 
 def _next_codigo_legado(db: Session) -> int:
@@ -84,6 +93,9 @@ def create_cliente(
         uf=cliente_in.uf,
         cep=cliente_in.cep,
         telefone=cliente_in.telefone,
+        email=cliente_in.email,
+        observacao=cliente_in.observacao,
+        historico_observacoes=_prepend_historico(None, cliente_in.observacao) if cliente_in.observacao else None,
         inscricao_estadual=cliente_in.inscricao_estadual,
     )
 
@@ -114,7 +126,19 @@ def update_cliente(
     cliente.uf = cliente_in.uf
     cliente.cep = cliente_in.cep
     cliente.telefone = cliente_in.telefone
+    cliente.email = cliente_in.email
     cliente.inscricao_estadual = cliente_in.inscricao_estadual
+
+    nova_observacao = (cliente_in.observacao or "").strip()
+    observacao_atual = (cliente.observacao or "").strip()
+    if nova_observacao:
+        if nova_observacao != observacao_atual:
+            cliente.historico_observacoes = _prepend_historico(cliente.historico_observacoes, nova_observacao)
+        cliente.observacao = nova_observacao
+    elif cliente_in.observacao is None:
+        cliente.observacao = cliente.observacao
+    else:
+        cliente.observacao = None
 
     db.commit()
     db.refresh(cliente)
