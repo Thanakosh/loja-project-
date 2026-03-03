@@ -33,9 +33,11 @@ def len_b_str(s: str) -> int:
     return len(s)
 
 
-def authenticate_user(db: Session, email: str, password: str):
-    """Autentica usuário por email e senha."""
-    user = db.query(User).filter(User.email == email).first()
+def authenticate_user(db: Session, identifier: str, password: str):
+    """Autentica usuário por username ou email e senha."""
+    user = db.query(User).filter(User.username == identifier).first()
+    if not user:
+        user = db.query(User).filter(User.email == identifier).first()
     if not user:
         return False
     if not verify_password(password, user.hashed_password):

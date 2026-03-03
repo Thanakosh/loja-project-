@@ -18,6 +18,7 @@ from ...models.user import User
 from ...schemas.user import (
     User as UserSchema,
     UserCreate,
+    UserList,
     TokenResponse,
     RefreshTokenRequest,
 )
@@ -124,12 +125,21 @@ def register_user(
             status_code=400,
             detail="Email já cadastrado"
         )
+    # Verificar username duplicado
+    if user.username:
+        existing_username = db.query(User).filter(User.username == user.username).first()
+        if existing_username:
+            raise HTTPException(
+                status_code=400,
+                detail="Nome de usuário já cadastrado"
+            )
     hashed_password = get_password_hash(user.password)
     db_user = User(
+        username=user.username,
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
-        is_superuser=False
+        is_superuser=user.is_superuser if user.is_superuser else False
     )
     db.add(db_user)
     db.commit()
@@ -146,3 +156,16 @@ async def read_users_me(
     current_user: User = Depends(get_current_user)
 ):
     return current_user
+
+
+@router.get("/", response_model=UserList)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def list_users(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Lista todos os usuários do sistema. Requer autenticação."""
+    users = db.query(User).order_by(User.id).all()
+    return UserList(users=users, total=len(users))
