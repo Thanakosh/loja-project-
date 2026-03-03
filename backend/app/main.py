@@ -23,6 +23,7 @@ from app.api.v1.contas_receber import router as contas_receber_router
 from app.api.v1.notas_fiscais import router as notas_fiscais_router
 from app.api.v1.relatorios import router as relatorios_router
 from app.api.v1.caixa import router as caixa_router
+from app.api.v1.politica_desconto import router as politica_desconto_router
 from app.api.endpoints.ncm import router as ncm_router
 from app.core.limiter import limiter
 
@@ -128,6 +129,7 @@ app.include_router(contas_receber_router, prefix="/api/v1/contas-receber", tags=
 app.include_router(notas_fiscais_router, prefix="/api/v1/notas-fiscais", tags=["Notas Fiscais"])
 app.include_router(relatorios_router, prefix="/api/v1/relatorios", tags=["Relatórios"])
 app.include_router(caixa_router, prefix="/api/v1/caixa", tags=["Caixa Diário"])
+app.include_router(politica_desconto_router, prefix="/api/v1/politica-desconto", tags=["Política de Desconto"])
 app.include_router(ncm_router, prefix="/api/v1/ncm", tags=["NCM"])
 
 
