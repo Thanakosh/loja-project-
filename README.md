@@ -92,6 +92,7 @@ O **Loja Project** é uma solução de backend desenvolvida com **FastAPI**, vol
 - **Controle de caixa diário** (abertura/fechamento)
 - **Categorias hierárquicas de produtos**
 - **Precificação atacado/varejo**
+- **Camada de Inteligência Fiscal com IA (proposta avaliada)** — ver `docs/PROPOSTA_CAMADA_INTELIGENCIA_FISCAL.md`
 
 ---
 
