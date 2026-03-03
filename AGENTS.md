@@ -41,7 +41,6 @@ loja-project-/
 | Pydantic         | >=2.6.4       | **v2 obrigatório** — sem v1         |
 | SQLAlchemy       | >=2.0.27      | Async engine disponível             |
 | Alembic          | ==1.13.1      | Fixado — não alterar                |
-| ollama (client)  | >=0.4.7       | Compatível com httpx>=0.26.0        |
 | httpx            | >=0.26.0      | Não reduzir esta versão             |
 
 ## 🎨 Stack Frontend (Novo)
@@ -106,7 +105,7 @@ Use o padrão **Conventional Commits**:
 ```
 feat(estoque): adiciona endpoint de entrada em lote
 fix(auth): corrige validação de token expirado
-chore(deps): atualiza ollama para >=0.4.7
+chore(deps): atualiza httpx para >=0.27.0
 test(produto): adiciona testes de criação com estoque inicial
 ```
 

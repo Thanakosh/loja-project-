@@ -3,7 +3,6 @@ from .produto import ProdutoRead, ProdutoCreate, ProdutoUpdate
 from .estoque import EstoqueRead, EstoqueCreate
 from .orcamento import OrcamentoRead, OrcamentoCreate
 from .ocr import OCRResponse, OCRTaskResponse, OCRTaskStatus
-from .llm import LLMRequest, LLMResponse
 from .pagination import PaginatedResponse
 from .transacao_estoque import TransacaoEstoqueRead, TransacaoEstoqueCreate
 from .fornecedor import FornecedorRead, FornecedorCreate, FornecedorUpdate
@@ -23,8 +22,6 @@ __all__ = [
     "OCRResponse",
     "OCRTaskResponse",
     "OCRTaskStatus",
-    "LLMRequest",
-    "LLMResponse",
     "PaginatedResponse",
     "TransacaoEstoqueRead",
     "TransacaoEstoqueCreate",

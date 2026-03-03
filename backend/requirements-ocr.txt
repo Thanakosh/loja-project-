@@ -14,5 +14,3 @@ lxml>=5.0.0
 
 # IA generativa (integração futura)
 google-generativeai>=0.8.0
-
-# A dependência 'ollama' foi removida do projeto.
