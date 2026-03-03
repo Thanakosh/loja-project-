@@ -1,7 +1,7 @@
 ---
 task_id: TASK-030
 title: "Criar normalizador de payload fiscal interno"
-status: pendente
+status: concluida
 priority: alta
 agent_chat_executable: "sim"
 depends_on: ["TASK-029"]

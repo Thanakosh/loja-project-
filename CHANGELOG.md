@@ -37,6 +37,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 ## [Unreleased]
 
 ### 🔄 Alterado
+- Backend (OCR/XML): endpoint de upload agora inclui `payload_fiscal_normalizado` versionado (`versao_payload`) para consumo interno por auditoria, precificação e risco.
 - Backend (OCR/XML): parser de NFe evoluído para extrair por item os campos fiscais `CFOP`, `CST/CSOSN`, `vBC/pICMS/vICMS` e rateio de frete por item, mantendo compatibilidade com o payload atual.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatório de validação de instalação limpa (TASK-019): o build falha automaticamente se o checklist de evidências (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
@@ -44,6 +45,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orçamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
 
 ### ✨ Adicionado
+- Backend: novo normalizador fiscal canônico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
 - Backend: suporte a categorias hierárquicas de produtos com CRUD em `/api/v1/categorias`, endpoint de árvore (`/api/v1/categorias/arvore`) e vínculo opcional `categoria_id` em produtos.
 - Frontend: tela de Produtos com seleção em árvore de categoria no cadastro/edição e filtro por categoria (incluindo subcategorias) na listagem.
 
@@ -58,6 +60,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ### ✅ Testes
 - Adicionados testes unitários para o parser XML cobrindo tributação completa por item, ausência de blocos fiscais opcionais e fallback seguro em valores fiscais inválidos (`backend/tests/test_nfe_parser.py`).
+- Adicionados testes para o normalizador de payload fiscal interno e para retorno do payload normalizado no fluxo de OCR XML (`backend/tests/test_fiscal_normalizer.py`, `backend/tests/test_ocr.py`).
 - Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validação de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), além de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criação e atualização de clientes na API (`backend/tests/test_clientes.py`).
@@ -99,6 +102,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 Esta é uma atualização major com mudanças significativas na arquitetura e funcionalidades do sistema.
 
 ### ✨ Adicionado
+- Backend: novo normalizador fiscal canônico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
 
 #### Sistema de Transações de Estoque
 - **Novo modelo `TransacaoEstoque`**: Sistema completo de rastreamento de movimentações

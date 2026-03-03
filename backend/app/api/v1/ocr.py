@@ -215,7 +215,9 @@ async def upload_arquivo_nota_fiscal(
 
     try:
         from ...core.nfe_parser import parse_nfe_xml
+        from ...fiscal.normalizer import normalizar_nota_fiscal
         nota = parse_nfe_xml(content)
+        nota_normalizada = normalizar_nota_fiscal(nota)
 
         fornecedor_status, fornecedor_id = None, None
         if nota.fornecedor and nota.cnpj_fornecedor:
@@ -243,6 +245,7 @@ async def upload_arquivo_nota_fiscal(
                     "fornecedor_status": fornecedor_status,
                     "fornecedor_id": fornecedor_id,
                 },
+                "payload_fiscal_normalizado": nota_normalizada.model_dump(mode="json"),
             },
         }
         ocr_task_index_by_hash[file_hash] = task_id
