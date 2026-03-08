@@ -40,7 +40,11 @@ def get_engine() -> Engine:
 def get_async_engine() -> AsyncEngine:
     global _async_engine, _AsyncSessionLocal
     if _async_engine is None:
-        url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+        url = settings.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("sqlite://"):
+            url = url.replace("sqlite://", "sqlite+aiosqlite://", 1)
         _async_engine = create_async_engine(
             url,
             pool_pre_ping=True,
