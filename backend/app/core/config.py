@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_AI: str = "60/hour"     # endpoints /api/v1/ai e /api/v1/fiscal-ai
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
+    # Redis / Task Queue
+    REDIS_URL: str = "redis://localhost:6379/0"
+    OCR_TASK_TTL_HOURS: int = 24
+    OCR_MAX_RETRIES: int = 3
+    OCR_RETRY_DELAY_SECONDS: int = 30
+
     # CORS - Em produção, deve ser uma lista restrita de URLs
     # Se for ["*"], allow_credentials deve ser False no main.py
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

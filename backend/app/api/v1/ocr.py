@@ -3,6 +3,9 @@ Módulo OCR — Versão atual: apenas XML de NFe.
 
 Processamento de imagens (EasyOCR) e PDFs via IA (Gemini) estão planejados
 para uma versão futura e foram desativados intencionalmente.
+
+Fila assíncrona: endpoints /processar e /status/{task_id} usam ARQ + Redis.
+O endpoint /upload-arquivo (XML síncrono) NÃO usa a fila — continua ativo independente do Redis.
 """
 
 import hashlib
@@ -142,6 +145,28 @@ async def get_ocr_status(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
 ):
+    """
+    Consulta o status de uma tarefa OCR.
+
+    Estratégia de busca (fallback em camadas):
+    1. Redis (tarefas enfileiradas via ARQ) — sobrevivem a restart da API.
+    2. Dict em memória (tarefas XML síncronas do /upload-arquivo e sessão corrente).
+    """
+    # 1. Tenta Redis primeiro
+    try:
+        from ...core.task_queue import get_task_status as redis_get_status
+        redis_result = await redis_get_status(task_id)
+        if redis_result.get("status") not in ("not_found", None):
+            return OCRTaskStatus(
+                task_id=task_id,
+                status=redis_result["status"],
+                result=redis_result.get("result"),
+                error=redis_result.get("error"),
+            )
+    except Exception as exc:
+        logger.warning("[OCR] Redis indisponível para consulta de status: %s", exc)
+
+    # 2. Fallback: dict em memória (XML síncrono + sessão atual)
     _cleanup_expired_tasks()
     if task_id not in ocr_tasks:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada ou expirada")

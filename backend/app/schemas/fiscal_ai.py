@@ -87,3 +87,89 @@ class FiscalAuditResponse(BaseModel):
     total_alertas: int
     versao_engine: str
     versao_service: str
+
+
+# ─── Classificação NCM (classify-ncm) ───
+
+
+class NCMClassifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    descricao: str = Field(min_length=3, max_length=500)
+    limite: int = Field(default=5, ge=1, le=20)
+
+
+class NCMCandidato(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    codigo: str
+    descricao: str
+    score: float = Field(description="Relevância 0.0 a 1.0")
+
+
+class NCMClassifyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    descricao_consultada: str
+    candidatos: List[NCMCandidato]
+    total_encontrado: int
+
+
+# ─── Ranking de fornecedores (supplier-ranking) ───
+
+
+class SupplierRankingItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    fornecedor_id: int
+    razao_social: str
+    cnpj: str
+    total_notas: int
+    total_itens: int
+    valor_total: float
+    score_confiabilidade: float = Field(description="Score 0.0 a 1.0")
+
+
+class SupplierRankingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    fornecedores: List[SupplierRankingItem]
+    total: int
+    criterio: str
+
+
+# ─── Feedback fiscal (TASK-033) ───
+
+
+class FiscalFeedbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    origem_sugestao: str = Field(description="validate_note | suggest_price | classify_ncm | supplier_ranking")
+    versao_motor: str
+    decisao: str = Field(description="aceito | rejeitado | revisado")
+    referencia_id: Optional[str] = None
+    observacao: Optional[str] = Field(default=None, max_length=500)
+
+
+class FiscalFeedbackResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    origem_sugestao: str
+    versao_motor: str
+    decisao: str
+    referencia_id: Optional[str]
+    observacao: Optional[str]
+    user_id: int
+    created_at: str
+
+
+class FiscalFeedbackMetricsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    total: int
+    aceitos: int
+    rejeitados: int
+    revisados: int
+    taxa_aceitacao: float
+    por_origem: dict
