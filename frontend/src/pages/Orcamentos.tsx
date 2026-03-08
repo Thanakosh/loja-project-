@@ -438,7 +438,7 @@ const Orcamentos = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -545,7 +545,7 @@ const Orcamentos = () => {
           <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Converter em Venda</h2>
-              <button onClick={() => setConvertModal(null)} className="text-2xl text-gray-400 hover:text-gray-600">×</button>
+              <button onClick={() => setConvertModal(null)} aria-label="Fechar modal de conversão" className="text-2xl text-gray-400 hover:text-gray-600">×</button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <label className="block space-y-1 text-sm">
@@ -608,6 +608,7 @@ const Orcamentos = () => {
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Novo orçamento</h2>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
+                aria-label="Fechar modal de novo orçamento"
                 className="text-2xl text-gray-400 transition hover:text-gray-600"
               >
                 ×
