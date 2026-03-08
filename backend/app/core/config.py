@@ -25,9 +25,7 @@ class Settings(BaseSettings):
     # Optional configurations
     WHATSAPP_TOKEN: Optional[str] = None
 
-    # IA/LLM — reservado para versão futura
-    # GEMINI_API_KEY, OLLAMA_URL e OPEN_INTERPRETER_URL foram removidos.
-    # Serão reintroduzidos quando OCR/LLM for reimplementado.
+    # IA/LLM — reservado para versão futura (Groq API como provider principal)
 
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
@@ -41,7 +39,7 @@ class Settings(BaseSettings):
 
     # Rate Limiting
     RATE_LIMIT_OCR: str = "10/hour"
-    RATE_LIMIT_LLM: str = "30/hour"   # mantido para evitar erros de import; sem endpoints ativos
+    RATE_LIMIT_AI: str = "60/hour"     # endpoints /api/v1/ai e /api/v1/fiscal-ai
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
     # CORS - Em produção, deve ser uma lista restrita de URLs

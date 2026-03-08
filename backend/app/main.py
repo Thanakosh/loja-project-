@@ -8,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.estoque import router as estoque_router
 from app.api.v1.estoque_v2 import router as estoque_v2_router
-from app.api.v1.llm import router as llm_router
 from app.api.v1.ocr import router as ocr_router
 from app.api.v1.orcamento import router as orcamento_router
 from app.api.v1.produto import router as produto_router
@@ -119,7 +118,6 @@ app.include_router(estoque_router, prefix="/api/v1/estoque", tags=["Estoque (Leg
 app.include_router(estoque_v2_router, prefix="/api/v2/estoque", tags=["Estoque V2"])
 app.include_router(produto_router, prefix="/api/v1/produtos", tags=["Produtos"])
 app.include_router(ocr_router, prefix="/api/v1/ocr", tags=["OCR"])
-app.include_router(llm_router, prefix="/api/v1/llm", tags=["LLM"])
 app.include_router(orcamento_router, prefix="/api/v1/orcamentos", tags=["Orcamentos"])
 app.include_router(clientes_router, prefix="/api/v1/clientes", tags=["Clientes (Histórico)"])
 app.include_router(categorias_router, prefix="/api/v1/categorias", tags=["Categorias"])
@@ -149,7 +147,6 @@ async def root():
         ],
         "coming_soon": [
             "OCR de imagens e PDFs via IA",
-            "Análise inteligente com LLM"
         ]
     }
 

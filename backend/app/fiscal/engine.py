@@ -11,16 +11,16 @@ from decimal import Decimal
 from typing import List, Optional
 
 from ..schemas.fiscal_payload import FiscalItemPayload, NotaFiscalPayloadNormalizado
+from .tables.cst_icms import CST_ICMS
+from .tables.csosn import CSOSN
 
 VERSAO_ENGINE_REGRAS = "1.0.0"
 
 # ─── Faixas de referência ───
 
-# CSTs válidos para regime normal (ICMS)
-CST_REGIME_NORMAL = {"00", "10", "20", "30", "40", "41", "50", "51", "60", "70", "90"}
-
-# CSOSNs válidos para Simples Nacional
-CSOSN_SIMPLES_NACIONAL = {"101", "102", "103", "201", "202", "203", "300", "400", "500", "900"}
+# CSTs e CSOSNs agora vêm das tabelas oficiais
+CST_REGIME_NORMAL = set(CST_ICMS.keys())
+CSOSN_SIMPLES_NACIONAL = set(CSOSN.keys())
 
 # Alíquotas ICMS comuns (referência; fora dessa faixa gera alerta)
 ICMS_ALIQUOTA_MIN = Decimal("0.0")
