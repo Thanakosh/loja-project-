@@ -1,6 +1,7 @@
 import pytest
 
 from app.fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price, enforce_minimum_price
+from app.models.fiscal_feedback import FiscalFeedback
 
 
 def test_cost_calculator_calcula_campos_principais():
@@ -88,3 +89,124 @@ def test_suggest_price_exige_autenticacao(client):
     response = client.post("/api/v1/fiscal-ai/suggest-price/1", json={})
 
     assert response.status_code == 401
+
+
+def test_feedback_post_valido_retorna_201_com_id(client, auth_headers):
+    produto_resp = client.post(
+        "/api/v1/produtos/",
+        json={
+            "nome": "Produto feedback",
+            "fornecedor": "Fornecedor feedback",
+            "preco_unitario": 30.0,
+            "preco_liquido": 20.0,
+            "preco_custo": 18.0,
+            "unidade": "UN",
+        },
+        headers=auth_headers,
+    )
+    produto_id = produto_resp.json()["id"]
+
+    response = client.post(
+        "/api/v1/fiscal-ai/feedback",
+        json={
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.0.0",
+            "decisao": "aceito",
+            "valor_original": 35.5,
+            "valor_final": 35.5,
+            "comentario": "Preço aceito",
+            "produto_id": produto_id,
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] > 0
+    assert data["created_at"]
+    assert data["origem_sugestao"] == "suggest-price"
+    assert data["versao_motor"] == "1.0.0"
+
+
+def test_feedback_post_sem_auth_retorna_401(client):
+    response = client.post(
+        "/api/v1/fiscal-ai/feedback",
+        json={
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.0.0",
+            "decisao": "aceito",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_feedback_post_com_decisao_invalida_retorna_422(client, auth_headers):
+    response = client.post(
+        "/api/v1/fiscal-ai/feedback",
+        json={
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.0.0",
+            "decisao": "revisado",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_feedback_metricas_retorna_contagens_por_origem_e_decisao(client, auth_headers):
+    payloads = [
+        {
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.0.0",
+            "decisao": "aceito",
+        },
+        {
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.0.0",
+            "decisao": "rejeitado",
+        },
+        {
+            "origem_sugestao": "validate-note",
+            "versao_motor": "2.0.0",
+            "decisao": "modificado",
+        },
+    ]
+
+    for payload in payloads:
+        response = client.post("/api/v1/fiscal-ai/feedback", json=payload, headers=auth_headers)
+        assert response.status_code == 201
+
+    metricas_response = client.get("/api/v1/fiscal-ai/feedback/metricas", headers=auth_headers)
+
+    assert metricas_response.status_code == 200
+    data = metricas_response.json()
+    assert data["total_feedbacks"] == 3
+    assert data["por_decisao"] == {"aceito": 1, "rejeitado": 1, "modificado": 1}
+    assert data["taxa_aceitacao"] == 33.33
+    assert data["por_origem"]["suggest-price"] == {"aceito": 1, "rejeitado": 1, "modificado": 0}
+    assert data["por_origem"]["validate-note"] == {"aceito": 0, "rejeitado": 0, "modificado": 1}
+
+
+def test_feedback_rastreabilidade_persiste_versao_e_origem(client, auth_headers, db_session):
+    response = client.post(
+        "/api/v1/fiscal-ai/feedback",
+        json={
+            "origem_sugestao": "suggest-price",
+            "versao_motor": "1.2.3",
+            "decisao": "modificado",
+            "valor_original": 100.0,
+            "valor_final": 105.0,
+            "comentario": "Ajuste manual",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    feedback_id = response.json()["id"]
+
+    feedback = db_session.query(FiscalFeedback).filter(FiscalFeedback.id == feedback_id).first()
+    assert feedback is not None
+    assert feedback.origem_sugestao == "suggest-price"
+    assert feedback.versao_motor == "1.2.3"

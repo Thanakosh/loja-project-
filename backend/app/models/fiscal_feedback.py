@@ -1,6 +1,6 @@
 """Modelo de feedback fiscal para rastreabilidade e aprendizado contínuo (TASK-033)."""
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -13,23 +13,20 @@ class FiscalFeedback(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Rastreabilidade da sugestão
-    origem_sugestao = Column(
-        Enum("validate_note", "suggest_price", "classify_ncm", "supplier_ranking", name="origem_sugestao_enum"),
-        nullable=False,
-        index=True,
-    )
+    origem_sugestao = Column(String(30), nullable=False, index=True)
     versao_motor = Column(String(20), nullable=False)
 
     # Decisão do usuário
-    decisao = Column(
-        Enum("aceito", "rejeitado", "revisado", name="decisao_feedback_enum"),
-        nullable=False,
-        index=True,
-    )
+    decisao = Column(String(20), nullable=False, index=True)
 
-    # Referência opcional ao objeto auditado (ex: numero_nota, product_id)
-    referencia_id = Column(String(80), nullable=True)
-    observacao = Column(String(500), nullable=True)
+    # Valores financeiros opcionalmente auditáveis
+    valor_original = Column(Numeric(12, 2), nullable=True)
+    valor_final = Column(Numeric(12, 2), nullable=True)
+    comentario = Column(String(500), nullable=True)
+
+    # Referências opcionais
+    nota_fiscal_id = Column(Integer, ForeignKey("nota_fiscal.id"), nullable=True, index=True)
+    produto_id = Column(Integer, ForeignKey("produto.id"), nullable=True, index=True)
 
     # Usuário que deu o feedback
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False, index=True)
@@ -37,6 +34,8 @@ class FiscalFeedback(Base):
 
     # Relacionamentos
     user = relationship("User")
+    nota_fiscal = relationship("NotaFiscal")
+    produto = relationship("Produto")
 
     def __repr__(self):
         return (
