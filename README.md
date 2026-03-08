@@ -182,6 +182,17 @@ Acesse:
 
 ---
 
+## 🔢 Versionamento da API
+
+| Versão | Status | Uso |
+|--------|--------|-----|
+| `v1` | **Legado** (manutenção corretiva) | Endpoints existentes sem novas features |
+| `v2` | **Ativo** (versão oficial) | Todas as novas funcionalidades |
+
+> ⚠️ `/api/v1/estoque` está **depreciado** — use `/api/v2/estoque`. Consulte [docs/POLITICA_VERSIONAMENTO_API.md](docs/POLITICA_VERSIONAMENTO_API.md) para o cronograma completo.
+
+---
+
 ## 📖 Exemplos de uso da API
 
 ### Autenticação
@@ -199,7 +210,7 @@ GET /api/v1/produtos
 Authorization: Bearer <token>
 ```
 
-### Registrar entrada de estoque
+### Registrar entrada de estoque (v2 — ativo)
 
 ```bash
 POST /api/v2/estoque/transacao

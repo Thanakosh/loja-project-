@@ -3,7 +3,7 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.estoque import router as estoque_router
@@ -90,6 +90,14 @@ async def add_trace_id_to_request(request: Request, call_next):
         _trace_id_ctx.reset(token)
 
     response.headers["X-Trace-Id"] = trace_id
+
+    # Headers de depreciação para endpoints legados (RFC 8594)
+    path = str(request.url.path)
+    if path.startswith("/api/v1/estoque"):
+        response.headers["Deprecation"] = "true"
+        response.headers["Sunset"] = "Mon, 01 Sep 2026 00:00:00 GMT"
+        response.headers["Link"] = '</api/v2/estoque>; rel="successor-version"'
+
     logger.info(
         "Request concluída",
         extra={
