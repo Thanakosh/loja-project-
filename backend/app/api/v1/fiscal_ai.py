@@ -20,9 +20,6 @@ from ...schemas.fiscal_ai import (
     FiscalAuditFatorResponse,
     FiscalAuditRequest,
     FiscalAuditResponse,
-    FiscalFeedbackMetricsResponse,
-    FiscalFeedbackRequest,
-    FiscalFeedbackResponse,
     FiscalPriceRange,
     FiscalPriceSuggestionRequest,
     FiscalPriceSuggestionResponse,
@@ -32,10 +29,9 @@ from ...schemas.fiscal_ai import (
     SupplierRankingItem,
     SupplierRankingResponse,
 )
+from ...schemas.fiscal_feedback import FeedbackCreate, FeedbackMetricasResponse, FeedbackResponse
 from ...schemas.fiscal_payload import FiscalItemPayload, NotaFiscalPayloadNormalizado
 
-_ORIGENS_VALIDAS = {"validate_note", "suggest_price", "classify_ncm", "supplier_ranking"}
-_DECISOES_VALIDAS = {"aceito", "rejeitado", "revisado"}
 
 router = APIRouter(tags=["Fiscal AI"])
 
@@ -296,54 +292,37 @@ def supplier_ranking(
 # ─── POST /feedback ───
 
 
-@router.post("/feedback", response_model=FiscalFeedbackResponse, status_code=201)
+@router.post("/feedback", response_model=FeedbackResponse, status_code=201)
 def registrar_feedback(
-    payload: FiscalFeedbackRequest,
+    payload: FeedbackCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     """Registra feedback humano sobre sugestões fiscais para rastreabilidade e aprendizado contínuo."""
-    if payload.origem_sugestao not in _ORIGENS_VALIDAS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"origem_sugestao inválida. Valores aceitos: {_ORIGENS_VALIDAS}",
-        )
-    if payload.decisao not in _DECISOES_VALIDAS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"decisao inválida. Valores aceitos: {_DECISOES_VALIDAS}",
-        )
-
     feedback = FiscalFeedback(
         origem_sugestao=payload.origem_sugestao,
         versao_motor=payload.versao_motor,
         decisao=payload.decisao,
-        referencia_id=payload.referencia_id,
-        observacao=payload.observacao,
+        valor_original=payload.valor_original,
+        valor_final=payload.valor_final,
+        comentario=payload.comentario,
+        nota_fiscal_id=payload.nota_fiscal_id,
+        produto_id=payload.produto_id,
         user_id=current_user.id,
     )
     db.add(feedback)
     db.commit()
     db.refresh(feedback)
 
-    return FiscalFeedbackResponse(
-        id=feedback.id,
-        origem_sugestao=feedback.origem_sugestao,
-        versao_motor=feedback.versao_motor,
-        decisao=feedback.decisao,
-        referencia_id=feedback.referencia_id,
-        observacao=feedback.observacao,
-        user_id=feedback.user_id,
-        created_at=feedback.created_at.isoformat(),
-    )
+    return feedback
 
 
-@router.get("/feedback/metrics", response_model=FiscalFeedbackMetricsResponse)
+@router.get("/feedback/metricas", response_model=FeedbackMetricasResponse)
 def metricas_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Agrega métricas de aceição/rejeição de sugestões fiscais."""
+    """Agrega métricas de aceitação/rejeição/modificação de sugestões fiscais."""
     _ = current_user
 
     rows = (
@@ -356,31 +335,29 @@ def metricas_feedback(
         .all()
     )
 
-    total = aceitos = rejeitados = revisados = 0
-    por_origem: dict = {}
+    total_feedbacks = 0
+    por_decisao = {"aceito": 0, "rejeitado": 0, "modificado": 0}
+    por_origem: dict[str, dict[str, int]] = {}
 
     for row in rows:
         qty = row.qty
-        total += qty
-        if row.decisao == "aceito":
-            aceitos += qty
-        elif row.decisao == "rejeitado":
-            rejeitados += qty
-        elif row.decisao == "revisado":
-            revisados += qty
+        total_feedbacks += qty
+
+        decisao = row.decisao
+        if decisao in por_decisao:
+            por_decisao[decisao] += qty
 
         origem = row.origem_sugestao
         if origem not in por_origem:
-            por_origem[origem] = {"aceito": 0, "rejeitado": 0, "revisado": 0}
-        por_origem[origem][row.decisao] = por_origem[origem].get(row.decisao, 0) + qty
+            por_origem[origem] = {"aceito": 0, "rejeitado": 0, "modificado": 0}
+        if decisao in por_origem[origem]:
+            por_origem[origem][decisao] += qty
 
-    taxa_aceitacao = round(aceitos / total, 4) if total > 0 else 0.0
+    taxa_aceitacao = round((por_decisao["aceito"] / total_feedbacks) * 100, 2) if total_feedbacks > 0 else 0.0
 
-    return FiscalFeedbackMetricsResponse(
-        total=total,
-        aceitos=aceitos,
-        rejeitados=rejeitados,
-        revisados=revisados,
+    return FeedbackMetricasResponse(
+        total_feedbacks=total_feedbacks,
+        por_decisao=por_decisao,
         taxa_aceitacao=taxa_aceitacao,
         por_origem=por_origem,
     )
