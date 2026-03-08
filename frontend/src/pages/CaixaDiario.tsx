@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 
@@ -69,8 +70,8 @@ export default function CaixaDiario() {
       queryClient.invalidateQueries({ queryKey: ['caixa-atual'] })
       queryClient.invalidateQueries({ queryKey: ['caixa-historico'] })
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Erro ao abrir caixa'
+    onError: (err: unknown) => {
+      const msg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message || 'Erro ao abrir caixa' : 'Erro ao abrir caixa'
       toast.error(msg)
     },
   })
@@ -94,8 +95,8 @@ export default function CaixaDiario() {
       queryClient.invalidateQueries({ queryKey: ['caixa-atual'] })
       queryClient.invalidateQueries({ queryKey: ['caixa-historico'] })
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Erro ao fechar caixa'
+    onError: (err: unknown) => {
+      const msg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message || 'Erro ao fechar caixa' : 'Erro ao fechar caixa'
       toast.error(msg)
     },
   })
@@ -272,24 +273,22 @@ export default function CaixaDiario() {
                           ? formatCurrency(c.valor_fechamento)
                           : '—'}
                       </td>
-                      <td className={`px-4 py-3 text-right font-medium ${
-                        dif == null
+                      <td className={`px-4 py-3 text-right font-medium ${dif == null
                           ? 'text-gray-400'
                           : dif >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
                         {dif != null
                           ? `${dif >= 0 ? '+' : ''}${formatCurrency(dif)}`
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                            c.status === 'aberto'
+                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${c.status === 'aberto'
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
                               : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                          }`}
+                            }`}
                         >
                           {c.status === 'aberto' ? 'Aberto' : 'Fechado'}
                         </span>

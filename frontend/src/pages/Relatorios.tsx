@@ -123,13 +123,14 @@ const AbaVendas = () => {
   const vendas = data?.items || []
 
   const resumo = useMemo(() => {
-    const validas = vendas.filter(v => !v.cancelada)
+    const items = data?.items || []
+    const validas = items.filter(v => !v.cancelada)
     const total = validas.reduce((acc, v) => acc + (v.total || 0), 0)
     const descontos = validas.reduce((acc, v) => acc + (v.desconto || 0), 0)
     const qtd = validas.length
     const ticket = qtd > 0 ? total / qtd : 0
     return { total, descontos, qtd, ticket }
-  }, [vendas])
+  }, [data?.items])
 
   const handleGerar = (e: React.FormEvent) => {
     e.preventDefault()

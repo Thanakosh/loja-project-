@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
@@ -56,7 +56,7 @@ const Estoque = () => {
   const [novaMov, setNovaMov] = useState<NovaMovimentacao>({ produto_id: 0, tipo: 'entrada', quantidade: 0, motivo: '' })
   const [submittingMov, setSubmittingMov] = useState(false)
 
-  const fetchProdutos = async (newPage = 1, search = searchTerm) => {
+  const fetchProdutos = useCallback(async (newPage = 1, search = searchTerm) => {
     setLoading(true)
     try {
       const response = await api.get('/produtos', { params: { page: newPage, page_size: PAGE_SIZE, incluir_inativos: true, search: search || undefined } })
@@ -68,7 +68,7 @@ const Estoque = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchTerm])
 
   const fetchKardex = async (produtoId: number) => {
     setLoadingMov(true)
@@ -83,7 +83,7 @@ const Estoque = () => {
     }
   }
 
-  useEffect(() => { fetchProdutos(page, searchTerm) }, [page, searchTerm])
+  useEffect(() => { fetchProdutos(page, searchTerm) }, [page, searchTerm, fetchProdutos])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault(); setPage(1); setSearchTerm(searchInput.trim())
@@ -263,13 +263,12 @@ const Estoque = () => {
                             {new Date(mov.data_transacao).toLocaleString('pt-BR')}
                           </td>
                           <td className="px-4 py-2 text-sm">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                              mov.tipo === 'entrada' || mov.tipo === 'devolucao'
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${mov.tipo === 'entrada' || mov.tipo === 'devolucao'
                                 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
                                 : mov.tipo === 'saida'
-                                ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
-                                : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
-                            }`}>
+                                  ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
+                                  : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
+                              }`}>
                               {mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1)}
                             </span>
                           </td>
@@ -310,7 +309,7 @@ const Estoque = () => {
             <form onSubmit={handleSubmitMov} className="p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Movimentação</label>
-                <select value={novaMov.tipo} onChange={(e) => setNovaMov({ ...novaMov, tipo: e.target.value as any })}
+                <select value={novaMov.tipo} onChange={(e) => setNovaMov({ ...novaMov, tipo: e.target.value as NovaMovimentacao['tipo'] })}
                   className={inputCls} required>
                   <option value="entrada">Entrada</option>
                   <option value="saida">Saída</option>

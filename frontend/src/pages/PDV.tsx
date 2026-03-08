@@ -135,7 +135,7 @@ const calcItemTotal = (item: ItemCarrinho) => {
   return item.quantidade * item.preco_unitario * (1 - descontoPercentual / 100)
 }
 
-const SCANNER_BURST_MS = 80 // intervalo máximo entre teclas para considerar rajada de scanner
+
 
 const PDV = () => {
   const [productSearch, setProductSearch] = useState('')
@@ -190,7 +190,7 @@ const PDV = () => {
         // silencioso — desconto livre em caso de falha
       }
     })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartProductIds.join(',')])
 
   useEffect(() => {
@@ -806,20 +806,19 @@ const PDV = () => {
                           const excedido = maxDesc !== null && item.desconto > maxDesc
                           return (
                             <div>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={maxDesc !== null ? maxDesc : 100}
-                                  step="0.01"
-                                  value={item.desconto === 0 ? '' : item.desconto}
-                                  onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
-                                  placeholder="%"
-                                  className={`w-24 rounded-md border px-2 py-1 ${
-                                    excedido
-                                      ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-                                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                              <input
+                                type="number"
+                                min={0}
+                                max={maxDesc !== null ? maxDesc : 100}
+                                step="0.01"
+                                value={item.desconto === 0 ? '' : item.desconto}
+                                onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
+                                placeholder="%"
+                                className={`w-24 rounded-md border px-2 py-1 ${excedido
+                                    ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+                                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                                   }`}
-                                />
+                              />
                               {maxDesc !== null && (
                                 <p className={`text-xs mt-0.5 ${excedido ? 'text-rose-500 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
                                   máx {maxDesc}%

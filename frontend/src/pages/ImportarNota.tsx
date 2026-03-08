@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
 import api from '../services/api'
@@ -83,17 +84,16 @@ const ImportarNota = () => {
             <div className="flex gap-1 rounded-xl bg-gray-100 dark:bg-gray-800 p-1 w-fit">
                 {([
                     { id: 'importar', label: '📤 Importar XML' },
-                    { id: 'ncm',      label: '🔍 Classificar NCM' },
-                    { id: 'ranking',  label: '🏆 Ranking Fornecedores' },
+                    { id: 'ncm', label: '🔍 Classificar NCM' },
+                    { id: 'ranking', label: '🏆 Ranking Fornecedores' },
                 ] as { id: Tab; label: string }[]).map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                            activeTab === tab.id
-                                ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                        }`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.id
+                            ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                            }`}
                     >
                         {tab.label}
                     </button>
@@ -102,8 +102,8 @@ const ImportarNota = () => {
 
             {/* Tab content */}
             {activeTab === 'importar' && <TabImportar />}
-            {activeTab === 'ncm'      && <TabNCM />}
-            {activeTab === 'ranking'  && <TabRanking />}
+            {activeTab === 'ncm' && <TabNCM />}
+            {activeTab === 'ranking' && <TabRanking />}
         </div>
     )
 }
@@ -121,8 +121,8 @@ const TabNCM = () => {
             const res = await api.post('/fiscal-ai/classify-ncm', { descricao: descricao.trim(), limite })
             return res.data as { descricao_consultada: string; candidatos: NCMCandidato[]; total_encontrado: number }
         },
-        onError: (err: any) => {
-            toast.error(err?.response?.data?.detail ?? 'Erro ao classificar NCM.')
+        onError: (err: unknown) => {
+            toast.error(isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail ?? 'Erro ao classificar NCM.' : 'Erro ao classificar NCM.')
         },
     })
 
@@ -239,11 +239,10 @@ const TabNCM = () => {
                                         {/* Feedback buttons */}
                                         <div className="flex-shrink-0 flex gap-1">
                                             {fb ? (
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                    fb === 'aceito'
-                                                        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                                                        : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
-                                                }`}>
+                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${fb === 'aceito'
+                                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                                    : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                                                    }`}>
                                                     {fb === 'aceito' ? '✅ Aceito' : '❌ Rejeitado'}
                                                 </span>
                                             ) : (
@@ -318,11 +317,10 @@ const TabRanking = () => {
                             <button
                                 key={key}
                                 onClick={() => setCriterio(key)}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    criterio === key
-                                        ? 'bg-blue-600 text-white shadow'
-                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                }`}
+                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${criterio === key
+                                    ? 'bg-blue-600 text-white shadow'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    }`}
                             >
                                 {icon} {label}
                             </button>
@@ -421,10 +419,9 @@ const TabRanking = () => {
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600">
                                                         <div
-                                                            className={`h-1.5 rounded-full ${
-                                                                scorePct >= 75 ? 'bg-emerald-500' :
+                                                            className={`h-1.5 rounded-full ${scorePct >= 75 ? 'bg-emerald-500' :
                                                                 scorePct >= 40 ? 'bg-yellow-500' : 'bg-red-400'
-                                                            }`}
+                                                                }`}
                                                             style={{ width: `${scorePct}%` }}
                                                         />
                                                     </div>
@@ -448,7 +445,6 @@ const TabRanking = () => {
 ───────────────────────────────────────────── */
 const TabImportar = () => {
     const [file, setFile] = useState<File | null>(null)
-    const [preview, setPreview] = useState<string | null>(null)
     const [fileKind, setFileKind] = useState<FileKind>('unknown')
     const [dragOver, setDragOver] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -464,14 +460,13 @@ const TabImportar = () => {
     const [dataEmissaoNota, setDataEmissaoNota] = useState('')
     const [valorTotalNota, setValorTotalNota] = useState<number>(0)
     const [fornecedorStatus, setFornecedorStatus] = useState<'novo' | 'existente' | null>(null)
-    const [fornecedorId, setFornecedorId] = useState<number | null>(null)
     type Step = 'upload' | 'processing' | 'review' | 'done'
     const [step, setStep] = useState<Step>('upload')
 
     const handleFileSelect = useCallback((selectedFile: File) => {
         const kind = detectFileKind(selectedFile)
         if (kind === 'unknown') { toast.error('Arquivo não suportado. Envie o XML da NFe.'); return }
-        setFile(selectedFile); setFileKind(kind); setPreview(null); setErrorMsg(null)
+        setFile(selectedFile); setFileKind(kind); setErrorMsg(null)
     }, [])
 
     const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -492,7 +487,7 @@ const TabImportar = () => {
             setFornecedorGlobal(nf.fornecedor || ''); setNomeFantasiaFornecedor(nf.nome_fantasia_fornecedor || '')
             setCnpjFornecedor(nf.cnpj_fornecedor || ''); setNumeroNota(nf.numero_nota || '')
             setDataEmissaoNota(nf.data_emissao || ''); setValorTotalNota(nf.valor_total || 0)
-            setFornecedorStatus(nf.fornecedor_status || null); setFornecedorId(nf.fornecedor_id || null)
+            setFornecedorStatus(nf.fornecedor_status || null)
             const mapped: ItemExtraido[] = (nf.produtos || []).map((p) => ({
                 key: nextKey(), nome: p.nome, quantidade: p.quantidade, preco_unitario: p.preco_unitario,
                 unidade: p.unidade || 'UN', codigo_ncm: p.codigo_ncm || '', codigo_barras: p.codigo_barras || '',
@@ -523,8 +518,10 @@ const TabImportar = () => {
                 toast.success(data.message || 'XML processado com sucesso!')
             })
         },
-        onError: (err: any) => {
-            const detail = err?.response?.data?.message ?? err?.response?.data?.detail ?? 'Erro ao enviar arquivo.'
+        onError: (err: unknown) => {
+            const detail = isAxiosError<{ message?: string; detail?: string }>(err)
+                ? err.response?.data?.message ?? err.response?.data?.detail ?? 'Erro ao enviar arquivo.'
+                : 'Erro ao enviar arquivo.'
             toast.error(detail); setErrorMsg(detail)
         },
     })
@@ -553,8 +550,8 @@ const TabImportar = () => {
                 setTaskStatus(data.status)
                 if (data.status === 'completed' && data.result) { handleTaskCompleted(data); toast.success('Processamento concluído!') }
                 if (data.status === 'failed') { setErrorMsg(data.error || 'Falha.'); toast.error(data.error || 'Falha.'); setStep('upload') }
-            } catch (err: any) {
-                if (err?.response?.status === 404) {
+            } catch (err: unknown) {
+                if (isAxiosError(err) && err.response?.status === 404) {
                     if (pollingRef.current) clearInterval(pollingRef.current)
                     setErrorMsg('Tarefa não encontrada. Reenvie o arquivo.'); toast.error('Tarefa perdida.'); setStep('upload')
                 }
@@ -562,7 +559,7 @@ const TabImportar = () => {
         }
         pollingRef.current = setInterval(poll, POLLING_INTERVAL); poll()
         return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
-    }, [taskId, taskStatus, handleTaskCompleted])
+    }, [taskId, taskStatus, handleTaskCompleted, POLLING_TIMEOUT_MS])
 
     const updateItem = (key: string, field: keyof ItemExtraido, value: string | number | boolean) => {
         setItens(prev => prev.map(item => (item.key === key ? { ...item, [field]: value } : item)))
@@ -585,7 +582,7 @@ const TabImportar = () => {
             const results = []; const erros: string[] = []
             for (const prod of produtos) {
                 try { const res = await api.post('/produtos/', prod); results.push(res.data) }
-                catch (err: any) { erros.push(err?.response?.data?.message ?? err?.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"`) }
+                catch (err: unknown) { erros.push(isAxiosError<{ message?: string; detail?: string }>(err) ? err.response?.data?.message ?? err.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"` : `Erro ao cadastrar "${prod.nome}"`) }
             }
             return { results, erros }
         },
@@ -594,7 +591,7 @@ const TabImportar = () => {
             erros.forEach(e => toast.error(e))
             if (results.length > 0) setStep('done')
         },
-        onError: (err: any) => toast.error(err?.response?.data?.detail ?? 'Erro ao importar.'),
+        onError: (err: unknown) => toast.error(isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail ?? 'Erro ao importar.' : 'Erro ao importar.'),
     })
 
     const handleImport = () => {
@@ -604,10 +601,10 @@ const TabImportar = () => {
     }
 
     const handleReset = () => {
-        setFile(null); setPreview(null); setFileKind('unknown'); setTaskId(null); setTaskStatus(null)
+        setFile(null); setFileKind('unknown'); setTaskId(null); setTaskStatus(null)
         setErrorMsg(null); setItens([]); setFornecedorGlobal(''); setNomeFantasiaFornecedor('')
         setCnpjFornecedor(''); setNumeroNota(''); setDataEmissaoNota(''); setValorTotalNota(0)
-        setFornecedorStatus(null); setFornecedorId(null); setStep('upload')
+        setFornecedorStatus(null); setStep('upload')
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
@@ -752,7 +749,7 @@ const TabImportar = () => {
                                             <td className="px-3 py-2"><input type="number" min={1} value={item.quantidade} onChange={e => updateItem(item.key, 'quantidade', parseInt(e.target.value) || 1)} className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" /></td>
                                             <td className="px-3 py-2">
                                                 <select value={item.unidade} onChange={e => updateItem(item.key, 'unidade', e.target.value)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none">
-                                                    {['UN','CX','M','KG','PC','RL'].map(u => <option key={u} value={u}>{u}</option>)}
+                                                    {['UN', 'CX', 'M', 'KG', 'PC', 'RL'].map(u => <option key={u} value={u}>{u}</option>)}
                                                 </select>
                                             </td>
                                             <td className="px-3 py-2"><input type="number" min={0} step={0.01} value={item.preco_unitario} onChange={e => updateItem(item.key, 'preco_unitario', parseFloat(e.target.value) || 0)} className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" /></td>
