@@ -19,6 +19,20 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: loja-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   api:
     build:
       context: .
@@ -34,8 +48,11 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       DEBUG: ${DEBUG:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: >
       sh -c "
@@ -45,3 +62,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

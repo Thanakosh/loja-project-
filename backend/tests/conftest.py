@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 # Variáveis mínimas para inicialização dos módulos durante os testes
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from app.core.database import Base, get_db
 from app.core.limiter import limiter
