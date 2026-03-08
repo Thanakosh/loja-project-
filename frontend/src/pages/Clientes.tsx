@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import api from '../services/api'
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 
 interface Cliente {
   id: number
@@ -159,6 +160,7 @@ const Clientes = () => {
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending
+  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
   const totalEstimado = useMemo(() => {
     if (clientes.length < PAGE_SIZE) {
@@ -296,7 +298,7 @@ const Clientes = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -368,8 +370,8 @@ const Clientes = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" onMouseDown={closeModal}>
+          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo cliente' : 'Editar cliente'}

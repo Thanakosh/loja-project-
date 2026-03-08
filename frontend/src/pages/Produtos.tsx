@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 import api from '../services/api'
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 
 interface Produto {
   id: number
@@ -186,6 +187,7 @@ const Produtos = () => {
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending
+  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
   const openCreateModal = () => {
     setModalMode('create'); setEditingProduto(null); setFormState(emptyFormState)
@@ -345,7 +347,7 @@ const Produtos = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -414,8 +416,8 @@ const Produtos = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" onMouseDown={closeModal}>
+          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl">
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo produto' : 'Editar produto'}

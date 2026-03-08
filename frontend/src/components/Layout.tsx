@@ -52,6 +52,7 @@ const Layout = () => {
                     <span className="text-xl font-bold text-gray-800 dark:text-white">Loja Elétrica</span>
                     <button
                         onClick={() => setSidebarOpen(false)}
+                        aria-label="Fechar menu lateral"
                         className="lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none text-2xl"
                     >
                         ✕
@@ -83,6 +84,7 @@ const Layout = () => {
                 <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-4 lg:px-6 z-10">
                     <button
                         onClick={() => setSidebarOpen(true)}
+                        aria-label="Abrir menu lateral"
                         className="lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none text-2xl mr-4"
                     >
                         ☰
@@ -96,6 +98,7 @@ const Layout = () => {
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleTheme}
+                            aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
                             title={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
                             className="relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                             style={{ backgroundColor: isDark ? '#3b82f6' : '#d1d5db' }}

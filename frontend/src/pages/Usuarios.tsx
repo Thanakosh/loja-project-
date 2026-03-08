@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import type { AxiosError } from 'axios'
 
 import api from '../services/api'
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 
 interface Usuario {
   id: number
@@ -35,6 +36,13 @@ const Usuarios = () => {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState<UsuarioPayload>(emptyForm)
 
+  const closeModal = () => {
+    setShowModal(false)
+    setForm(emptyForm)
+  }
+
+  const modalRef = useAccessibleModal(showModal, closeModal)
+
   const { data, isLoading, isError } = useQuery<{ users: Usuario[]; total: number }>({
     queryKey: ['usuarios'],
     queryFn: () => api.get('/users/').then((r) => r.data),
@@ -45,8 +53,7 @@ const Usuarios = () => {
     onSuccess: () => {
       toast.success('Usuário criado com sucesso!')
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      setShowModal(false)
-      setForm(emptyForm)
+      closeModal()
     },
     onError: (error: AxiosError<{ detail?: string }>) => {
       const detail = error?.response?.data?.detail
@@ -145,13 +152,13 @@ const Usuarios = () => {
 
       {/* Modal Criar Usuário */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" onMouseDown={closeModal}>
+          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Novo Usuário</h2>
               <button
-                onClick={() => { setShowModal(false); setForm(emptyForm) }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none"
+                onClick={closeModal}
+                aria-label="Fechar modal de usuário" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none"
               >
                 ×
               </button>
@@ -159,10 +166,11 @@ const Usuarios = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="usuario-username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nome de usuário <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="usuario-username"
                   type="text"
                   value={form.username}
                   onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -173,10 +181,11 @@ const Usuarios = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="usuario-full-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nome completo
                 </label>
                 <input
+                  id="usuario-full-name"
                   type="text"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
@@ -186,10 +195,11 @@ const Usuarios = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="usuario-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   E-mail <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="usuario-email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -200,10 +210,11 @@ const Usuarios = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="usuario-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Senha <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="usuario-password"
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -230,7 +241,7 @@ const Usuarios = () => {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); setForm(emptyForm) }}
+                  onClick={closeModal}
                   className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancelar

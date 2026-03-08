@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 import api from '../services/api'
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 
 interface Fornecedor {
   id: number
@@ -137,6 +138,7 @@ const Fornecedores = () => {
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending
+  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
   const totalEstimado = useMemo(() => {
     if (fornecedores.length < PAGE_SIZE) {
@@ -259,7 +261,7 @@ const Fornecedores = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow">
+      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -332,8 +334,8 @@ const Fornecedores = () => {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3">
-          <div className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3" role="dialog" aria-modal="true" onMouseDown={closeModal}>
+          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl">
             <div className="mb-4 flex items-start justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {modalMode === 'create' ? 'Novo Fornecedor' : 'Editar Fornecedor'}
@@ -341,6 +343,7 @@ const Fornecedores = () => {
               <button
                 type="button"
                 onClick={closeModal}
+                aria-label="Fechar modal de fornecedor"
                 className="text-gray-500 transition hover:text-gray-700 dark:text-gray-300"
                 disabled={isSaving}
               >

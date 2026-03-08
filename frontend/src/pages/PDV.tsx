@@ -675,6 +675,7 @@ const PDV = () => {
                 <button
                   type="button"
                   onClick={clearSelectedClient}
+                  aria-label="Limpar cliente selecionado"
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-100"
                 >
                   ✕
@@ -833,6 +834,7 @@ const PDV = () => {
                         <button
                           type="button"
                           onClick={() => removeItem(item.produto.id)}
+                          aria-label={`Remover ${item.produto.nome} do carrinho`}
                           className="rounded-md px-2 py-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/40"
                         >
                           ✕

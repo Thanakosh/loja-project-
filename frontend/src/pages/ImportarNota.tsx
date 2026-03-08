@@ -755,7 +755,7 @@ const TabImportar = () => {
                                             <td className="px-3 py-2"><input type="number" min={0} step={0.01} value={item.preco_unitario} onChange={e => updateItem(item.key, 'preco_unitario', parseFloat(e.target.value) || 0)} className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" /></td>
                                             <td className="px-3 py-2"><input type="text" value={item.codigo_ncm} onChange={e => updateItem(item.key, 'codigo_ncm', e.target.value)} className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" placeholder="00000000" /></td>
                                             <td className="px-3 py-2 text-right text-sm font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{moneyFormatter.format(item.preco_unitario * item.quantidade)}</td>
-                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">✕</button></td>
+                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} aria-label={`Remover item ${item.descricao}`} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">✕</button></td>
                                         </tr>
                                     ))}
                                 </tbody>
