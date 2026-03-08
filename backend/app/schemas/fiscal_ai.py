@@ -1,5 +1,8 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .fiscal_payload import NotaFiscalPayloadNormalizado
 
 
 class FiscalPriceSuggestionRequest(BaseModel):
@@ -32,64 +35,39 @@ class FiscalPriceSuggestionResponse(BaseModel):
     versao_motor: str
 
 
-# ─── Auditoria fiscal (TASK-032) ───
-
-
-class FiscalAuditFatorResponse(BaseModel):
+class FiscalAuditFactorResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     regra: str
+    resultado: Literal["passou", "falha"]
     peso: float
-    descricao: str
+    detalhe: str
 
 
-class FiscalAuditRequest(BaseModel):
-    """Payload de nota fiscal para auditoria.
-
-    Aceita o mesmo formato do payload normalizado (versão canônica).
-    """
-
+class FiscalAuditValidateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    fornecedor_nome: str
-    fornecedor_nome_fantasia: Optional[str] = None
-    fornecedor_cnpj: Optional[str] = None
-    numero_nota: Optional[str] = None
-    data_emissao: Optional[str] = None
-    itens: List["FiscalAuditItemRequest"]
+    payload_normalizado: Optional[NotaFiscalPayloadNormalizado] = None
+    nota_fiscal_id: Optional[int] = Field(default=None, gt=0)
+    regime_tributario: Optional[Literal["simples_nacional", "regime_normal"]] = None
+    uf_emitente: Optional[str] = Field(default=None, min_length=2, max_length=2)
+    tipo_operacao: Optional[Literal["entrada", "saida"]] = None
 
-
-class FiscalAuditItemRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    descricao: str
-    quantidade: float = Field(ge=0)
-    unidade_comercial: str = "UN"
-    valor_unitario: float = Field(ge=0)
-    ncm: Optional[str] = None
-    cfop: Optional[str] = None
-    cst: Optional[str] = None
-    csosn: Optional[str] = None
-    icms_base_calculo: Optional[float] = None
-    icms_aliquota: Optional[float] = None
-    icms_valor: Optional[float] = None
+    @model_validator(mode="after")
+    def validar_origem_nota(self):
+        if self.payload_normalizado is None and self.nota_fiscal_id is None:
+            raise ValueError("Informe payload_normalizado ou nota_fiscal_id")
+        return self
 
 
 class FiscalAuditResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    classificacao: str
+    classificacao: Literal["baixo", "medio", "alto"]
     confianca: float
     score: float
     explicacao: str
-    fatores: List[FiscalAuditFatorResponse]
-    total_erros: int
-    total_alertas: int
-    versao_engine: str
-    versao_service: str
-
-
-# ─── Classificação NCM (classify-ncm) ───
+    fatores: List[FiscalAuditFactorResponse]
 
 
 class NCMClassifyRequest(BaseModel):
@@ -115,9 +93,6 @@ class NCMClassifyResponse(BaseModel):
     total_encontrado: int
 
 
-# ─── Ranking de fornecedores (supplier-ranking) ───
-
-
 class SupplierRankingItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -136,9 +111,6 @@ class SupplierRankingResponse(BaseModel):
     fornecedores: List[SupplierRankingItem]
     total: int
     criterio: str
-
-
-# ─── Feedback fiscal (TASK-033) ───
 
 
 class FiscalFeedbackRequest(BaseModel):

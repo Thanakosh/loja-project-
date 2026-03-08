@@ -1,6 +1,4 @@
-from datetime import date
 from decimal import Decimal
-from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -13,13 +11,13 @@ from ...fiscal.cost_calculator import CostCalculationInput, calculate_minimum_pr
 from ...models.fiscal_feedback import FiscalFeedback
 from ...models.fornecedor import Fornecedor
 from ...models.ncm import NCM
-from ...models.nota_fiscal import NotaFiscal, NotaFiscalItem
+from ...models.nota_fiscal import NotaFiscal
 from ...models.produto import Produto
 from ...models.user import User
 from ...schemas.fiscal_ai import (
-    FiscalAuditFatorResponse,
-    FiscalAuditRequest,
+    FiscalAuditFactorResponse,
     FiscalAuditResponse,
+    FiscalAuditValidateRequest,
     FiscalFeedbackMetricsResponse,
     FiscalFeedbackRequest,
     FiscalFeedbackResponse,
@@ -84,53 +82,57 @@ def suggest_price(
 
 @router.post("/validate-note", response_model=FiscalAuditResponse)
 def validate_note(
-    payload: FiscalAuditRequest,
+    payload: FiscalAuditValidateRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Auditoria fiscal híbrida: valida nota contra regras determinísticas e retorna score de risco."""
+    """Auditoria fiscal híbrida com input via payload normalizado ou nota_fiscal_id."""
     _ = current_user
 
-    # Converter request → payload normalizado para o engine
-    itens_normalizados = []
-    for seq, item in enumerate(payload.itens, start=1):
-        itens_normalizados.append(
+    nota_normalizada = payload.payload_normalizado
+
+    if nota_normalizada is None and payload.nota_fiscal_id is not None:
+        nota = db.query(NotaFiscal).filter(NotaFiscal.id == payload.nota_fiscal_id).first()
+        if not nota:
+            raise HTTPException(status_code=404, detail="Nota fiscal não encontrada")
+
+        itens_normalizados = [
             FiscalItemPayload(
-                sequencia=seq,
-                descricao=item.descricao,
-                quantidade=Decimal(str(item.quantidade)),
-                unidade_comercial=item.unidade_comercial,
-                valor_unitario=Decimal(str(item.valor_unitario)),
-                valor_total_item=Decimal(str(round(item.quantidade * item.valor_unitario, 2))),
+                sequencia=index,
+                descricao=item.nome_produto or f"Item {index}",
+                quantidade=Decimal(str(item.quantidade or 0)),
+                unidade_comercial=item.unidade or "UN",
+                valor_unitario=Decimal(str(item.preco_unitario or 0)),
+                valor_total_item=Decimal(str(item.preco_total or 0)),
                 ncm=item.ncm,
                 cfop=item.cfop,
+                codigo_barras=item.codigo_barras,
                 cst=item.cst,
-                csosn=item.csosn,
-                icms_base_calculo=Decimal(str(item.icms_base_calculo)) if item.icms_base_calculo is not None else None,
-                icms_aliquota=Decimal(str(item.icms_aliquota)) if item.icms_aliquota is not None else None,
-                icms_valor=Decimal(str(item.icms_valor)) if item.icms_valor is not None else None,
+                icms_base_calculo=Decimal(str(nota.base_icms or 0)),
+                icms_aliquota=Decimal(str(item.icms or 0)) if item.icms is not None else None,
+                icms_valor=Decimal(str(nota.valor_icms or 0)),
             )
+            for index, item in enumerate(nota.itens, start=1)
+        ]
+
+        nota_normalizada = NotaFiscalPayloadNormalizado(
+            versao_payload="1.0.0",
+            fornecedor_nome=f"Nota Fiscal {nota.id}",
+            numero_nota=str(nota.numero_legado),
+            data_emissao=nota.data_emissao,
+            valor_total_nota=Decimal(str(nota.valor_total or 0)),
+            itens=itens_normalizados,
         )
 
-    # Parse data_emissao
-    data_emissao_parsed = None
-    if payload.data_emissao:
-        try:
-            data_emissao_parsed = date.fromisoformat(payload.data_emissao)
-        except ValueError:
-            pass
+    if nota_normalizada is None:
+        raise HTTPException(status_code=422, detail="Payload de nota fiscal inválido")
 
-    nota_normalizada = NotaFiscalPayloadNormalizado(
-        versao_payload="1.0.0",
-        fornecedor_nome=payload.fornecedor_nome,
-        fornecedor_nome_fantasia=payload.fornecedor_nome_fantasia,
-        fornecedor_cnpj=payload.fornecedor_cnpj,
-        numero_nota=payload.numero_nota,
-        data_emissao=data_emissao_parsed,
-        valor_total_nota=sum(i.valor_total_item for i in itens_normalizados),
-        itens=itens_normalizados,
+    result = auditar_nota_fiscal(
+        nota_normalizada,
+        regime_tributario=payload.regime_tributario,
+        uf_emitente=payload.uf_emitente,
+        tipo_operacao=payload.tipo_operacao,
     )
-
-    result = auditar_nota_fiscal(nota_normalizada)
 
     return FiscalAuditResponse(
         classificacao=result.classificacao,
@@ -138,13 +140,14 @@ def validate_note(
         score=result.score,
         explicacao=result.explicacao,
         fatores=[
-            FiscalAuditFatorResponse(regra=f.regra, peso=f.peso, descricao=f.descricao)
+            FiscalAuditFactorResponse(
+                regra=f.regra,
+                resultado=f.resultado,
+                peso=f.peso,
+                detalhe=f.detalhe,
+            )
             for f in result.fatores
         ],
-        total_erros=result.total_erros,
-        total_alertas=result.total_alertas,
-        versao_engine=result.versao_engine,
-        versao_service=result.versao_service,
     )
 
 
