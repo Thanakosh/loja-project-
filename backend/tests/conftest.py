@@ -71,6 +71,9 @@ class AsyncSessionAdapter:
     def add(self, *args, **kwargs):
         return self._session.add(*args, **kwargs)
 
+    async def delete(self, *args, **kwargs):
+        self._session.delete(*args, **kwargs)
+
     async def flush(self):
         self._session.flush()
 

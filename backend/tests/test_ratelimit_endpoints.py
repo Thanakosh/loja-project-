@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.limiter import limiter
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user_async
 from app.main import app
 from app.models.user import User
 
@@ -41,7 +41,9 @@ def test_users_token_rate_limit_20_per_minute(client):
 
 
 def test_ocr_upload_erro_estrutura_padrao(client):
-    app.dependency_overrides[get_current_active_user] = lambda: User(id=1, email="ocr@test.com", is_active=True)
+    app.dependency_overrides[get_current_active_user_async] = (
+        lambda: User(id=1, email="ocr@test.com", is_active=True)
+    )
 
     response = client.post(
         "/api/v1/ocr/upload-arquivo",

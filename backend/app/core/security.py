@@ -10,7 +10,6 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_async_db
@@ -33,18 +32,6 @@ def get_password_hash(password: str) -> str:
 
 def len_b_str(s: str) -> int:
     return len(s)
-
-
-def authenticate_user(db: Session, identifier: str, password: str):
-    """Autentica usuario por username ou email e senha."""
-    user = db.query(User).filter(User.username == identifier).first()
-    if not user:
-        user = db.query(User).filter(User.email == identifier).first()
-    if not user:
-        return False
-    if not verify_password(password, user.hashed_password):
-        return False
-    return user
 
 
 async def authenticate_user_async(db: AsyncSession, identifier: str, password: str):
@@ -76,35 +63,6 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_token_pair(
-    db: Session,
-    user: User,
-) -> Tuple[str, str]:
-    """
-    Cria um par access_token + refresh_token.
-
-    Returns:
-        Tuple[str, str]: (access_token, refresh_token_raw)
-    """
-    access_token = create_access_token(
-        data={"sub": user.email},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
-
-    refresh_token_raw = secrets.token_urlsafe(64)
-    refresh_token_hash = _hash_token(refresh_token_raw)
-
-    db_refresh = RefreshToken(
-        token_hash=refresh_token_hash,
-        user_id=user.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-    )
-    db.add(db_refresh)
-    db.commit()
-
-    return access_token, refresh_token_raw
-
-
 async def create_token_pair_async(
     db: AsyncSession,
     user: User,
@@ -132,58 +90,6 @@ async def create_token_pair_async(
     await db.commit()
 
     return access_token, refresh_token_raw
-
-
-def rotate_refresh_token(
-    db: Session,
-    raw_token: str,
-) -> Optional[Tuple[User, str, str]]:
-    """
-    Valida e rotaciona um refresh token.
-
-    - Revoga o token antigo
-    - Cria novo par (access + refresh)
-    - Detecta reuso de token ja revogado (possivel roubo)
-
-    Returns:
-        Tuple[User, access_token, new_refresh_token] ou None se invalido
-    """
-    token_hash = _hash_token(raw_token)
-
-    db_token = db.query(RefreshToken).filter(
-        RefreshToken.token_hash == token_hash
-    ).first()
-
-    if not db_token:
-        return None
-
-    if db_token.revoked:
-        _revoke_all_user_tokens(db, db_token.user_id)
-        return None
-
-    expires_at = db_token.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if expires_at < datetime.now(timezone.utc):
-        db_token.revoked = True
-        db_token.revoked_at = datetime.now(timezone.utc)
-        db.commit()
-        return None
-
-    db_token.revoked = True
-    db_token.revoked_at = datetime.now(timezone.utc)
-
-    user = db.query(User).filter(User.id == db_token.user_id).first()
-    if not user or not user.is_active:
-        db.commit()
-        return None
-
-    access_token, new_refresh = create_token_pair(db, user)
-    db_token.replaced_by = _hash_token(new_refresh)
-    db.commit()
-
-    return user, access_token, new_refresh
 
 
 async def rotate_refresh_token_async(
@@ -238,28 +144,9 @@ async def rotate_refresh_token_async(
     return user, access_token, new_refresh
 
 
-def revoke_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
-    return _revoke_all_user_tokens(db, user_id)
-
-
 async def revoke_user_tokens_async(db: AsyncSession, user_id: int) -> int:
     """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
     return await _revoke_all_user_tokens_async(db, user_id)
-
-
-def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os tokens nao-revogados de um usuario."""
-    count = (
-        db.query(RefreshToken)
-        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
-        .update(
-            {"revoked": True, "revoked_at": datetime.now(timezone.utc)},
-            synchronize_session="fetch",
-        )
-    )
-    db.commit()
-    return count
 
 
 async def _revoke_all_user_tokens_async(db: AsyncSession, user_id: int) -> int:
