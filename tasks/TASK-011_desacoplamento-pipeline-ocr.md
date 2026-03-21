@@ -1,37 +1,37 @@
 ---
 task_id: TASK-011
-title: "Desacoplamento do pipeline OCR com fila assíncrona (ARQ + Redis)"
-priority: 🟢 arquitetura
+title: "Desacoplamento do pipeline OCR com fila assincrona (ARQ + Redis)"
+priority: arquitetura
 scope: backend/app/core/, backend/app/api/v1/ocr.py, docker-compose.yml
 branch: feat/ocr-async-queue
-commit_message: "feat(ocr): desacopla pipeline OCR com fila assíncrona persistida"
+commit_message: "feat(ocr): desacopla pipeline OCR com fila assincrona persistida"
 estimated_effort: 120 minutos
-status: concluída
+status: concluida
 depends_on: []
-recomendacao_ref: "#10 — Desacoplamento do pipeline OCR → LLM → cadastro"
+recomendacao_ref: "#10 Desacoplamento do pipeline OCR LLM cadastro"
 completed_at: "2026-03-08"
 branch: feat/ocr-async-queue
-commit: "feat(ocr): desacopla pipeline OCR com fila assíncrona persistida"
+commit: "feat(ocr): desacopla pipeline OCR com fila assincrona persistida"
 ---
 
-# TASK-011: Desacoplamento do pipeline OCR com fila assíncrona
+# TASK-011: Desacoplamento do pipeline OCR com fila assincrona
 
-> ✅ **STATUS: CONCLUÍDA** — Infraestrutura ARQ + Redis implementada na branch `feat/ocr-async-queue`.
-> O fluxo XML síncrono (/upload-arquivo) continua ativo e independente do Redis.
-> O processamento OCR/LLM real será habilitado no worker quando reintroduzido.
+>  **STATUS: CONCLUIDA** - Infraestrutura ARQ + Redis implementada na branch `feat/ocr-async-queue`.
+> O fluxo XML sincrono (/upload-arquivo) continua ativo e independente do Redis.
+> O processamento OCR/LLM real sera habilitado no worker quando reintroduzido.
 
 ## Contexto
-O pipeline OCR → LLM → cadastro roda dentro do processo da API usando `BackgroundTasks`. O estado é mantido **em memória** (dict Python), o que causa:
+O pipeline OCR  LLM  cadastro roda dentro do processo da API usando `BackgroundTasks`. O estado e mantido **em memoria** (dict Python), o que causa:
 
-1. **Perda de tarefas em restart** — tarefas em andamento são perdidas
-2. **Sem retry** — falha no OCR/LLM não tem recuperação automática
-3. **Sem idempotência** — mesma nota pode ser processada múltiplas vezes
-4. **Sem TTL** — tarefas antigas acumulam em memória
-5. **Sem escalabilidade** — impossível distribuir entre workers
+1. **Perda de tarefas em restart** - tarefas em andamento sao perdidas
+2. **Sem retry** - falha no OCR/LLM nao tem recuperacao automatica
+3. **Sem idempotencia** - mesma nota pode ser processada multiplas vezes
+4. **Sem TTL** - tarefas antigas acumulam em memoria
+5. **Sem escalabilidade** - impossivel distribuir entre workers
 
-**Solução:** ARQ (Async Redis Queue) — leve, async-native, compatível com stack.
+**Solucao:** ARQ (Async Redis Queue) - leve, async-native, compativel com stack.
 
-## Deps necessárias
+## Deps necessarias
 Adicionar ao `requirements.txt`:
 ```
 arq>=0.25.0
@@ -39,16 +39,16 @@ redis>=5.0.0
 ```
 
 ## Arquivos afetados
-- `backend/app/core/task_queue.py` — **NOVO** — abstração da fila
-- `backend/app/core/ocr_worker.py` — **NOVO** — worker ARQ
-- `backend/app/api/v1/ocr.py` — adaptar para usar fila
-- `backend/app/core/config.py` — configs Redis
-- `docker-compose.yml` — serviço Redis
-- `.env.example` — novas variáveis
+- `backend/app/core/task_queue.py` - **NOVO** - abstracao da fila
+- `backend/app/core/ocr_worker.py` - **NOVO** - worker ARQ
+- `backend/app/api/v1/ocr.py` - adaptar para usar fila
+- `backend/app/core/config.py` - configs Redis
+- `docker-compose.yml` - servico Redis
+- `.env.example` - novas variaveis
 
-## Alteração 1: Redis no `docker-compose.yml`
+## Alteracao 1: Redis no `docker-compose.yml`
 
-Adicionar serviço e volume:
+Adicionar servico e volume:
 ```yaml
   redis:
     image: redis:7-alpine
@@ -64,7 +64,7 @@ Adicionar serviço e volume:
 # Adicionar redis_data ao volumes:
 ```
 
-## Alteração 2: Configs no `config.py`
+## Alteracao 2: Configs no `config.py`
 
 ```python
     # Redis / Task Queue
@@ -74,38 +74,38 @@ Adicionar serviço e volume:
     OCR_RETRY_DELAY_SECONDS: int = 30
 ```
 
-## Alteração 3: `backend/app/core/task_queue.py`
+## Alteracao 3: `backend/app/core/task_queue.py`
 
 Implementar:
-- `get_redis_pool()` — pool de conexões
-- `enqueue_ocr_task(file_path, user_id, filename, idempotency_key)` → task_id
-- `get_task_status(task_id)` → {status, result, error, retries}
-- `close_redis_pool()` — cleanup
-- Idempotência via chave hash do arquivo no Redis
-- TTL automático via `redis.expire()`
+- `get_redis_pool()` - pool de conexoes
+- `enqueue_ocr_task(file_path, user_id, filename, idempotency_key)`  task_id
+- `get_task_status(task_id)`  {status, result, error, retries}
+- `close_redis_pool()` - cleanup
+- Idempotencia via chave hash do arquivo no Redis
+- TTL automatico via `redis.expire()`
 
-## Alteração 4: `backend/app/core/ocr_worker.py`
+## Alteracao 4: `backend/app/core/ocr_worker.py`
 
 Implementar `WorkerSettings` com:
-- `process_ocr_task(ctx, file_path, user_id, filename)` — handler principal
+- `process_ocr_task(ctx, file_path, user_id, filename)` - handler principal
 - Atualiza metadata em `ocr:meta:{job_id}` (status, retries, error)
-- Cron job diário para limpeza de tarefas expiradas
+- Cron job diario para limpeza de tarefas expiradas
 - Config: `max_tries`, `retry_delay`, `max_jobs=5`, `job_timeout=300`
 - Iniciar com: `arq app.core.ocr_worker.WorkerSettings`
 
-## Alteração 5: Adaptar `ocr.py`
+## Alteracao 5: Adaptar `ocr.py`
 
 Substituir `BackgroundTasks` por `enqueue_ocr_task()`:
 ```python
-# POST /api/v1/ocr/processar → enqueue_ocr_task(...) → retorna task_id
-# GET /api/v1/ocr/status/{task_id} → get_task_status(task_id)
+# POST /api/v1/ocr/processar  enqueue_ocr_task(...)  retorna task_id
+# GET /api/v1/ocr/status/{task_id}  get_task_status(task_id)
 ```
 
 ## Arquitetura resultante
 ```
-FastAPI ──▶ Redis (Queue) ◀── ARQ Worker (OCR/LLM)
+FastAPI  Redis (Queue)  ARQ Worker (OCR/LLM)
   POST /ocr/processar         process_ocr_task()
-  GET /ocr/status/{id}        retry + idempotência + TTL
+  GET /ocr/status/{id}        retry + idempotencia + TTL
 ```
 
 ## Passos
@@ -120,20 +120,20 @@ FastAPI ──▶ Redis (Queue) ◀── ARQ Worker (OCR/LLM)
 9. `cd backend && pytest tests/ -v`
 10. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [ ] Redis no `docker-compose.yml` com healthcheck
-- [ ] Tarefas OCR enfileiradas no Redis (não usa BackgroundTasks)
+- [ ] Tarefas OCR enfileiradas no Redis (nao usa BackgroundTasks)
 - [ ] Status consultado via Redis
 - [ ] Tarefas sobrevivem a restart da API
-- [ ] Retry automático (até 3 tentativas)
-- [ ] Idempotência por hash do arquivo
-- [ ] TTL: auto-expiração após 24h
-- [ ] Worker ARQ iniciável separadamente
+- [ ] Retry automatico (ate 3 tentativas)
+- [ ] Idempotencia por hash do arquivo
+- [ ] TTL: auto-expiracao apos 24h
+- [ ] Worker ARQ iniciavel separadamente
 - [ ] Testes existentes passam (mock Redis)
 
 ## Notas
-- NÃO remover lógica OCR existente — apenas redirecionar para worker
-- Manter BackgroundTasks como fallback se Redis indisponível
+- NAO remover logica OCR existente - apenas redirecionar para worker
+- Manter BackgroundTasks como fallback se Redis indisponivel
 - Testes de OCR: usar `fakeredis` para mock
-- Implementação pode ser faseada (Fase 1: infra, Fase 2: endpoints, Fase 3: OCR real)
-- Consultar `AGENTS.md` para padrões do projeto
+- Implementacao pode ser faseada (Fase 1: infra, Fase 2: endpoints, Fase 3: OCR real)
+- Consultar `AGENTS.md` para padroes do projeto

@@ -1,87 +1,87 @@
-# Política de Versionamento da API
+# Politica de Versionamento da API
 
-> **Versão:** 1.0.0 | **Data:** 2026-03-08 | **Status:** Vigente
+> **Versao:** 1.0.0 | **Data:** 2026-03-08 | **Status:** Vigente
 
 ---
 
-## Visão Geral
+## Visao Geral
 
-A API adota versionamento explícito via prefixo de rota (`/api/v1/`, `/api/v2/`). Esta política define o ciclo de vida de cada versão, critérios de depreciação e regras para criação de novos endpoints.
+A API adota versionamento explicito via prefixo de rota (`/api/v1/`, `/api/v2/`). Esta politica define o ciclo de vida de cada versao, criterios de depreciacao e regras para criacao de novos endpoints.
 
-| Versão | Status | Uso |
+| Versao | Status | Uso |
 |--------|--------|-----|
-| `v1` | **Legado** — manutenção corretiva apenas | Endpoints existentes; sem novas features |
-| `v2` | **Ativo** — versão oficial | Todas as novas funcionalidades |
+| `v1` | **Legado** - manutencao corretiva apenas | Endpoints existentes; sem novas features |
+| `v2` | **Ativo** - versao oficial | Todas as novas funcionalidades |
 
 > **Regra de Ouro:** toda nova feature deve ser criada em `/api/v2/`. Nunca adicionar endpoints novos em `/api/v1/`.
 
 ---
 
-## Endpoints por Módulo
+## Endpoints por Modulo
 
 ### Estoque
 
-| Rota | Versão | Status | Substituto |
+| Rota | Versao | Status | Substituto |
 |------|--------|--------|------------|
-| `GET /api/v1/estoque` | v1 | ⚠️ Depreciado | `GET /api/v2/estoque` |
-| `POST /api/v1/estoque` | v1 | ⚠️ Depreciado | `POST /api/v2/estoque/transacao` |
-| `GET /api/v1/estoque/{id}` | v1 | ⚠️ Depreciado | `GET /api/v2/estoque/produto/{id}` |
-| `PUT /api/v1/estoque/{id}` | v1 | ⚠️ Depreciado | `POST /api/v2/estoque/transacao` (tipo: AJUSTE) |
-| `DELETE /api/v1/estoque/{id}` | v1 | ⚠️ Depreciado | `POST /api/v2/estoque/transacao` (tipo: AJUSTE) |
-| `POST /api/v2/estoque/transacao` | v2 | ✅ Ativo | — |
-| `GET /api/v2/estoque` | v2 | ✅ Ativo | — |
-| `GET /api/v2/estoque/produto/{id}` | v2 | ✅ Ativo | — |
-| `GET /api/v2/estoque/historico/{id}` | v2 | ✅ Ativo | — |
-| `GET /api/v2/estoque/alertas` | v2 | ✅ Ativo | — |
-| `POST /api/v2/estoque/entrada-lote` | v2 | ✅ Ativo | — |
+| `GET /api/v1/estoque` | v1 |  Depreciado | `GET /api/v2/estoque` |
+| `POST /api/v1/estoque` | v1 |  Depreciado | `POST /api/v2/estoque/transacao` |
+| `GET /api/v1/estoque/{id}` | v1 |  Depreciado | `GET /api/v2/estoque/produto/{id}` |
+| `PUT /api/v1/estoque/{id}` | v1 |  Depreciado | `POST /api/v2/estoque/transacao` (tipo: AJUSTE) |
+| `DELETE /api/v1/estoque/{id}` | v1 |  Depreciado | `POST /api/v2/estoque/transacao` (tipo: AJUSTE) |
+| `POST /api/v2/estoque/transacao` | v2 |  Ativo | - |
+| `GET /api/v2/estoque` | v2 |  Ativo | - |
+| `GET /api/v2/estoque/produto/{id}` | v2 |  Ativo | - |
+| `GET /api/v2/estoque/historico/{id}` | v2 |  Ativo | - |
+| `GET /api/v2/estoque/alertas` | v2 |  Ativo | - |
+| `POST /api/v2/estoque/entrada-lote` | v2 |  Ativo | - |
 
-### Movimentação
+### Movimentacao
 
-| Rota | Versão | Status | Substituto |
+| Rota | Versao | Status | Substituto |
 |------|--------|--------|------------|
-| `GET /api/v1/movimentacao` | v1 | 🔶 Em avaliação | `GET /api/v2/estoque/historico/{id}` |
-| `POST /api/v1/movimentacao` | v1 | 🔶 Em avaliação | `POST /api/v2/estoque/transacao` |
+| `GET /api/v1/movimentacao` | v1 |  Em avaliacao | `GET /api/v2/estoque/historico/{id}` |
+| `POST /api/v1/movimentacao` | v1 |  Em avaliacao | `POST /api/v2/estoque/transacao` |
 
-> Pendente: avaliar se todos os consumidores já usam `/api/v2/estoque` antes de definir data de sunset.
+> Pendente: avaliar se todos os consumidores ja usam `/api/v2/estoque` antes de definir data de sunset.
 
-### Demais módulos (v1 ativo — sem prazo de depreciação definido)
+### Demais modulos (v1 ativo - sem prazo de depreciacao definido)
 
-| Módulo | Prefixo | Status |
+| Modulo | Prefixo | Status |
 |--------|---------|--------|
-| Users / Auth | `/api/v1/users` | ✅ Ativo |
-| Produtos | `/api/v1/produtos` | ✅ Ativo |
-| PDV | `/api/v1/pdv` | ✅ Ativo |
-| Vendas | `/api/v1/vendas` | ✅ Ativo |
-| Clientes | `/api/v1/clientes` | ✅ Ativo |
-| Fornecedores | `/api/v1/fornecedores` | ✅ Ativo |
-| Categorias | `/api/v1/categorias` | ✅ Ativo |
-| Orçamentos | `/api/v1/orcamentos` | ✅ Ativo |
-| Contas a Receber | `/api/v1/contas-receber` | ✅ Ativo |
-| Notas Fiscais | `/api/v1/notas-fiscais` | ✅ Ativo |
-| OCR / XML NFe | `/api/v1/ocr` | ✅ Ativo |
-| Relatórios | `/api/v1/relatorios` | ✅ Ativo |
-| Caixa Diário | `/api/v1/caixa` | ✅ Ativo |
-| Política de Desconto | `/api/v1/politica-desconto` | ✅ Ativo |
-| NCM | `/api/v1/ncm` | ✅ Ativo |
-| Fiscal AI | `/api/v1/fiscal-ai` | ✅ Ativo |
-| AI | `/api/v1/ai` | ✅ Ativo |
+| Users / Auth | `/api/v1/users` |  Ativo |
+| Produtos | `/api/v1/produtos` |  Ativo |
+| PDV | `/api/v1/pdv` |  Ativo |
+| Vendas | `/api/v1/vendas` |  Ativo |
+| Clientes | `/api/v1/clientes` |  Ativo |
+| Fornecedores | `/api/v1/fornecedores` |  Ativo |
+| Categorias | `/api/v1/categorias` |  Ativo |
+| Orcamentos | `/api/v1/orcamentos` |  Ativo |
+| Contas a Receber | `/api/v1/contas-receber` |  Ativo |
+| Notas Fiscais | `/api/v1/notas-fiscais` |  Ativo |
+| OCR / XML NFe | `/api/v1/ocr` |  Ativo |
+| Relatorios | `/api/v1/relatorios` |  Ativo |
+| Caixa Diario | `/api/v1/caixa` |  Ativo |
+| Politica de Desconto | `/api/v1/politica-desconto` |  Ativo |
+| NCM | `/api/v1/ncm` |  Ativo |
+| Fiscal AI | `/api/v1/fiscal-ai` |  Ativo |
+| AI | `/api/v1/ai` |  Ativo |
 
 ---
 
-## Cronograma de Depreciação
+## Cronograma de Depreciacao
 
-### Fase 1 — Concluída
+### Fase 1 - Concluida
 - `/api/v2/estoque` implementado como substituto de `/api/v1/estoque`
 - Header `Deprecation: true` adicionado nos endpoints legados de estoque
 
-### Fase 2 — Em andamento
-- Avaliar migração de `/api/v1/movimentacao` para `/api/v2/estoque`
-- Critério: confirmar que todos os consumidores já usam a rota v2
-- Sunset: a definir após avaliação
+### Fase 2 - Em andamento
+- Avaliar migracao de `/api/v1/movimentacao` para `/api/v2/estoque`
+- Criterio: confirmar que todos os consumidores ja usam a rota v2
+- Sunset: a definir apos avaliacao
 
-### Fase 3 — Planejada
-- Avaliar migração dos demais módulos v1 para v2, priorizando por criticidade: Produtos, PDV, Vendas
-- Critério de promoção: cobertura de testes ≥ 80% no módulo v2 equivalente
+### Fase 3 - Planejada
+- Avaliar migracao dos demais modulos v1 para v2, priorizando por criticidade: Produtos, PDV, Vendas
+- Criterio de promocao: cobertura de testes  80% no modulo v2 equivalente
 
 ---
 
@@ -92,20 +92,20 @@ A API adota versionamento explícito via prefixo de rota (`/api/v1/`, `/api/v2/`
 3. Ao substituir um endpoint v1 existente:
    - Adicionar headers `Deprecation: true` e `Sunset: <data>` no endpoint v1
    - Atualizar a tabela neste documento
-   - Registrar no `CHANGELOG.md` em seção `[Deprecated]`
+   - Registrar no `CHANGELOG.md` em secao `[Deprecated]`
 
 ---
 
 ## Processo de Breaking Changes
 
-O aviso mínimo antes de remover um endpoint é de **90 dias**.
+O aviso minimo antes de remover um endpoint e de **90 dias**.
 
 ```
-1. Decisão de deprecar
+1. Decisao de deprecar
 2. Adicionar header Deprecation: true + Sunset: <data> no endpoint legado
 3. Atualizar tabela neste documento
-4. Registrar em CHANGELOG.md (seção Deprecated)
-5. Na data do Sunset: remover endpoint + commit de remoção
+4. Registrar em CHANGELOG.md (secao Deprecated)
+5. Na data do Sunset: remover endpoint + commit de remocao
 ```
 
 Headers RFC 8594 usados nos endpoints depreciados:
@@ -120,9 +120,9 @@ Link: </api/v2/estoque>; rel="successor-version"
 
 ## Legenda
 
-| Ícone | Status | Significado |
+| Icone | Status | Significado |
 |-------|--------|-------------|
-| ✅ | Ativo | Em produção, recebe novas features |
-| ⚠️ | Depreciado | Funcional, com data de remoção definida ou pendente |
-| 🔶 | Em avaliação | Legado sem data de sunset — aguardando análise |
-| ❌ | Removido | Endpoint não existe mais |
+|  | Ativo | Em producao, recebe novas features |
+|  | Depreciado | Funcional, com data de remocao definida ou pendente |
+|  | Em avaliacao | Legado sem data de sunset - aguardando analise |
+|  | Removido | Endpoint nao existe mais |

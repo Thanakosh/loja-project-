@@ -1,6 +1,6 @@
 ---
 task_id: TASK-043
-title: "Implementar design system com componentes reutilizáveis (Shadcn/ui)"
+title: "Implementar design system com componentes reutilizaveis (Shadcn/ui)"
 status: pendente
 priority: baixa
 agent_chat_executable: "sim"
@@ -15,19 +15,19 @@ componentes ad-hoc por uma base padronizada.
 
 ### Contexto
 
-O frontend usa TailwindCSS para estilização, mas não tem uma biblioteca de
-componentes estruturada. Cada página implementa seus próprios botões, inputs,
-tabelas e modais com classes Tailwind avulsas, resultando em inconsistência
-visual e duplicação de código. O AGENTS.md recomenda Shadcn/ui.
+O frontend usa TailwindCSS para estilizacao, mas nao tem uma biblioteca de
+componentes estruturada. Cada pagina implementa seus proprios botoes, inputs,
+tabelas e modais com classes Tailwind avulsas, resultando em inconsistencia
+visual e duplicacao de codigo. O AGENTS.md recomenda Shadcn/ui.
 
-### Pré-requisitos
+### Pre-requisitos
 
-- TASK-038 concluída (componentes genéricos extraídos, facilitando substituição).
-- TailwindCSS 3.4+ já instalado e configurado.
+- TASK-038 concluida (componentes genericos extraidos, facilitando substituicao).
+- TailwindCSS 3.4+ ja instalado e configurado.
 
-### Ações
+### Acoes
 
-#### Fase 1 — Setup do Shadcn/ui
+#### Fase 1 - Setup do Shadcn/ui
 
 1. **Inicializar Shadcn/ui no projeto:**
    ```bash
@@ -47,9 +47,9 @@ visual e duplicação de código. O AGENTS.md recomenda Shadcn/ui.
 
 3. **Configurar tema (cores) do design system:**
    - Definir paleta de cores no `globals.css` alinhada com identidade do projeto.
-   - Modo dark: avaliar se necessário nesta fase.
+   - Modo dark: avaliar se necessario nesta fase.
 
-#### Fase 2 — Migração gradual das páginas
+#### Fase 2 - Migracao gradual das paginas
 
 Substituir componentes ad-hoc pelos componentes Shadcn:
 
@@ -63,37 +63,37 @@ Substituir componentes ad-hoc pelos componentes Shadcn:
 | Badges de status | `<Badge>` |
 | Toast notifications | `<Toast>` (integrar com react-hot-toast ou substituir) |
 
-**Ordem de migração sugerida:**
+**Ordem de migracao sugerida:**
 1. `Login.tsx` (mais simples, prova de conceito)
 2. `Dashboard.tsx`
 3. `Produtos.tsx`
 4. `PDV.tsx`
-5. Demais páginas
+5. Demais paginas
 
-#### Fase 3 — Documentação
+#### Fase 3 - Documentacao
 
 1. Criar `docs/design-system.md` com:
    - Lista de componentes Shadcn instalados.
    - Paleta de cores e tokens.
-   - Padrões de uso (quando usar Dialog vs Sheet, etc.).
-2. Atualizar `frontend/README.md` com instruções de adição de novos componentes.
+   - Padroes de uso (quando usar Dialog vs Sheet, etc.).
+2. Atualizar `frontend/README.md` com instrucoes de adicao de novos componentes.
 
 ### Regras para o agente
 
-- **Migrar uma página por PR** para facilitar revisão.
-- **Manter funcionalidade** — apenas substituir visual, não alterar lógica.
-- **Não remover react-hot-toast** sem confirmar que o Toast do Shadcn cobre
+- **Migrar uma pagina por PR** para facilitar revisao.
+- **Manter funcionalidade** - apenas substituir visual, nao alterar logica.
+- **Nao remover react-hot-toast** sem confirmar que o Toast do Shadcn cobre
   todos os casos de uso existentes.
-- Seguir convenções de import do Shadcn (`@/components/ui/button`).
-- Configurar path alias `@/` no `tsconfig.json` e `vite.config.ts` se necessário.
+- Seguir convencoes de import do Shadcn (`@/components/ui/button`).
+- Configurar path alias `@/` no `tsconfig.json` e `vite.config.ts` se necessario.
 
-### Critério de aceite
+### Criterio de aceite
 
 - Shadcn/ui inicializado e configurado no projeto.
 - Pelo menos 10 componentes Shadcn instalados.
 - `Login.tsx` e `Dashboard.tsx` migrados para componentes Shadcn.
 - Build sem erros.
-- Visual consistente entre as páginas migradas.
+- Visual consistente entre as paginas migradas.
 
 ### Branch sugerida
 

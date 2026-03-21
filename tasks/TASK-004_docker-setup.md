@@ -1,19 +1,19 @@
 ---
 task_id: TASK-004
 title: "Criar Dockerfile e docker-compose.yml"
-priority: 🟢 baixa
+priority: baixa
 scope: raiz do projeto
 branch: chore/docker-setup
 commit_message: "chore(infra): adiciona Dockerfile e docker-compose.yml"
 estimated_effort: 20 minutos
-status: concluída
+status: concluida
 ---
 
 # TASK-004: Criar Dockerfile e docker-compose.yml
 
 ## Contexto
-O projeto não possui containerização. Adicionar Docker facilita deploy, onboarding
-de novos desenvolvedores e testes em ambientes isolados. Está listado no roadmap
+O projeto nao possui containerizacao. Adicionar Docker facilita deploy, onboarding
+de novos desenvolvedores e testes em ambientes isolados. Esta listado no roadmap
 de curto prazo do README.md.
 
 ## Arquivos a criar
@@ -23,23 +23,23 @@ de curto prazo do README.md.
 # Multi-stage build para imagem otimizada
 FROM python:3.12-slim AS base
 
-# Variáveis de ambiente
+# Variaveis de ambiente
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# Instalar dependências de sistema (necessárias para psycopg2)
+# Instalar dependencias de sistema (necessarias para psycopg2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar e instalar dependências Python
+# Copiar e instalar dependencias Python
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código da aplicação
+# Copiar codigo da aplicacao
 COPY backend/app ./app
 COPY alembic.ini .
 COPY migrations ./migrations
@@ -51,7 +51,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/ping')" || exit 1
 
-# Comando de inicialização
+# Comando de inicializacao
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
@@ -141,7 +141,7 @@ backend/.pytest_cache
 backend/tests
 ```
 
-### 4. Atualizar `.env.example` — adicionar variáveis Docker
+### 4. Atualizar `.env.example` - adicionar variaveis Docker
 Adicionar ao final do `.env.example` existente:
 ```env
 # Docker / PostgreSQL
@@ -155,29 +155,29 @@ POSTGRES_DB=loja_db
 2. Criar `Dockerfile` na raiz do projeto
 3. Criar `docker-compose.yml` na raiz
 4. Criar `.dockerignore` na raiz
-5. Atualizar `.env.example` com variáveis do Docker
+5. Atualizar `.env.example` com variaveis do Docker
 6. Testar build: `docker compose build`
-7. Testar execução: `docker compose up -d`
+7. Testar execucao: `docker compose up -d`
 8. Verificar health: `curl http://localhost:8000/ping`
 9. Verificar logs: `docker compose logs api`
 10. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [ ] `docker compose build` roda sem erros
 - [ ] `docker compose up` sobe api + postgres
 - [ ] API responde em `http://localhost:8000/ping`
-- [ ] Migrações Alembic rodam automaticamente no startup
-- [ ] Banco de dados persiste entre reinicializações (volume)
-- [ ] `.env.example` atualizado com variáveis Docker
-- [ ] `.dockerignore` exclui arquivos desnecessários
+- [ ] Migracoes Alembic rodam automaticamente no startup
+- [ ] Banco de dados persiste entre reinicializacoes (volume)
+- [ ] `.env.example` atualizado com variaveis Docker
+- [ ] `.dockerignore` exclui arquivos desnecessarios
 
 ## Notas
-- O Dockerfile usa `python:3.12-slim` por ser leve e compatível
-- O compose usa `depends_on` com health check para garantir que o DB está pronto
-- Ollama está comentado por padrão (é opcional)
-- Em produção, remover `--reload` do uvicorn e usar `gunicorn`
-- NÃO commitar `.env`, apenas `.env.example`
+- O Dockerfile usa `python:3.12-slim` por ser leve e compativel
+- O compose usa `depends_on` com health check para garantir que o DB esta pronto
+- Ollama esta comentado por padrao (e opcional)
+- Em producao, remover `--reload` do uvicorn e usar `gunicorn`
+- NAO commitar `.env`, apenas `.env.example`
 
-## Atualização de status
-- ✅ `Dockerfile` e `docker-compose.yml` já versionados na raiz
-- ✅ Tarefa mantida como referência de operação e onboarding
+## Atualizacao de status
+-  `Dockerfile` e `docker-compose.yml` ja versionados na raiz
+-  Tarefa mantida como referencia de operacao e onboarding

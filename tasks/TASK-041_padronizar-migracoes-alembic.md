@@ -1,6 +1,6 @@
 ---
 task_id: TASK-041
-title: "Padronizar nomes e chain de migrações Alembic"
+title: "Padronizar nomes e chain de migracoes Alembic"
 status: concluida
 priority: media
 agent_chat_executable: "sim"
@@ -9,59 +9,59 @@ depends_on: []
 
 ## Objetivo
 
-Auditar as migrações Alembic existentes, documentar a cadeia de dependências
-(revision chain) e padronizar a nomenclatura para facilitar manutenção futura.
+Auditar as migracoes Alembic existentes, documentar a cadeia de dependencias
+(revision chain) e padronizar a nomenclatura para facilitar manutencao futura.
 
 ### Contexto
 
-O projeto tem 18 migrações em `migrations/versions/`. A maioria segue o
-padrão `YYYYMMDD_descricao.py`, mas uma usa hash Alembic puro:
-`5065442b792a_cria_tabela_estoque.py`. A AGENTS.md define o padrão com data,
-mas ele não é uniformemente aplicado.
+O projeto tem 18 migracoes em `migrations/versions/`. A maioria segue o
+padrao `YYYYMMDD_descricao.py`, mas uma usa hash Alembic puro:
+`5065442b792a_cria_tabela_estoque.py`. A AGENTS.md define o padrao com data,
+mas ele nao e uniformemente aplicado.
 
-### Ações
+### Acoes
 
-1. **Mapear a cadeia de revisões:**
+1. **Mapear a cadeia de revisoes:**
    ```bash
    cd backend
    alembic heads
    alembic history --verbose
    ```
-   - Verificar se há heads múltiplos (conflito de migrações).
-   - Verificar se todas as migrações formam uma cadeia linear.
-   - Documentar a ordem exata de execução.
+   - Verificar se ha heads multiplos (conflito de migracoes).
+   - Verificar se todas as migracoes formam uma cadeia linear.
+   - Documentar a ordem exata de execucao.
 
 2. **Verificar integridade:**
    ```bash
    alembic check
    ```
-   - Confirmar que o banco está sincronizado com os modelos.
-   - Listar models que têm alterações não refletidas em migrações.
+   - Confirmar que o banco esta sincronizado com os modelos.
+   - Listar models que tem alteracoes nao refletidas em migracoes.
 
-3. **Gerar documento de referência** em `docs/alembic-chain.md`:
-   - Tabela com: revision_id, data, descrição, depends_on
-   - Indicar se há migrações que precisam ser renomeadas
-   - Marcar a migração com nome fora do padrão (`5065442b792a_...`)
+3. **Gerar documento de referencia** em `docs/alembic-chain.md`:
+   - Tabela com: revision_id, data, descricao, depends_on
+   - Indicar se ha migracoes que precisam ser renomeadas
+   - Marcar a migracao com nome fora do padrao (`5065442b792a_...`)
 
-4. **Se houver heads múltiplos, resolver via merge:**
+4. **Se houver heads multiplos, resolver via merge:**
    ```bash
    alembic merge -m "merge_heads" <rev1> <rev2>
    ```
 
-5. **Documentar no AGENTS.md** (se ainda não estiver explicito):
-   - Proibir `--autogenerate` sem revisão manual.
-   - Sempre verificar `alembic history` antes de criar nova migração.
+5. **Documentar no AGENTS.md** (se ainda nao estiver explicito):
+   - Proibir `--autogenerate` sem revisao manual.
+   - Sempre verificar `alembic history` antes de criar nova migracao.
 
-### ⚠️ Regras para o agente
+###  Regras para o agente
 
-- **NÃO renomear arquivos de migração** — isso pode quebrar a chain.
-- **NÃO deletar migrações existentes** (conforme regra do AGENTS.md).
-- Esta tarefa é de **auditoria e documentação** — alterações apenas se
-  houver heads múltiplos que precisam de merge.
+- **NAO renomear arquivos de migracao** - isso pode quebrar a chain.
+- **NAO deletar migracoes existentes** (conforme regra do AGENTS.md).
+- Esta tarefa e de **auditoria e documentacao** - alteracoes apenas se
+  houver heads multiplos que precisam de merge.
 
-### Critério de aceite
+### Criterio de aceite
 
-- `alembic heads` mostra uma única head.
+- `alembic heads` mostra uma unica head.
 - `alembic history` executa sem erros.
 - Documento `docs/alembic-chain.md` gerado com a cadeia completa.
 - Eventuais conflitos de heads resolvidos.

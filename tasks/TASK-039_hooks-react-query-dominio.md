@@ -1,6 +1,6 @@
 ---
 task_id: TASK-039
-title: "Criar hooks React Query por domínio"
+title: "Criar hooks React Query por dominio"
 status: pendente
 priority: media
 agent_chat_executable: "sim"
@@ -9,44 +9,44 @@ depends_on: ["TASK-034"]
 
 ## Objetivo
 
-Criar custom hooks com React Query (`@tanstack/react-query`) para cada módulo
-de negócio, centralizando lógica de fetch, cache, invalidação e mutações.
+Criar custom hooks com React Query (`@tanstack/react-query`) para cada modulo
+de negocio, centralizando logica de fetch, cache, invalidacao e mutacoes.
 
 ### Contexto
 
-O projeto já tem `@tanstack/react-query` como dependência, mas a comunicação
-com o backend está concentrada em `frontend/src/services/api.ts` (~3KB) com
-chamadas diretas. As 15 páginas fazem chamadas `apiClient.get/post` diretamente,
-sem cache ou estado compartilhado — cada navegação refaz todas as chamadas.
+O projeto ja tem `@tanstack/react-query` como dependencia, mas a comunicacao
+com o backend esta concentrada em `frontend/src/services/api.ts` (~3KB) com
+chamadas diretas. As 15 paginas fazem chamadas `apiClient.get/post` diretamente,
+sem cache ou estado compartilhado - cada navegacao refaz todas as chamadas.
 
-### Ações
+### Acoes
 
-Criar em `frontend/src/hooks/` um arquivo por domínio:
+Criar em `frontend/src/hooks/` um arquivo por dominio:
 
-1. **`useProdutos.ts`** — queries e mutations para produtos:
-   - `useProdutos(filtros)` — listagem com paginação
-   - `useProduto(id)` — detalhes
-   - `useCreateProduto()` — mutation de criação
-   - `useUpdateProduto()` — mutation de edição
-   - Invalidation automática após mutações
+1. **`useProdutos.ts`** - queries e mutations para produtos:
+   - `useProdutos(filtros)` - listagem com paginacao
+   - `useProduto(id)` - detalhes
+   - `useCreateProduto()` - mutation de criacao
+   - `useUpdateProduto()` - mutation de edicao
+   - Invalidation automatica apos mutacoes
 
-2. **`useEstoque.ts`** — queries para estoque:
-   - `useEstoqueCompleto(filtros)` — listagem
-   - `useEstoqueProduto(id)` — estoque de um produto
-   - `useRegistrarTransacao()` — mutation
+2. **`useEstoque.ts`** - queries para estoque:
+   - `useEstoqueCompleto(filtros)` - listagem
+   - `useEstoqueProduto(id)` - estoque de um produto
+   - `useRegistrarTransacao()` - mutation
 
-3. **`useVendas.ts`** — queries para vendas e PDV:
-   - `useVendas(filtros)` — listagem
-   - `useRegistrarVenda()` — mutation do PDV
-   - `useCancelarVenda()` — mutation
+3. **`useVendas.ts`** - queries para vendas e PDV:
+   - `useVendas(filtros)` - listagem
+   - `useRegistrarVenda()` - mutation do PDV
+   - `useCancelarVenda()` - mutation
 
-4. **`useClientes.ts`** — queries para clientes
-5. **`useFornecedores.ts`** — queries para fornecedores
-6. **`useOrcamentos.ts`** — queries para orçamentos
-7. **`useCaixa.ts`** — queries para caixa diário
-8. **`useContasReceber.ts`** — queries para contas a receber
+4. **`useClientes.ts`** - queries para clientes
+5. **`useFornecedores.ts`** - queries para fornecedores
+6. **`useOrcamentos.ts`** - queries para orcamentos
+7. **`useCaixa.ts`** - queries para caixa diario
+8. **`useContasReceber.ts`** - queries para contas a receber
 
-### Padrão a seguir
+### Padrao a seguir
 
 ```typescript
 // Exemplo: useProdutos.ts
@@ -72,17 +72,17 @@ export function useCreateProduto() {
 ### Regras para o agente
 
 - **Tipar todas as respostas** com interfaces TypeScript (usar tipos de `frontend/src/types/`).
-- **Não alterar a API de backend** — apenas consumir o que já existe.
-- **Manter compatibilidade** — páginas existentes devem continuar funcionando.
-- Migrar as páginas gradualmente: começar por `Dashboard.tsx` (mais simples)
+- **Nao alterar a API de backend** - apenas consumir o que ja existe.
+- **Manter compatibilidade** - paginas existentes devem continuar funcionando.
+- Migrar as paginas gradualmente: comecar por `Dashboard.tsx` (mais simples)
   e `Produtos.tsx` como prova de conceito.
-- Configurar `staleTime` adequado (ex: 30s para listagens, 5min para dados estáticos).
+- Configurar `staleTime` adequado (ex: 30s para listagens, 5min para dados estaticos).
 
-### Critério de aceite
+### Criterio de aceite
 
-- Pelo menos 8 hooks criados cobrindo todos os domínios principais.
+- Pelo menos 8 hooks criados cobrindo todos os dominios principais.
 - `Dashboard.tsx` e `Produtos.tsx` migrados para usar os hooks.
-- Cache funcionando (navegar/voltar não refaz fetch desnecessário).
+- Cache funcionando (navegar/voltar nao refaz fetch desnecessario).
 - Nenhum erro de TypeScript.
 - Build sem erros.
 

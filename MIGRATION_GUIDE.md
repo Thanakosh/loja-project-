@@ -1,24 +1,24 @@
-# Guia de Migração v1.0 → v2.0
+# Guia de Migracao v1.0  v2.0
 
-Este documento fornece instruções detalhadas para migrar seu sistema da versão 1.0 para a versão 2.0 do Loja Project.
-
----
-
-## 📋 Visão Geral das Mudanças
-
-A versão 2.0 introduz mudanças significativas na arquitetura do sistema, focando em escalabilidade, performance e rastreabilidade. As principais áreas afetadas são:
-
-1. **Sistema de Estoque**: Migração para modelo baseado em transações
-2. **Dependências**: Atualização para Pydantic v2 e FastAPI mais recente
-3. **Autenticação**: Implementação obrigatória de JWT em todos os endpoints
-4. **OCR**: Processamento assíncrono para evitar timeouts
-5. **LLM**: Integração inteligente para análise de notas fiscais
+Este documento fornece instrucoes detalhadas para migrar seu sistema da versao 1.0 para a versao 2.0 do Loja Project.
 
 ---
 
-## 🔧 Pré-requisitos
+##  Visao Geral das Mudancas
 
-Antes de iniciar a migração, certifique-se de:
+A versao 2.0 introduz mudancas significativas na arquitetura do sistema, focando em escalabilidade, performance e rastreabilidade. As principais areas afetadas sao:
+
+1. **Sistema de Estoque**: Migracao para modelo baseado em transacoes
+2. **Dependencias**: Atualizacao para Pydantic v2 e FastAPI mais recente
+3. **Autenticacao**: Implementacao obrigatoria de JWT em todos os endpoints
+4. **OCR**: Processamento assincrono para evitar timeouts
+5. **LLM**: Integracao inteligente para analise de notas fiscais
+
+---
+
+##  Pre-requisitos
+
+Antes de iniciar a migracao, certifique-se de:
 
 - Fazer **backup completo do banco de dados**
 - Ter Python 3.11+ instalado
@@ -27,11 +27,11 @@ Antes de iniciar a migração, certifique-se de:
 
 ---
 
-## 📦 Passo 1: Atualizar Dependências
+##  Passo 1: Atualizar Dependencias
 
 ### 1.1 Atualizar requirements.txt
 
-O arquivo `requirements.txt` foi completamente atualizado. As principais mudanças são:
+O arquivo `requirements.txt` foi completamente atualizado. As principais mudancas sao:
 
 ```diff
 - fastapi>=0.68.0,<0.69.0
@@ -40,21 +40,21 @@ O arquivo `requirements.txt` foi completamente atualizado. As principais mudanç
 - pydantic>=1.8.0,<2.0.0
 + pydantic>=2.5.0,<3.0.0
 
-+ aiofiles>=23.2.0  # Nova dependência para OCR assíncrono
++ aiofiles>=23.2.0  # Nova dependencia para OCR assincrono
 ```
 
-### 1.2 Instalar novas dependências
+### 1.2 Instalar novas dependencias
 
 ```bash
 cd backend
 pip install -r requirements.txt --upgrade
 ```
 
-**Atenção**: A atualização do Pydantic pode causar conflitos. Recomenda-se usar um ambiente virtual limpo.
+**Atencao**: A atualizacao do Pydantic pode causar conflitos. Recomenda-se usar um ambiente virtual limpo.
 
 ---
 
-## 🗄️ Passo 2: Migrar Banco de Dados
+##  Passo 2: Migrar Banco de Dados
 
 ### 2.1 Fazer Backup
 
@@ -62,22 +62,22 @@ pip install -r requirements.txt --upgrade
 pg_dump -U postgres -d loja_db > backup_pre_migration_$(date +%Y%m%d).sql
 ```
 
-### 2.2 Executar Migrações Alembic
+### 2.2 Executar Migracoes Alembic
 
 ```bash
 cd /path/to/loja-project
 alembic upgrade head
 ```
 
-A migração `refactor_estoque_v2` irá:
+A migracao `refactor_estoque_v2` ira:
 
 1. Criar tabela `transacao_estoque`
-2. Migrar dados existentes de `produto.quantidade` para transações
+2. Migrar dados existentes de `produto.quantidade` para transacoes
 3. Adicionar campos `ativo` e `estoque_minimo` em `produto`
-4. Criar índices para otimização
-5. Renomear tabela `users` para `user` (se necessário)
+4. Criar indices para otimizacao
+5. Renomear tabela `users` para `user` (se necessario)
 
-### 2.3 Verificar Migração
+### 2.3 Verificar Migracao
 
 ```sql
 -- Verificar se a tabela foi criada
@@ -92,7 +92,7 @@ GROUP BY p.id, p.nome;
 
 ---
 
-## 💻 Passo 3: Atualizar Código da Aplicação
+##  Passo 3: Atualizar Codigo da Aplicacao
 
 ### 3.1 Schemas Pydantic
 
@@ -100,7 +100,7 @@ GROUP BY p.id, p.nome;
 ```python
 class ProdutoRead(ProdutoBase):
     id: int
-    
+
     class Config:
         orm_mode = True
 ```
@@ -111,11 +111,11 @@ from pydantic import ConfigDict
 
 class ProdutoRead(ProdutoBase):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 ```
 
-### 3.2 Serialização de Modelos
+### 3.2 Serializacao de Modelos
 
 **Antes (v1):**
 ```python
@@ -150,11 +150,11 @@ def validate_database_url(cls, v: str) -> str:
 
 ---
 
-## 🔐 Passo 4: Implementar Autenticação
+##  Passo 4: Implementar Autenticacao
 
-### 4.1 Criar Usuário Inicial
+### 4.1 Criar Usuario Inicial
 
-Execute o script para criar um usuário administrador:
+Execute o script para criar um usuario administrador:
 
 ```python
 from app.core.security import get_password_hash
@@ -174,7 +174,7 @@ admin = User(
 
 db.add(admin)
 db.commit()
-print(f"Usuário criado: {admin.email}")
+print(f"Usuario criado: {admin.email}")
 ```
 
 ### 4.2 Obter Token JWT
@@ -196,7 +196,7 @@ curl -X GET "http://localhost:8000/api/v1/produtos" \
 
 ---
 
-## 📊 Passo 5: Migrar Sistema de Estoque
+##  Passo 5: Migrar Sistema de Estoque
 
 ### 5.1 Entender o Novo Modelo
 
@@ -206,7 +206,7 @@ curl -X GET "http://localhost:8000/api/v1/produtos" \
 produto = Produto(nome="Produto A", quantidade=100)
 ```
 
-**Depois (v2)**: Quantidade calculada a partir de transações
+**Depois (v2)**: Quantidade calculada a partir de transacoes
 
 ```python
 # Criar produto
@@ -245,11 +245,11 @@ import requests
 token = "seu_token_jwt"
 headers = {"Authorization": f"Bearer {token}"}
 
-# Registrar saída de estoque
+# Registrar saida de estoque
 transacao = {
     "produto_id": 1,
     "tipo": "SAIDA",
-    "quantidade": -10,  # Negativo para saída
+    "quantidade": -10,  # Negativo para saida
     "motivo": "Venda #123"
 }
 
@@ -264,13 +264,13 @@ print(response.json())
 
 ---
 
-## 🖼️ Passo 6: Migrar Processamento de OCR
+##  Passo 6: Migrar Processamento de OCR
 
-### 6.1 Usar Endpoint Assíncrono
+### 6.1 Usar Endpoint Assincrono
 
 **Antes (v1):**
 ```python
-# Upload síncrono (pode causar timeout)
+# Upload sincrono (pode causar timeout)
 files = {"file": open("nota.jpg", "rb")}
 response = requests.post("http://localhost:8000/api/v1/ocr/upload", files=files)
 texto = response.json()["texto"]
@@ -278,12 +278,12 @@ texto = response.json()["texto"]
 
 **Depois (v2):**
 ```python
-# Upload assíncrono
+# Upload assincrono
 files = {"file": open("nota.jpg", "rb")}
 response = requests.post(
     "http://localhost:8000/api/v1/ocr/upload",
     files=files,
-    params={"use_llm": True},  # Usar LLM para análise inteligente
+    params={"use_llm": True},  # Usar LLM para analise inteligente
     headers=headers
 )
 
@@ -297,24 +297,24 @@ while True:
         headers=headers
     )
     status = status_response.json()
-    
+
     if status["status"] == "completed":
         resultado = status["result"]
         break
     elif status["status"] == "failed":
         print(f"Erro: {status['error']}")
         break
-    
+
     time.sleep(2)  # Aguardar 2 segundos
 ```
 
 ---
 
-## 🤖 Passo 7: Integrar LLM para Notas Fiscais
+##  Passo 7: Integrar LLM para Notas Fiscais
 
 ### 7.1 Configurar Ollama (Opcional)
 
-Se você deseja usar processamento local:
+Se voce deseja usar processamento local:
 
 ```bash
 # Instalar Ollama
@@ -324,7 +324,7 @@ curl https://ollama.ai/install.sh | sh
 ollama pull gemma:3b
 ```
 
-### 7.2 Usar Análise Inteligente
+### 7.2 Usar Analise Inteligente
 
 ```python
 # Processar nota fiscal completa
@@ -339,27 +339,27 @@ response = requests.post(
 task_id = response.json()["task_id"]
 
 # Aguardar processamento...
-# O resultado incluirá NotaFiscalExtraida com todos os produtos
+# O resultado incluira NotaFiscalExtraida com todos os produtos
 ```
 
 ---
 
-## ✅ Passo 8: Validar Migração
+##  Passo 8: Validar Migracao
 
-### 8.1 Checklist de Validação
+### 8.1 Checklist de Validacao
 
 - [ ] Banco de dados migrado sem erros
-- [ ] Todos os produtos têm transações iniciais
+- [ ] Todos os produtos tem transacoes iniciais
 - [ ] Estoque calculado corretamente
-- [ ] Autenticação funcionando
-- [ ] OCR assíncrono processando imagens
+- [ ] Autenticacao funcionando
+- [ ] OCR assincrono processando imagens
 - [ ] LLM extraindo dados corretamente
 - [ ] Endpoints legados ainda funcionais
 
 ### 8.2 Testes Recomendados
 
 ```bash
-# 1. Testar autenticação
+# 1. Testar autenticacao
 curl -X POST "http://localhost:8000/api/v1/users/token" \
   -d "username=admin@loja.com&password=senha"
 
@@ -371,7 +371,7 @@ curl -X GET "http://localhost:8000/api/v1/produtos" \
 curl -X GET "http://localhost:8000/api/v2/estoque" \
   -H "Authorization: Bearer <token>"
 
-# 4. Testar transação
+# 4. Testar transacao
 curl -X POST "http://localhost:8000/api/v2/estoque/transacao" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
@@ -380,59 +380,59 @@ curl -X POST "http://localhost:8000/api/v2/estoque/transacao" \
 
 ---
 
-## 🚨 Problemas Comuns
+##  Problemas Comuns
 
 ### Erro: "Could not validate credentials"
 
-**Causa**: Token JWT inválido ou expirado
+**Causa**: Token JWT invalido ou expirado
 
-**Solução**: Obter novo token via `/api/v1/users/token`
+**Solucao**: Obter novo token via `/api/v1/users/token`
 
 ### Erro: "Estoque insuficiente"
 
-**Causa**: Tentativa de saída maior que estoque disponível
+**Causa**: Tentativa de saida maior que estoque disponivel
 
-**Solução**: Verificar estoque atual antes de registrar saída
+**Solucao**: Verificar estoque atual antes de registrar saida
 
 ### Erro: "Pydantic validation error"
 
-**Causa**: Schemas incompatíveis entre v1 e v2
+**Causa**: Schemas incompativeis entre v1 e v2
 
-**Solução**: Atualizar código do cliente para usar novos schemas
+**Solucao**: Atualizar codigo do cliente para usar novos schemas
 
 ### Erro: "Table 'transacao_estoque' doesn't exist"
 
-**Causa**: Migração não executada
+**Causa**: Migracao nao executada
 
-**Solução**: Executar `alembic upgrade head`
+**Solucao**: Executar `alembic upgrade head`
 
 ---
 
-## 🔄 Rollback (Se Necessário)
+##  Rollback (Se Necessario)
 
-Se encontrar problemas críticos, você pode reverter para v1:
+Se encontrar problemas criticos, voce pode reverter para v1:
 
 ```bash
 # 1. Restaurar banco de dados
 psql -U postgres -d loja_db < backup_pre_migration_YYYYMMDD.sql
 
-# 2. Reverter migração
+# 2. Reverter migracao
 alembic downgrade -1
 
-# 3. Reinstalar dependências antigas
+# 3. Reinstalar dependencias antigas
 pip install -r requirements_v1.txt
 ```
 
 ---
 
-## 📞 Suporte
+##  Suporte
 
-Se encontrar problemas durante a migração:
+Se encontrar problemas durante a migracao:
 
-1. Consulte o [CHANGELOG.md](./CHANGELOG.md) para detalhes das mudanças
-2. Verifique os logs da aplicação
-3. Abra uma issue no repositório GitHub
+1. Consulte o [CHANGELOG.md](./CHANGELOG.md) para detalhes das mudancas
+2. Verifique os logs da aplicacao
+3. Abra uma issue no repositorio GitHub
 
 ---
 
-**Boa sorte com a migração! 🚀**
+**Boa sorte com a migracao! **
