@@ -1,7 +1,7 @@
 ---
 task_id: TASK-042
 title: "Migrar endpoints para async de forma incremental"
-status: pendente
+status: concluida
 priority: baixa
 agent_chat_executable: "sim"
 depends_on: ["TASK-037"]
@@ -141,4 +141,6 @@ Para cada modulo:
 - Testes `backend/tests/test_ratelimit.py` e `backend/tests/test_ratelimit_endpoints.py` passaram a sobrescrever `get_current_active_user_async`, alinhando os overrides com a camada HTTP ja migrada.
 - Validacao executada apos a limpeza dos helpers: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_pdv_preco_minimo.py backend/tests/test_caixa.py backend/tests/test_users.py backend/tests/test_configuracoes.py -q` com `56 passed`.
 - Bateria ampla executada apos o ajuste da infraestrutura/testes: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_pdv_preco_minimo.py backend/tests/test_caixa.py backend/tests/test_users.py backend/tests/test_configuracoes.py backend/tests/test_produto.py backend/tests/test_orcamento.py backend/tests/test_fiscal_ai.py backend/tests/test_estoque.py backend/tests/test_ratelimit.py backend/tests/test_ratelimit_endpoints.py -q` com `135 passed`.
-- Task geral segue `pendente` apenas pelo fechamento documental/estrategico previsto na task (ex.: atualizacao de `STRATEGY.md` e encerramento formal da convergencia async).
+- `STRATEGY.md` foi atualizado para registrar a convergencia async do backend como concluida e fixar a diretriz de nao reintroduzir `Session`/`get_db` na camada HTTP.
+- Fase 3 concluida: `get_db()` removido da infraestrutura principal, `database.py` mantido apenas com engine/sessao async e fechamento documental realizado.
+- TASK-042 concluida.
