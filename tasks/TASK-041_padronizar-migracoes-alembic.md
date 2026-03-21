@@ -1,7 +1,7 @@
 ---
 task_id: TASK-041
 title: "Padronizar nomes e chain de migrações Alembic"
-status: pendente
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: []
@@ -69,3 +69,11 @@ mas ele não é uniformemente aplicado.
 ### Branch sugerida
 
 `docs/padronizar-migracoes-alembic`
+
+## Atualizacao de status
+
+- `alembic heads` retornou uma unica head: `20260321_configuracao_loja`.
+- `alembic history --verbose` confirmou cadeia linear.
+- Documento gerado em `docs/alembic-chain.md` com a chain completa e destaque para `5065442b792a_cria_tabela_estoque.py`.
+- `alembic check` falhou por configuracao local invalida (`DEBUG=release`), fato documentado no relatorio.
+- `AGENTS.md` atualizado para exigir revisao manual de `--autogenerate` e verificacao previa com `alembic history --verbose`.

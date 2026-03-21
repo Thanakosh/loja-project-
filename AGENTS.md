@@ -186,6 +186,8 @@ produto.quantidade = 100
   alembic revision --autogenerate -m "descricao_da_mudanca"
   alembic upgrade head
   ```
+- **Revisar manualmente** toda migração gerada por `--autogenerate` antes de commitar
+- **Sempre verificar a chain** com `alembic history --verbose` antes de criar nova migração
 - **Nomear arquivos de migração** com data: `YYYYMMDD_descricao.py`
 - **Não deletar migrações antigas** — histório deve ser preservado
 
