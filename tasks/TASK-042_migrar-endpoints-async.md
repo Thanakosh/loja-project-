@@ -132,4 +132,8 @@ Para cada modulo:
 - Modulos `movimentacao.py`, `politica_desconto.py`, `estoque.py` (legado) e `ai.py` migrados para `AsyncSession`, cobrindo o bloco final de routers remanescentes em `app/api/v1/`.
 - Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_fiscal_ai.py backend/tests/test_estoque.py -q` com `17 passed`.
 - Verificacao estrutural executada: busca por `Depends(get_db)` em `backend/app/api/v1` sem ocorrencias restantes.
-- Task geral segue `pendente` apenas porque ainda faltam as etapas globais de limpeza previstas na task (ex.: remocao do `get_db()` sync, convergencia final da infraestrutura e atualizacao da estrategia), mas a migracao incremental dos routers de `app/api/v1/` foi concluida.
+- Router adicional `app/api/endpoints/ncm.py` migrado para `AsyncSession`, eliminando o ultimo uso de `get_db` na camada HTTP.
+- `backend/tests/conftest.py` e `backend/tests/benchmarks/conftest.py` deixaram de depender de `get_db`, passando a sobrescrever apenas `get_async_db`.
+- `app/core/database.py` foi simplificado para manter apenas engine e sessao async (`get_async_engine`, `get_async_db`); scripts utilitarios locais foram adaptados para esse fluxo.
+- Validacao executada apos a limpeza de infraestrutura: `$env:DEBUG='false'; pytest backend/tests/test_users.py backend/tests/test_orcamento.py backend/tests/test_fiscal_ai.py backend/tests/test_estoque.py -q` com `43 passed`.
+- Task geral segue `pendente` apenas pelo backlog residual de limpeza interna: helpers sync legados ainda presentes em `services/` e `core/security.py`, mais atualizacao documental/estrategica prevista na task.

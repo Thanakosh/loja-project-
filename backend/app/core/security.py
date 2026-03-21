@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import get_async_db, get_db
+from .database import get_async_db
 from ..models.refresh_token import RefreshToken
 from ..models.user import User
 
@@ -277,60 +277,11 @@ async def _revoke_all_user_tokens_async(db: AsyncSession, user_id: int) -> int:
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar as credenciais",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def get_current_active_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
-    return current_user
-
-
-async def get_current_user_optional(
-    token: Optional[str] = Depends(oauth2_scheme_optional),
-    db: Session = Depends(get_db)
-) -> Optional[User]:
-    if token is None:
-        return None
-
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        email: Optional[str] = payload.get("sub")
-        if not email:
-            return None
-    except JWTError:
-        return None
-
-    return db.query(User).filter(User.email == email).first()
-
-
-async def get_current_user_async(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_db)
-) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar as credenciais",
+        detail="NÃ£o foi possÃ­vel validar as credenciais",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -348,9 +299,40 @@ async def get_current_user_async(
     return user
 
 
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="UsuÃ¡rio inativo")
+    return current_user
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_async_db),
+) -> Optional[User]:
+    if token is None:
+        return None
+
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: Optional[str] = payload.get("sub")
+        if not email:
+            return None
+    except JWTError:
+        return None
+
+    return (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+
+
+async def get_current_user_async(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db),
+) -> User:
+    return await get_current_user(token=token, db=db)
+
+
 async def get_current_active_user_async(
     current_user: User = Depends(get_current_user_async),
 ) -> User:
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
-    return current_user
+    return await get_current_active_user(current_user=current_user)
