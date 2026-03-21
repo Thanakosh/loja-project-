@@ -188,6 +188,8 @@ produto.quantidade = 100
   ```
 - **Nomear arquivos de migracao** com data: `YYYYMMDD_descricao.py`
 - **Nao deletar migracoes antigas** - historio deve ser preservado
+- **Revisar manualmente** toda migracao gerada por `--autogenerate` antes de commitar
+- **Sempre verificar a chain** com `alembic history --verbose` antes de criar nova migracao
 
 ---
 
