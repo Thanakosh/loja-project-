@@ -74,7 +74,7 @@ Para cada modulo:
 - **Migrar UM modulo por PR** - PRs pequenos e focados.
 - **Manter cobertura de testes** - nao reduzir cobertura do modulo migrado.
 - **Nao misturar sync/async** no mesmo endpoint.
-- Testar tanto com SQLite (testes) quanto com PostgreSQL (dev/staging).
+- Validacao em PostgreSQL pode ser executada em task propria quando houver necessidade de gate adicional antes de merge/release.
 
 ### Criterio de aceite (por modulo)
 
@@ -142,5 +142,6 @@ Para cada modulo:
 - Validacao executada apos a limpeza dos helpers: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_pdv_preco_minimo.py backend/tests/test_caixa.py backend/tests/test_users.py backend/tests/test_configuracoes.py -q` com `56 passed`.
 - Bateria ampla executada apos o ajuste da infraestrutura/testes: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_pdv_preco_minimo.py backend/tests/test_caixa.py backend/tests/test_users.py backend/tests/test_configuracoes.py backend/tests/test_produto.py backend/tests/test_orcamento.py backend/tests/test_fiscal_ai.py backend/tests/test_estoque.py backend/tests/test_ratelimit.py backend/tests/test_ratelimit_endpoints.py -q` com `135 passed`.
 - `STRATEGY.md` foi atualizado para registrar a convergencia async do backend como concluida e fixar a diretriz de nao reintroduzir `Session`/`get_db` na camada HTTP.
+- A validacao complementar em PostgreSQL/dev-staging foi desmembrada para `TASK-048_validar-backend-async-postgresql.md`, sem bloquear o encerramento desta task.
 - Fase 3 concluida: `get_db()` removido da infraestrutura principal, `database.py` mantido apenas com engine/sessao async e fechamento documental realizado.
 - TASK-042 concluida.
