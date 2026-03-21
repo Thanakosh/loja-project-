@@ -1,7 +1,7 @@
 ---
 task_id: TASK-036
 title: "Auditar histórico Git por .env e credenciais commitadas"
-status: pendente
+status: concluida
 priority: alta
 agent_chat_executable: "sim"
 depends_on: []
@@ -58,3 +58,11 @@ sem aprovação explícita do usuário. Apenas gere o relatório e recomendaçõ
 ### Branch sugerida
 
 `docs/auditoria-git-segredos`
+
+## Atualizacao de status
+
+- Auditoria executada em 2026-03-21 com relatorio em `docs/auditoria-git-segredos.md`.
+- Nao foram encontradas evidencias de `.env` versionado no historico.
+- `test.db` foi encontrado no historico em commits anteriores.
+- Nao foram encontradas evidencias de arquivos `*.key`, `*.pem` ou `*.p12`.
+- Houve ocorrencias no historico para strings como `JWT_SECRET=`, `DATABASE_URL=` e `SECRET_KEY`, exigindo redacao cuidadosa do parecer.
