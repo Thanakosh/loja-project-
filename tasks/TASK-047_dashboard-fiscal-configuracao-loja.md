@@ -1,7 +1,7 @@
 ---
 task_id: TASK-047
 title: "Dashboard: card de saúde fiscal + configuração de regime tributário"
-status: pendente
+status: concluido
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-044"]

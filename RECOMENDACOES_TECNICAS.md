@@ -202,7 +202,7 @@ Consolidar em um único plano as recomendações já levantadas anteriormente co
 - ✅ **Incremento concluído:** validações automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticação.
 - ✅ **Incremento concluído:** Passo 2 finalizado com fortalecimento da gestão de segredos, validações de startup e revisão de `.env.example`.
 - ✅ **Incremento concluído:** Passo 4 finalizado com rate limiting consistente em toda a API e logging estruturado observável em eventos críticos.
-- 🎯 **Próximo incremento:** relatórios básicos (estoque baixo, vendas por período).
+- 🎯 **Próximo incremento:** TASK-047 concluída (dashboard fiscal + ConfiguracaoLoja). Próximo: paginação consistente nos endpoints listáveis (Passo 3).
 
 ---
 

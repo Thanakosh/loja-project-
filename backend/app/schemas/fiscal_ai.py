@@ -145,3 +145,26 @@ class FiscalFeedbackMetricsResponse(BaseModel):
     revisados: int
     taxa_aceitacao: float
     por_origem: dict
+
+
+class RiskDashboardNotaItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    nota_id: int
+    numero_nota: int
+    score: float
+    classificacao: Literal["baixo", "medio", "alto"]
+
+
+class RiskDashboardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    score_medio: float = Field(description="Score médio de risco das notas analisadas (0-100)")
+    total_notas_analisadas: int
+    total_alto_risco: int = Field(description="Quantidade de notas classificadas como risco alto")
+    total_medio_risco: int = Field(description="Quantidade de notas classificadas como risco médio")
+    total_baixo_risco: int = Field(description="Quantidade de notas classificadas como risco baixo")
+    notas_maior_risco: List[RiskDashboardNotaItem] = Field(
+        description="Top 3 notas com maior score de risco"
+    )
+    estado_vazio: bool = Field(description="True quando não há notas fiscais importadas")

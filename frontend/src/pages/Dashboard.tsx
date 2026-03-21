@@ -37,6 +37,23 @@ interface EstoqueAlerta {
   estoque_baixo?: boolean
 }
 
+interface RiskDashboardNotaItem {
+  nota_id: number
+  numero_nota: number
+  score: number
+  classificacao: 'baixo' | 'medio' | 'alto'
+}
+
+interface RiskDashboardResponse {
+  score_medio: number
+  total_notas_analisadas: number
+  total_alto_risco: number
+  total_medio_risco: number
+  total_baixo_risco: number
+  notas_maior_risco: RiskDashboardNotaItem[]
+  estado_vazio: boolean
+}
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -53,6 +70,14 @@ const getVendaTotal = (venda: Venda) => {
 }
 
 const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+
+const RISCO_CONFIG = {
+  baixo: { label: 'Baixo', badgeClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  medio: { label: 'Médio', badgeClass: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+  alto: { label: 'Alto', badgeClass: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+}
+
+const DEFAULT_RISK_ANALYSIS_LIMIT = 20
 
 const Dashboard = () => {
   const queryClient = useQueryClient()
@@ -141,11 +166,31 @@ const Dashboard = () => {
     refetchInterval: 60_000
   })
 
+  const saudeFiscalQuery = useQuery({
+    queryKey: ['dashboard', 'saude-fiscal'],
+    queryFn: async () => {
+      const response = await api.get('/fiscal-ai/risk-dashboard', { params: { ultimas_n: DEFAULT_RISK_ANALYSIS_LIMIT } })
+      return response.data as RiskDashboardResponse
+    },
+    refetchInterval: 60_000
+  })
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
   const estoqueAlertas = estoqueAlertasQuery.data ?? []
+  const saudeFiscal = saudeFiscalQuery.data
+
+  const scoreMedio = saudeFiscal?.score_medio ?? 0
+  const scoreColor =
+    scoreMedio <= 30
+      ? 'text-green-600 dark:text-green-400'
+      : scoreMedio <= 60
+        ? 'text-yellow-600 dark:text-yellow-400'
+        : 'text-red-600 dark:text-red-400'
+  const scoreBarColor =
+    scoreMedio <= 30 ? 'bg-green-500' : scoreMedio <= 60 ? 'bg-yellow-500' : 'bg-red-500'
 
   return (
     <div className="space-y-6">
@@ -221,6 +266,71 @@ const Dashboard = () => {
           )}
         </article>
       </div>
+
+      {/* Card de Saúde Fiscal */}
+      <section className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">
+        <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-100">🏥 Saúde Fiscal</h2>
+
+        {saudeFiscalQuery.isLoading ? (
+          <div className="space-y-2">
+            <div className="h-5 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+        ) : saudeFiscalQuery.isError ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500">Auditoria fiscal indisponível no momento.</p>
+        ) : saudeFiscal?.estado_vazio ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma nota fiscal importada ainda.</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-6">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Score médio de risco</p>
+                <p className={`text-3xl font-bold ${scoreColor}`}>{scoreMedio.toFixed(1)}<span className="text-lg font-normal">/100</span></p>
+                <div className="mt-1 h-2 w-40 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className={`h-full rounded-full ${scoreBarColor}`} style={{ width: `${scoreMedio}%` }} />
+                </div>
+              </div>
+
+              <div className="flex gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-semibold text-red-600 dark:text-red-400">{saudeFiscal.total_alto_risco}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Alto risco</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-yellow-600 dark:text-yellow-400">{saudeFiscal.total_medio_risco}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Médio risco</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{saudeFiscal.total_baixo_risco}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Baixo risco</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 dark:text-gray-500 self-end">
+                {saudeFiscal.total_notas_analisadas} nota{saudeFiscal.total_notas_analisadas !== 1 ? 's' : ''} analisada{saudeFiscal.total_notas_analisadas !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {saudeFiscal.notas_maior_risco.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">Notas com maior risco:</p>
+                <ul className="space-y-1">
+                  {saudeFiscal.notas_maior_risco.map((nota) => {
+                    const cfg = RISCO_CONFIG[nota.classificacao]
+                    return (
+                      <li key={nota.nota_id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cfg.badgeClass}`}>{cfg.label}</span>
+                        <span>Nota #{nota.numero_nota}</span>
+                        <span className="text-gray-400 dark:text-gray-500">— score {nota.score.toFixed(1)}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {estoqueAlertas.length > 0 && (
         <section className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">

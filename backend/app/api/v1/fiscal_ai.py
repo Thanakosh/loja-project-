@@ -1,8 +1,12 @@
 from decimal import Decimal
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from ...ai.audit_service import auditar_nota_fiscal
 from ...core.database import get_db
@@ -14,6 +18,7 @@ from ...models.ncm import NCM
 from ...models.nota_fiscal import NotaFiscal
 from ...models.produto import Produto
 from ...models.user import User
+from ...models.configuracao_loja import ConfiguracaoLoja
 from ...schemas.fiscal_ai import (
     FiscalAuditFactorResponse,
     FiscalAuditResponse,
@@ -24,6 +29,8 @@ from ...schemas.fiscal_ai import (
     NCMCandidato,
     NCMClassifyRequest,
     NCMClassifyResponse,
+    RiskDashboardNotaItem,
+    RiskDashboardResponse,
     SupplierRankingItem,
     SupplierRankingResponse,
 )
@@ -363,4 +370,118 @@ def metricas_feedback(
         por_decisao=por_decisao,
         taxa_aceitacao=taxa_aceitacao,
         por_origem=por_origem,
+    )
+
+
+# ─── GET /risk-dashboard ───
+
+
+@router.get("/risk-dashboard", response_model=RiskDashboardResponse)
+def risk_dashboard(
+    ultimas_n: int = Query(default=20, ge=1, le=100, description="Número de notas fiscais recentes a analisar"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Dashboard de saúde fiscal: agrega score de risco das últimas N notas importadas."""
+    _ = current_user
+
+    notas = (
+        db.query(NotaFiscal)
+        .order_by(NotaFiscal.id.desc())
+        .limit(ultimas_n)
+        .all()
+    )
+
+    if not notas:
+        return RiskDashboardResponse(
+            score_medio=0.0,
+            total_notas_analisadas=0,
+            total_alto_risco=0,
+            total_medio_risco=0,
+            total_baixo_risco=0,
+            notas_maior_risco=[],
+            estado_vazio=True,
+        )
+
+    # Carregar configuração da loja para parâmetros de auditoria
+    config = db.query(ConfiguracaoLoja).order_by(ConfiguracaoLoja.id.desc()).first()
+    regime = config.regime_tributario if config else None
+    uf = config.uf if config else None
+
+    resultados: list[RiskDashboardNotaItem] = []
+
+    for nota in notas:
+        # Normalizar nota para o formato de auditoria
+        itens_normalizados = [
+            FiscalItemPayload(
+                sequencia=idx,
+                descricao=item.nome_produto or f"Item {idx}",
+                quantidade=Decimal(str(item.quantidade or 0)),
+                unidade_comercial=item.unidade or "UN",
+                valor_unitario=Decimal(str(item.preco_unitario or 0)),
+                valor_total_item=Decimal(str(item.preco_total or 0)),
+                ncm=item.ncm,
+                cfop=item.cfop,
+                codigo_barras=item.codigo_barras,
+                cst=item.cst,
+                icms_base_calculo=Decimal(str(nota.base_icms or 0)),
+                icms_aliquota=Decimal(str(item.icms or 0)) if item.icms is not None else None,
+                icms_valor=Decimal(str(nota.valor_icms or 0)),
+            )
+            for idx, item in enumerate(nota.itens, start=1)
+        ]
+
+        nota_payload = NotaFiscalPayloadNormalizado(
+            versao_payload="1.0.0",
+            fornecedor_nome="Fornecedor Desconhecido",
+            numero_nota=str(nota.numero_legado),
+            data_emissao=nota.data_emissao,
+            valor_total_nota=Decimal(str(nota.valor_total or 0)),
+            itens=itens_normalizados,
+        )
+
+        try:
+            audit = auditar_nota_fiscal(
+                nota_payload,
+                regime_tributario=regime,
+                uf_emitente=uf,
+                tipo_operacao="entrada",
+            )
+            resultados.append(
+                RiskDashboardNotaItem(
+                    nota_id=nota.id,
+                    numero_nota=nota.numero_legado,
+                    score=audit.score,
+                    classificacao=audit.classificacao,
+                )
+            )
+        except Exception as exc:
+            logger.warning("risk_dashboard: falha ao auditar nota_id=%s — %s", nota.id, exc)
+            continue
+
+    if not resultados:
+        return RiskDashboardResponse(
+            score_medio=0.0,
+            total_notas_analisadas=len(notas),
+            total_alto_risco=0,
+            total_medio_risco=0,
+            total_baixo_risco=0,
+            notas_maior_risco=[],
+            estado_vazio=True,
+        )
+
+    score_medio = round(sum(r.score for r in resultados) / len(resultados), 1)
+    total_alto = sum(1 for r in resultados if r.classificacao == "alto")
+    total_medio = sum(1 for r in resultados if r.classificacao == "medio")
+    total_baixo = sum(1 for r in resultados if r.classificacao == "baixo")
+    top3 = sorted(resultados, key=lambda r: r.score, reverse=True)[:3]
+
+    return RiskDashboardResponse(
+        score_medio=score_medio,
+        total_notas_analisadas=len(resultados),
+        total_alto_risco=total_alto,
+        total_medio_risco=total_medio,
+        total_baixo_risco=total_baixo,
+        notas_maior_risco=top3,
+        estado_vazio=False,
     )

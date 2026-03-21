@@ -16,3 +16,4 @@ from .categoria import Categoria
 from .caixa_diario import CaixaDiario
 from .politica_desconto import PoliticaDescontoProduto
 from .fiscal_feedback import FiscalFeedback
+from .configuracao_loja import ConfiguracaoLoja

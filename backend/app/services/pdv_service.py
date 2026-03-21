@@ -204,6 +204,11 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
     Não bloqueia a venda — apenas informa.
     """
     from ..fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price
+    from ..models.configuracao_loja import ConfiguracaoLoja
+
+    # Lê margem mínima da configuração da loja (fallback: 5%)
+    config = db.query(ConfiguracaoLoja).order_by(ConfiguracaoLoja.id.desc()).first()
+    margem_minima = config.margem_minima_percentual if config else 0.05
 
     produto_ids = [item.produto_id for item in itens]
     produtos = (
@@ -228,7 +233,7 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
 
         cost_input = CostCalculationInput(
             custo_base=produto.preco_custo,
-            margem_minima_percentual=0.05,  # 5% margem mínima default
+            margem_minima_percentual=margem_minima,
         )
         cost_result = calculate_minimum_price(cost_input)
 

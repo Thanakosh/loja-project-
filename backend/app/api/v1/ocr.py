@@ -190,6 +190,7 @@ async def upload_arquivo_nota_fiscal(
     request: Request,
     response: Response,
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     """
@@ -248,10 +249,14 @@ async def upload_arquivo_nota_fiscal(
 
         # ── Auditoria fiscal automática ──────────────────────────────────
         try:
+            from ...models.configuracao_loja import ConfiguracaoLoja
+            _config = db.query(ConfiguracaoLoja).order_by(ConfiguracaoLoja.id.desc()).first()
+            _regime = _config.regime_tributario if _config else None
+            _uf = _config.uf if _config else None
             audit_result = auditar_nota_fiscal(
                 nota_normalizada,
-                regime_tributario=None,
-                uf_emitente=None,
+                regime_tributario=_regime,
+                uf_emitente=_uf,
                 tipo_operacao="entrada",
             )
             cross_findings = validar_nota_cruzado(nota_normalizada)

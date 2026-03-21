@@ -27,6 +27,7 @@ from app.api.v1.fiscal_ai import router as fiscal_ai_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.health_async import router as health_async_router
 from app.api.endpoints.ncm import router as ncm_router
+from app.api.v1.configuracoes import router as configuracoes_router
 from app.core.limiter import limiter
 
 from .core.config import settings
@@ -143,6 +144,7 @@ app.include_router(ncm_router, prefix="/api/v1/ncm", tags=["NCM"])
 app.include_router(fiscal_ai_router, prefix="/api/v1/fiscal-ai", tags=["Fiscal AI"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(health_async_router, prefix="/api/v2", tags=["Health Async"])
+app.include_router(configuracoes_router, prefix="/api/v1/configuracoes", tags=["Configurações"])
 
 
 @app.get("/")
