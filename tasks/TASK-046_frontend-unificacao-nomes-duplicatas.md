@@ -1,7 +1,7 @@
 ---
 task_id: TASK-046
 title: "Frontend: unificacao de nomes de produtos similares na importacao"
-status: pendente
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-044"]
@@ -54,3 +54,13 @@ nomes** - o operador ve o alerta mas nao pode agir sobre ele.
 ### Branch sugerida
 
 `frontend/unificacao-nomes-duplicatas`
+
+## Atualizacao de status
+
+- `ImportarNota.tsx` passou a usar um modal dedicado de duplicatas com resolucao por item.
+- O modal oferece as tres opcoes previstas: usar nome importado, usar nome existente e digitar nome personalizado.
+- A opcao "Aplicar a todos com mesmo match" foi adicionada para itens que apontam ao mesmo produto sugerido pela IA.
+- Escolher "usar nome existente" agora substitui o nome enviado ao backend, reaproveitando o merge automatico ja existente no endpoint de produtos.
+- Escolher "nome personalizado" atualiza o nome do item antes da importacao e limpa os metadados de IA quando o nome final nao corresponde ao produto sugerido.
+- O destaque visual entre nome importado e nome existente passou a evidenciar tokens divergentes para facilitar a decisao do operador.
+- Validacao executada: `node .\\node_modules\\vite\\bin\\vite.js build` em `frontend/` com build concluido sem erros.
