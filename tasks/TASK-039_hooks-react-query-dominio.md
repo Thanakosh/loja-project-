@@ -1,7 +1,7 @@
 ---
 task_id: TASK-039
 title: "Criar hooks React Query por dominio"
-status: pendente
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-034"]
@@ -89,3 +89,15 @@ export function useCreateProduto() {
 ### Branch sugerida
 
 `frontend/react-query-hooks`
+
+### Execucao realizada
+
+- hooks criados em `frontend/src/hooks/` para produtos, estoque, vendas,
+  clientes, fornecedores, orcamentos, caixa e contas a receber
+- hook adicional `useDashboard.ts` criado para o card fiscal
+- tipos compartilhados extraidos para `frontend/src/types/`
+- `Dashboard.tsx` migrado para consumir hooks de vendas, orcamentos, produtos,
+  estoque e fiscal
+- `Produtos.tsx` migrado para consumir hooks de listagem, categorias,
+  duplicidade e mutacoes
+- validacao executada com `eslint` nos arquivos tocados e `vite build`

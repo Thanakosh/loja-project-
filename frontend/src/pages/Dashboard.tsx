@@ -1,69 +1,17 @@
-import axios from 'axios'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
-import api from '../services/api'
-import { getToken } from '../utils/auth'
-
-const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') })
-apiV2.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
-interface Venda {
-  total?: number | string | null
-}
-
-interface OrcamentosResponse {
-  total?: number
-}
-
-interface ProdutosResponse {
-  total?: number
-}
-
-interface EstoqueAlerta {
-  id?: number
-  produto_id?: number
-  nome_produto?: string
-  nome?: string
-  produto_nome?: string
-  quantidade_atual?: number
-  estoque_atual?: number
-  estoque_minimo?: number
-  quantidade_minima?: number
-  estoque_baixo?: boolean
-}
-
-interface FiscalRiskDashboardSupplier {
-  nome: string
-  alertas: number
-}
-
-interface FiscalRiskDashboardResponse {
-  total_notas: number
-  score_medio: number
-  notas_risco_alto: number
-  periodo_rotulo: string
-  top_fornecedores_alertas: FiscalRiskDashboardSupplier[]
-}
+import { useVendasTotal } from '../hooks/useVendas'
+import { useOrcamentosTotal } from '../hooks/useOrcamentos'
+import { useProdutosTotal } from '../hooks/useProdutos'
+import { useEstoqueAlertas } from '../hooks/useEstoque'
+import { useFiscalRiskDashboard } from '../hooks/useDashboard'
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   }).format(value)
-
-const getVendaTotal = (venda: Venda) => {
-  if (typeof venda.total === 'number') {
-    return venda.total
-  }
-
-  const parsedValue = Number(venda.total)
-  return Number.isFinite(parsedValue) ? parsedValue : 0
-}
 
 const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
 
@@ -78,92 +26,34 @@ const Dashboard = () => {
     .toISOString()
     .split('T')[0]
 
-  const vendasHojeQuery = useQuery({
-    queryKey: ['dashboard', 'vendas-hoje', hoje],
-    queryFn: async () => {
-      const response = await api.get('/vendas/', {
-        params: {
-          start_date: hoje,
-          end_date: hoje,
-          page: 1,
-          page_size: 200
-        }
-      })
-
-      const data = response.data
-      const vendas: Venda[] = Array.isArray(data) ? data : (data?.items ?? [])
-      return vendas.reduce((accumulator, venda) => accumulator + getVendaTotal(venda), 0)
+  const vendasHojeQuery = useVendasTotal(
+    {
+      start_date: hoje,
+      end_date: hoje,
+      page: 1,
+      page_size: 200,
     },
-    refetchInterval: 60_000
+    'vendas-hoje',
+  )
+
+  const vendasMesQuery = useVendasTotal(
+    {
+      start_date: inicioMes,
+      end_date: hoje,
+      page: 1,
+      page_size: 200,
+    },
+    'vendas-mes',
+  )
+
+  const orcamentosAbertosQuery = useOrcamentosTotal({
+    status: 'aberto',
+    page_size: 1,
   })
 
-  const vendasMesQuery = useQuery({
-    queryKey: ['dashboard', 'vendas-mes', inicioMes, hoje],
-    queryFn: async () => {
-      const response = await api.get('/vendas/', {
-        params: {
-          start_date: inicioMes,
-          end_date: hoje,
-          page: 1,
-          page_size: 200
-        }
-      })
-
-      const data = response.data
-      const vendas: Venda[] = Array.isArray(data) ? data : (data?.items ?? [])
-      return vendas.reduce((accumulator, venda) => accumulator + getVendaTotal(venda), 0)
-    },
-    refetchInterval: 60_000
-  })
-
-  const orcamentosAbertosQuery = useQuery({
-    queryKey: ['dashboard', 'orcamentos-abertos'],
-    queryFn: async () => {
-      const response = await api.get('/orcamentos/', {
-        params: {
-          status: 'aberto',
-          page_size: 1
-        }
-      })
-
-      return (response.data as OrcamentosResponse).total ?? 0
-    },
-    refetchInterval: 60_000
-  })
-
-  const produtosQuery = useQuery({
-    queryKey: ['dashboard', 'produtos-total'],
-    queryFn: async () => {
-      const response = await api.get('/produtos/', {
-        params: {
-          page: 1,
-          page_size: 1
-        }
-      })
-
-      return (response.data as ProdutosResponse).total ?? 0
-    },
-    refetchInterval: 60_000
-  })
-
-  const estoqueAlertasQuery = useQuery({
-    queryKey: ['dashboard', 'estoque-alertas'],
-    queryFn: async () => {
-      const response = await apiV2.get('/estoque/alertas')
-
-      return Array.isArray(response.data) ? (response.data as EstoqueAlerta[]) : []
-    },
-    refetchInterval: 60_000
-  })
-
-  const fiscalDashboardQuery = useQuery({
-    queryKey: ['dashboard', 'fiscal-risk'],
-    queryFn: async () => {
-      const response = await api.get('/fiscal-ai/risk-dashboard')
-      return response.data as FiscalRiskDashboardResponse
-    },
-    refetchInterval: 60_000
-  })
+  const produtosQuery = useProdutosTotal()
+  const estoqueAlertasQuery = useEstoqueAlertas()
+  const fiscalDashboardQuery = useFiscalRiskDashboard()
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
