@@ -123,4 +123,10 @@ Para cada modulo:
 - Modulo `orcamento.py` migrado para `AsyncSession`, incluindo CRUD, exportacao de PDF e conversao em venda via fluxo async do PDV.
 - `app/core/pagination.py` passou a aplicar `unique()` em `paginate_async()` para suportar paginacao de queries com `joinedload` em colecoes.
 - Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_orcamento.py -q` com `19 passed`.
+- Modulo `relatorios.py` migrado para `AsyncSession`, incluindo exportacao de PDFs de vendas, estoque baixo e resumo mensal.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_relatorios_pdf.py -q` com `3 passed`.
+- Modulo `fiscal_ai.py` migrado para `AsyncSession`, incluindo sugestao de preco, auditoria de nota, dashboard de risco, classificacao NCM, ranking de fornecedores e feedback.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_fiscal_ai.py -q` com `16 passed`.
+- Modulo `vendas.py` migrado para `AsyncSession`, incluindo listagem paginada, resumo por periodo, detalhamento e listagem por cliente.
+- Validacao indireta executada: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_orcamento.py backend/tests/test_relatorios_pdf.py backend/tests/test_fiscal_ai.py -q` com `64 passed`.
 - Task geral permanece `pendente`, pois os proximos modulos (demais endpoints sync) ainda nao foram migrados.
