@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/transacao", response_model=TransacaoEstoqueRead)
-@limiter.limit(settings.RATE_LIMIT_OCR)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def criar_transacao_estoque(
     request: Request,
     response: Response,
@@ -267,7 +267,7 @@ def listar_alertas_estoque(
 
 
 @router.post("/entrada-lote", response_model=List[TransacaoEstoqueRead])
-@limiter.limit(settings.RATE_LIMIT_OCR)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 def entrada_lote_produtos(
     request: Request,
     response: Response,

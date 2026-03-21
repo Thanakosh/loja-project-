@@ -114,6 +114,14 @@ interface VendaPDVRead {
   forma_pagamento: number
 }
 
+interface AlertaPrecoMinimo {
+  produto_id: number
+  produto_nome: string
+  preco_praticado: number
+  preco_minimo: number
+  prejuizo_estimado: number
+}
+
 const paymentOptions = [
   { value: 1, label: 'Dinheiro' },
   { value: 2, label: 'Cartão Débito' },
@@ -158,6 +166,12 @@ const PDV = () => {
   const [submitError, setSubmitError] = useState('')
   const [saleResult, setSaleResult] = useState<VendaPDVRead | null>(null)
   const [politicasDesconto, setPoliticasDesconto] = useState<Record<number, FaixaDesconto[]>>({})
+
+  // Verificação de preço mínimo
+  const [alertasPreco, setAlertasPreco] = useState<AlertaPrecoMinimo[]>([])
+  const [showPrecoModal, setShowPrecoModal] = useState(false)
+  const [checkingPreco, setCheckingPreco] = useState(false)
+  const pendingSalePayloadRef = useRef<VendaPDVCreate | null>(null)
 
   // Busca bulk de políticas de desconto quando o carrinho muda
   const cartProductIds = useMemo(() => cartItems.map((i) => i.produto.id), [cartItems])
@@ -513,14 +527,7 @@ const PDV = () => {
     setDebouncedClientSearch('')
   }
 
-  const handleSubmitSale = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setSubmitError('')
-
-    if (cartItems.length === 0) {
-      return
-    }
-
+  const buildPayload = (): VendaPDVCreate => {
     const payload: VendaPDVCreate = {
       forma_pagamento: formaPagamento,
       desconto_geral: descontoGeralNumber,
@@ -536,11 +543,9 @@ const PDV = () => {
     if (selectedClient) {
       payload.cliente_id = selectedClient.id
     }
-
     if (observacao.trim()) {
       payload.observacao = observacao.trim()
     }
-
     if (autorizacaoTerceiroNome.trim()) {
       payload.autorizacao_terceiro_nome = autorizacaoTerceiroNome.trim()
     }
@@ -550,6 +555,45 @@ const PDV = () => {
     if (autorizacaoTerceiroObservacao.trim()) {
       payload.autorizacao_terceiro_observacao = autorizacaoTerceiroObservacao.trim()
     }
+    return payload
+  }
+
+  const confirmSale = (payload: VendaPDVCreate) => {
+    setShowPrecoModal(false)
+    setAlertasPreco([])
+    pendingSalePayloadRef.current = null
+    vendaMutation.mutate(payload)
+  }
+
+  const handleSubmitSale = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSubmitError('')
+
+    if (cartItems.length === 0) {
+      return
+    }
+
+    const payload = buildPayload()
+
+    // Verificação de preço mínimo antes de finalizar
+    setCheckingPreco(true)
+    try {
+      const res = await api.post('/pdv/verificar-preco', {
+        itens: payload.itens
+      })
+      const data = res.data as { alertas: AlertaPrecoMinimo[]; tem_alertas: boolean }
+
+      if (data.tem_alertas && data.alertas.length > 0) {
+        setAlertasPreco(data.alertas)
+        pendingSalePayloadRef.current = payload
+        setShowPrecoModal(true)
+        setCheckingPreco(false)
+        return
+      }
+    } catch {
+      // Se a verificação falhar, prossegue sem bloquear
+    }
+    setCheckingPreco(false)
 
     vendaMutation.mutate(payload)
   }
@@ -816,8 +860,8 @@ const PDV = () => {
                                 onChange={(event) => updateItem(item.produto.id, 'desconto', event.target.value)}
                                 placeholder="%"
                                 className={`w-24 rounded-md border px-2 py-1 ${excedido
-                                    ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-                                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                                  ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+                                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                                   }`}
                               />
                               {maxDesc !== null && (
@@ -952,13 +996,74 @@ const PDV = () => {
 
           <button
             type="submit"
-            disabled={cartItems.length === 0 || vendaMutation.isPending}
+            disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco}
             className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
+            {checkingPreco ? 'Verificando preços...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
           </button>
         </form>
       </section>
+
+      {/* ── Modal de alerta de preço mínimo ────────────────────────── */}
+      {showPrecoModal && alertasPreco.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+            <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-6 py-4 flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h2 className="text-base font-semibold text-amber-900 dark:text-amber-100">Alerta de preço mínimo</h2>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  {alertasPreco.length === 1 ? '1 produto está' : `${alertasPreco.length} produtos estão`} com preço abaixo do custo mínimo calculado.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-2">
+              {alertasPreco.map((alerta) => (
+                <div key={alerta.produto_id} className="rounded-xl border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">🔴</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 dark:text-gray-100 truncate">{alerta.produto_nome}</p>
+                      <div className="grid grid-cols-3 gap-2 mt-1.5 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">Praticado</p>
+                          <p className="font-semibold text-red-600 dark:text-red-400">{moneyFormatter.format(alerta.preco_praticado)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">Mínimo</p>
+                          <p className="font-semibold text-gray-700 dark:text-gray-300">{moneyFormatter.format(alerta.preco_minimo)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">Prejuízo</p>
+                          <p className="font-semibold text-red-600 dark:text-red-400">-{moneyFormatter.format(alerta.prejuizo_estimado)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowPrecoModal(false); setAlertasPreco([]); pendingSalePayloadRef.current = null }}
+                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition"
+              >
+                ← Corrigir preços
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (pendingSalePayloadRef.current) confirmSale(pendingSalePayloadRef.current) }}
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition"
+              >
+                Vender mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {saleResult ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">

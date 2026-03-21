@@ -195,3 +195,51 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
         .filter(Venda.id == venda.id)
         .first()
     )
+
+
+def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
+    """Verifica se os preços praticados estão acima do preço mínimo para cada item.
+
+    Retorna lista de alertas para itens com preço abaixo do custo mínimo.
+    Não bloqueia a venda — apenas informa.
+    """
+    from ..fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price
+
+    produto_ids = [item.produto_id for item in itens]
+    produtos = (
+        db.query(Produto)
+        .filter(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
+        .all()
+    )
+    produtos_by_id = {p.id: p for p in produtos}
+
+    alertas = []
+    for item in itens:
+        produto = produtos_by_id.get(item.produto_id)
+        if not produto:
+            continue
+
+        # Só verifica se o produto tem preço de custo informado
+        if not produto.preco_custo or produto.preco_custo <= 0:
+            continue
+
+        preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
+        preco_final = preco_efetivo * (1 - (item.desconto / 100))
+
+        cost_input = CostCalculationInput(
+            custo_base=produto.preco_custo,
+            margem_minima_percentual=0.05,  # 5% margem mínima default
+        )
+        cost_result = calculate_minimum_price(cost_input)
+
+        if preco_final < cost_result.preco_minimo_absoluto:
+            alertas.append({
+                "produto_id": produto.id,
+                "produto_nome": produto.nome,
+                "preco_praticado": round(preco_final, 2),
+                "preco_minimo": cost_result.preco_minimo_absoluto,
+                "prejuizo_estimado": round(cost_result.preco_minimo_absoluto - preco_final, 2),
+            })
+
+    return alertas
+

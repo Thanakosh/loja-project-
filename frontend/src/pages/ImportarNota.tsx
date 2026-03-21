@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
@@ -18,6 +18,49 @@ interface ItemExtraido {
     codigo_barras: string
     fornecedor: string
     selecionado: boolean
+    // IA
+    aiStatus?: 'checking' | 'duplicata_exata' | 'similar' | 'ok' | 'erro'
+    aiNomeExistente?: string
+    aiProdutoId?: number
+    aiSimilaridade?: number
+    aiNivel?: 'duplicata' | 'alerta'
+}
+
+interface DuplicateCandidate {
+    produto_id: number
+    produto_nome: string
+    similaridade: number
+    nivel: 'duplicata' | 'alerta'
+}
+
+interface DuplicateCheckResponse {
+    tem_duplicata: boolean
+    tem_alerta: boolean
+    metodo: string
+    candidatos: DuplicateCandidate[]
+}
+
+interface AuditoriaFiscalFator {
+    regra: string
+    resultado: 'passou' | 'falha'
+    peso: number
+    detalhe: string
+}
+
+interface AuditoriaFiscal {
+    classificacao: 'baixo' | 'medio' | 'alto'
+    score: number
+    confianca: number
+    explicacao: string
+    fatores: AuditoriaFiscalFator[]
+    versao_engine: string
+}
+
+interface ValidacaoCruzadaItem {
+    regra: string
+    severidade: 'erro' | 'alerta' | 'info'
+    item_sequencia: number | null
+    descricao: string
 }
 
 interface OCRTaskResponse { task_id: string; status: string; message: string }
@@ -32,15 +75,11 @@ interface OCRTaskStatus {
             produtos: Array<{ nome: string; quantidade: number; preco_unitario: number; unidade?: string; codigo_ncm?: string; codigo_barras?: string }>
             valor_total: number; fornecedor_status?: 'novo' | 'existente' | null; fornecedor_id?: number | null
         }
+        auditoria_fiscal?: AuditoriaFiscal | null
+        validacao_cruzada?: ValidacaoCruzadaItem[]
         produtos?: string[]; quantidade?: number[]; valor?: number[]
     }
     error?: string
-}
-
-interface NCMCandidato { codigo: string; descricao: string; score: number }
-interface SupplierRankingItem {
-    fornecedor_id: number; razao_social: string; cnpj: string
-    total_notas: number; total_itens: number; valor_total: number; score_confiabilidade: number
 }
 
 /* ─────────────────────────────────────────────
@@ -62,222 +101,195 @@ const FILE_KIND_LABELS: Record<FileKind, { icon: string; label: string }> = {
     unknown: { icon: '❓', label: 'Desconhecido' },
 }
 
-type Tab = 'importar' | 'ncm' | 'ranking'
-
 /* ─────────────────────────────────────────────
-   COMPONENT
+   MODAL DE CONFIRMAÇÃO DE DUPLICATAS SIMILARES
 ───────────────────────────────────────────── */
-const ImportarNota = () => {
-    const [activeTab, setActiveTab] = useState<Tab>('importar')
+interface SimilarItem {
+    key: string
+    nomeImportando: string
+    nomeExistente: string
+    produtoId: number
+    similaridade: number
+    nivel: 'duplicata' | 'alerta'
+}
 
+interface ModalDuplicatasProps {
+    itens: SimilarItem[]
+    onConfirmar: () => void
+    onCancelar: () => void
+}
+
+const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProps) => {
     return (
-        <div className="container mx-auto space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Notas Fiscais & Fiscal IA</h1>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Importe XMLs, classifique NCM e consulte o ranking de fornecedores com inteligência artificial
-                </p>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+                <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-6 py-4 flex items-center gap-3">
+                    <span className="text-2xl">🤖</span>
+                    <div>
+                        <h2 className="text-base font-semibold text-amber-900 dark:text-amber-100">IA detectou nomes similares</h2>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                            Os itens abaixo possuem nomes parecidos com produtos já no estoque. Verifique antes de continuar.
+                        </p>
+                    </div>
+                </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 rounded-xl bg-gray-100 dark:bg-gray-800 p-1 w-fit">
-                {([
-                    { id: 'importar', label: '📤 Importar XML' },
-                    { id: 'ncm', label: '🔍 Classificar NCM' },
-                    { id: 'ranking', label: '🏆 Ranking Fornecedores' },
-                ] as { id: Tab; label: string }[]).map(tab => (
+                <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-3">
+                    {itens.map((item) => (
+                        <div key={item.key} className={`rounded-xl border p-3 ${item.nivel === 'duplicata' ? 'border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'}`}>
+                            <div className="flex items-start gap-3">
+                                <span className="text-lg mt-0.5">{item.nivel === 'duplicata' ? '🔴' : '🟡'}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${item.nivel === 'duplicata' ? 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' : 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200'}`}>
+                                            {item.nivel === 'duplicata' ? 'Possível duplicata' : 'Nome parecido'}
+                                            {' · '}{Math.round(item.similaridade * 100)}% similar
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                        <div>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Importando</p>
+                                            <p className="font-medium text-gray-800 dark:text-gray-100 truncate">{item.nomeImportando}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Já no estoque</p>
+                                            <p className="font-medium text-gray-600 dark:text-gray-300 truncate">{item.nomeExistente}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 self-center flex-1">
+                        Você pode voltar e corrigir os nomes, ou continuar mesmo assim. Nomes <strong>exatamente iguais</strong> apenas somam o estoque.
+                    </p>
                     <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.id
-                            ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                            }`}
+                        type="button"
+                        onClick={onCancelar}
+                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition"
                     >
-                        {tab.label}
+                        ← Corrigir nomes
                     </button>
-                ))}
+                    <button
+                        type="button"
+                        onClick={onConfirmar}
+                        className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+                    >
+                        Continuar mesmo assim
+                    </button>
+                </div>
             </div>
-
-            {/* Tab content */}
-            {activeTab === 'importar' && <TabImportar />}
-            {activeTab === 'ncm' && <TabNCM />}
-            {activeTab === 'ranking' && <TabRanking />}
         </div>
     )
 }
 
 /* ─────────────────────────────────────────────
-   TAB: CLASSIFICAR NCM
+   PAINEL DE AUDITORIA FISCAL
 ───────────────────────────────────────────── */
-const TabNCM = () => {
-    const [descricao, setDescricao] = useState('')
-    const [limite, setLimite] = useState(5)
-    const [feedbackEnviado, setFeedbackEnviado] = useState<Record<string, string>>({})
+const CLASSIFICACAO_CONFIG = {
+    baixo: { emoji: '🟢', label: 'Baixo Risco', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200', badge: 'bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200' },
+    medio: { emoji: '🟡', label: 'Risco Médio', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200' },
+    alto: { emoji: '🔴', label: 'Alto Risco', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-800 dark:text-red-200', badge: 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' },
+} as const
 
-    const { mutate, isPending, data, reset } = useMutation({
-        mutationFn: async () => {
-            const res = await api.post('/fiscal-ai/classify-ncm', { descricao: descricao.trim(), limite })
-            return res.data as { descricao_consultada: string; candidatos: NCMCandidato[]; total_encontrado: number }
-        },
-        onError: (err: unknown) => {
-            toast.error(isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail ?? 'Erro ao classificar NCM.' : 'Erro ao classificar NCM.')
-        },
-    })
+const SEVERIDADE_CONFIG = {
+    erro: { emoji: '❌', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-700 dark:text-red-300' },
+    alerta: { emoji: '⚠️', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-700 dark:text-amber-300' },
+    info: { emoji: 'ℹ️', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700', text: 'text-blue-700 dark:text-blue-300' },
+} as const
 
-    const enviarFeedback = async (codigo: string, decisao: 'aceito' | 'rejeitado') => {
-        try {
-            await api.post('/fiscal-ai/feedback', {
-                origem_sugestao: 'classify_ncm',
-                versao_motor: '1.0.0',
-                decisao,
-                referencia_id: codigo,
-                observacao: descricao.trim(),
-            })
-            setFeedbackEnviado(prev => ({ ...prev, [codigo]: decisao }))
-            toast.success(decisao === 'aceito' ? '✅ Feedback registrado!' : '❌ Feedback registrado.')
-        } catch {
-            toast.error('Erro ao registrar feedback.')
-        }
-    }
+interface PainelAuditoriaFiscalProps {
+    auditoria: AuditoriaFiscal | null
+    validacaoCruzada: ValidacaoCruzadaItem[]
+}
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!descricao.trim()) { toast.error('Digite uma descrição.'); return }
-        setFeedbackEnviado({})
-        mutate()
-    }
+const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaFiscalProps) => {
+    const [expandido, setExpandido] = useState(false)
+
+    if (!auditoria && validacaoCruzada.length === 0) return null
+
+    const config = auditoria ? CLASSIFICACAO_CONFIG[auditoria.classificacao] : CLASSIFICACAO_CONFIG.baixo
+    const erros = validacaoCruzada.filter(v => v.severidade === 'erro')
+    const alertas = validacaoCruzada.filter(v => v.severidade === 'alerta')
+    const infos = validacaoCruzada.filter(v => v.severidade === 'info')
+    const fatoresFalha = auditoria?.fatores.filter(f => f.resultado === 'falha') ?? []
 
     return (
-        <div className="space-y-6">
-            {/* Form */}
-            <div className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">
-                <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4">
-                    🔍 Classificar código NCM por descrição
-                </h2>
-                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-                    <input
-                        type="text"
-                        value={descricao}
-                        onChange={e => { setDescricao(e.target.value); reset() }}
-                        placeholder="Ex: fio de cobre 2,5mm, arroz branco polido, parafuso sextavado..."
-                        className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <select
-                        value={limite}
-                        onChange={e => setLimite(Number(e.target.value))}
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        {[3, 5, 10].map(n => <option key={n} value={n}>{n} resultados</option>)}
-                    </select>
-                    <button
-                        type="submit"
-                        disabled={isPending}
-                        className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-                    >
-                        {isPending
-                            ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Buscando...</>
-                            : '🔍 Buscar NCM'
-                        }
-                    </button>
-                </form>
-                <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                    A IA busca os códigos NCM mais relevantes com base nas palavras-chave da descrição.
-                </p>
-            </div>
-
-            {/* Results */}
-            {data && (
-                <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Resultados</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {data.total_encontrado} código(s) encontrado(s) para "{data.descricao_consultada}"
-                            </p>
-                        </div>
+        <div className={`rounded-lg border ${config.border} ${config.bg} overflow-hidden transition-all`}>
+            {/* Header */}
+            <button
+                type="button"
+                onClick={() => setExpandido(!expandido)}
+                className="w-full px-5 py-4 flex items-center justify-between hover:opacity-90 transition"
+            >
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">{config.emoji}</span>
+                    <div className="text-left">
+                        <h3 className={`text-sm font-semibold ${config.text}`}>Auditoria Fiscal — {config.label}</h3>
+                        <p className={`text-xs mt-0.5 ${config.text} opacity-75`}>
+                            Score: {auditoria?.score ?? 0}/100 · Confiança: {Math.round((auditoria?.confianca ?? 0) * 100)}%
+                            {validacaoCruzada.length > 0 && ` · ${validacaoCruzada.length} verificação(ões)`}
+                        </p>
                     </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {erros.length > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-800 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-200">{erros.length} erro(s)</span>}
+                    {alertas.length > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-800 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-200">{alertas.length} alerta(s)</span>}
+                    <span className={`text-sm ${config.text} transition-transform ${expandido ? 'rotate-180' : ''}`}>▼</span>
+                </div>
+            </button>
 
-                    {data.candidatos.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Nenhum código NCM encontrado para esta descrição. Tente termos mais gerais.
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {data.candidatos.map((c, i) => {
-                                const fb = feedbackEnviado[c.codigo]
-                                const scorePct = Math.round(c.score * 100)
-                                return (
-                                    <div key={c.codigo} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                        {/* Rank badge */}
-                                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">
-                                            {i + 1}
-                                        </span>
-
-                                        {/* NCM code */}
-                                        <div className="flex-shrink-0">
-                                            <span className="font-mono text-sm font-semibold text-gray-800 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                {c.codigo}
-                                            </span>
+            {/* Conteúdo expandido */}
+            {expandido && (
+                <div className="px-5 pb-4 space-y-3 border-t border-gray-200/50 dark:border-gray-700/50 pt-3">
+                    {/* Fatores de risco do engine */}
+                    {fatoresFalha.length > 0 && (
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Regras fiscais com falha</h4>
+                            <div className="space-y-1.5">
+                                {fatoresFalha.map((f, i) => (
+                                    <div key={i} className="flex items-start gap-2 rounded-lg bg-white/60 dark:bg-gray-800/60 px-3 py-2 text-sm">
+                                        <span className="text-red-500 mt-0.5">⚠️</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-gray-700 dark:text-gray-200">{f.regra.replace(/_/g, ' ')}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{f.detalhe}</p>
                                         </div>
-
-                                        {/* Description */}
-                                        <p className="flex-1 text-sm text-gray-700 dark:text-gray-300 min-w-0">{c.descricao}</p>
-
-                                        {/* Score bar */}
-                                        <div className="flex-shrink-0 flex items-center gap-2">
-                                            <div className="w-20 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600">
-                                                <div
-                                                    className="h-1.5 rounded-full bg-blue-500"
-                                                    style={{ width: `${scorePct}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">{scorePct}%</span>
-                                        </div>
-
-                                        {/* Feedback buttons */}
-                                        <div className="flex-shrink-0 flex gap-1">
-                                            {fb ? (
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${fb === 'aceito'
-                                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                                                    : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
-                                                    }`}>
-                                                    {fb === 'aceito' ? '✅ Aceito' : '❌ Rejeitado'}
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        onClick={() => enviarFeedback(c.codigo, 'aceito')}
-                                                        title="Este NCM é correto"
-                                                        className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
-                                                    >
-                                                        👍
-                                                    </button>
-                                                    <button
-                                                        onClick={() => enviarFeedback(c.codigo, 'rejeitado')}
-                                                        title="Este NCM não é adequado"
-                                                        className="rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                                                    >
-                                                        👎
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        <span className="text-xs text-gray-400 whitespace-nowrap">peso {f.peso}</span>
                                     </div>
-                                )
-                            })}
+                                ))}
+                            </div>
                         </div>
                     )}
-                </div>
-            )}
 
-            {/* Empty state before first search */}
-            {!data && !isPending && (
-                <div className="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 p-12 text-center">
-                    <div className="text-4xl mb-3">🔍</div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Digite a descrição de um produto e clique em Buscar NCM para ver as sugestões.
+                    {/* Validação cruzada */}
+                    {validacaoCruzada.length > 0 && (
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Validação cruzada</h4>
+                            <div className="space-y-1.5">
+                                {validacaoCruzada.map((v, i) => {
+                                    const sev = SEVERIDADE_CONFIG[v.severidade] ?? SEVERIDADE_CONFIG.info
+                                    return (
+                                        <div key={i} className={`flex items-start gap-2 rounded-lg ${sev.bg} border ${sev.border} px-3 py-2 text-sm`}>
+                                            <span className="mt-0.5">{sev.emoji}</span>
+                                            <p className={`flex-1 ${sev.text}`}>{v.descricao}</p>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sem problemas */}
+                    {fatoresFalha.length === 0 && validacaoCruzada.length === 0 && (
+                        <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                            ✅ Nenhuma inconsistência detectada na nota fiscal.
+                        </p>
+                    )}
+
+                    <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">
+                        Motor v{auditoria?.versao_engine ?? '?'} · {infos.length > 0 ? `${infos.length} informativo(s)` : 'Sem informativos'}
                     </p>
                 </div>
             )}
@@ -286,162 +298,24 @@ const TabNCM = () => {
 }
 
 /* ─────────────────────────────────────────────
-   TAB: RANKING DE FORNECEDORES
+   COMPONENT
 ───────────────────────────────────────────── */
-const TabRanking = () => {
-    const [criterio, setCriterio] = useState<'valor_total' | 'total_notas' | 'total_itens'>('valor_total')
-    const [limite, setLimite] = useState(10)
-
-    const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['supplier-ranking', criterio, limite],
-        queryFn: async () => {
-            const res = await api.get(`/fiscal-ai/supplier-ranking?criterio=${criterio}&limite=${limite}`)
-            return res.data as { fornecedores: SupplierRankingItem[]; total: number; criterio: string }
-        },
-    })
-
-    const criterioLabels = {
-        valor_total: { label: 'Valor Total', icon: '💰' },
-        total_notas: { label: 'Nº de Notas', icon: '🧾' },
-        total_itens: { label: 'Nº de Itens', icon: '📦' },
-    }
-
+const ImportarNota = () => {
     return (
-        <div className="space-y-5">
-            {/* Controls */}
-            <div className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow flex flex-wrap gap-3 items-end">
-                <div>
-                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ordenar por</label>
-                    <div className="flex gap-2">
-                        {(Object.entries(criterioLabels) as [typeof criterio, { label: string; icon: string }][]).map(([key, { label, icon }]) => (
-                            <button
-                                key={key}
-                                onClick={() => setCriterio(key)}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${criterio === key
-                                    ? 'bg-blue-600 text-white shadow'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                    }`}
-                            >
-                                {icon} {label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Exibir</label>
-                    <select
-                        value={limite}
-                        onChange={e => setLimite(Number(e.target.value))}
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        {[5, 10, 20].map(n => <option key={n} value={n}>Top {n}</option>)}
-                    </select>
-                </div>
-                <button
-                    onClick={() => refetch()}
-                    className="ml-auto rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                >
-                    🔄 Atualizar
-                </button>
+        <div className="container mx-auto space-y-6">
+            <div>
+                <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Importar Nota Fiscal</h1>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Importe o XML da NFe, revise os itens extraídos e cadastre os produtos no estoque
+                </p>
             </div>
-
-            {/* Table */}
-            <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden">
-                <div className="border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                        🏆 Ranking de Fornecedores — por {criterioLabels[criterio].label}
-                    </h3>
-                    {data && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {data.total} fornecedor(es) com dados
-                        </span>
-                    )}
-                </div>
-
-                {isLoading && (
-                    <div className="flex items-center justify-center py-12 gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                        Carregando ranking...
-                    </div>
-                )}
-
-                {isError && (
-                    <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-                        Erro ao carregar ranking. Verifique se o servidor está rodando.
-                    </div>
-                )}
-
-                {data && data.fornecedores.length === 0 && (
-                    <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                        Nenhum fornecedor com dados encontrado. Importe notas fiscais primeiro.
-                    </div>
-                )}
-
-                {data && data.fornecedores.length > 0 && (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    {['#', 'Fornecedor', 'CNPJ', 'Notas', 'Itens', 'Valor Total', 'Score'].map(h => (
-                                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {data.fornecedores.map((f, i) => {
-                                    const scorePct = Math.round(f.score_confiabilidade * 100)
-                                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
-                                    return (
-                                        <tr key={f.fornecedor_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {medal ? <span>{medal}</span> : <span className="text-gray-400">#{i + 1}</span>}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate max-w-[200px]">
-                                                    {f.razao_social}
-                                                </p>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                {f.cnpj}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-300">
-                                                {f.total_notas}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-300">
-                                                {f.total_itens}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                                                {moneyFormatter.format(f.valor_total)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600">
-                                                        <div
-                                                            className={`h-1.5 rounded-full ${scorePct >= 75 ? 'bg-emerald-500' :
-                                                                scorePct >= 40 ? 'bg-yellow-500' : 'bg-red-400'
-                                                                }`}
-                                                            style={{ width: `${scorePct}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400 w-7">{scorePct}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+            <TabImportar />
         </div>
     )
 }
 
 /* ─────────────────────────────────────────────
-   TAB: IMPORTAR XML (código original preservado)
+   TAB: IMPORTAR XML
 ───────────────────────────────────────────── */
 const TabImportar = () => {
     const [file, setFile] = useState<File | null>(null)
@@ -460,6 +334,17 @@ const TabImportar = () => {
     const [dataEmissaoNota, setDataEmissaoNota] = useState('')
     const [valorTotalNota, setValorTotalNota] = useState<number>(0)
     const [fornecedorStatus, setFornecedorStatus] = useState<'novo' | 'existente' | null>(null)
+    const [aiChecking, setAiChecking] = useState(false)
+
+    // Auditoria fiscal
+    const [auditoriaFiscal, setAuditoriaFiscal] = useState<AuditoriaFiscal | null>(null)
+    const [validacaoCruzada, setValidacaoCruzada] = useState<ValidacaoCruzadaItem[]>([])
+
+    // Modal de duplicatas similares
+    const [modalItens, setModalItens] = useState<SimilarItem[]>([])
+    const [showModal, setShowModal] = useState(false)
+    const pendingImportRef = useRef<ItemExtraido[]>([])
+
     type Step = 'upload' | 'processing' | 'review' | 'done'
     const [step, setStep] = useState<Step>('upload')
 
@@ -482,27 +367,98 @@ const TabImportar = () => {
 
     const handleTaskCompleted = useCallback((data: OCRTaskStatus) => {
         if (!data.result) return
+        let mapped: ItemExtraido[] = []
+        // Extrair dados de auditoria fiscal (independente do bloco nota_fiscal)
+        if (data.result.auditoria_fiscal) {
+            setAuditoriaFiscal(data.result.auditoria_fiscal)
+        }
+        if (data.result.validacao_cruzada) {
+            setValidacaoCruzada(data.result.validacao_cruzada)
+        }
         if (data.result.nota_fiscal) {
             const nf = data.result.nota_fiscal
             setFornecedorGlobal(nf.fornecedor || ''); setNomeFantasiaFornecedor(nf.nome_fantasia_fornecedor || '')
             setCnpjFornecedor(nf.cnpj_fornecedor || ''); setNumeroNota(nf.numero_nota || '')
             setDataEmissaoNota(nf.data_emissao || ''); setValorTotalNota(nf.valor_total || 0)
             setFornecedorStatus(nf.fornecedor_status || null)
-            const mapped: ItemExtraido[] = (nf.produtos || []).map((p) => ({
+            mapped = (nf.produtos || []).map((p) => ({
                 key: nextKey(), nome: p.nome, quantidade: p.quantidade, preco_unitario: p.preco_unitario,
                 unidade: p.unidade || 'UN', codigo_ncm: p.codigo_ncm || '', codigo_barras: p.codigo_barras || '',
                 fornecedor: nf.fornecedor || '', selecionado: true,
             }))
-            setItens(mapped)
         } else {
             const produtos = data.result.produtos || []; const quantidades = data.result.quantidade || []; const valores = data.result.valor || []
-            const mapped: ItemExtraido[] = produtos.map((nome, i) => ({
+            mapped = produtos.map((nome, i) => ({
                 key: nextKey(), nome, quantidade: quantidades[i] || 1, preco_unitario: valores[i] || 0,
                 unidade: 'UN', codigo_ncm: '', codigo_barras: '', fornecedor: '', selecionado: true,
             }))
-            setItens(mapped)
         }
+        setItens(mapped)
         setStep('review')
+
+        // Disparar verificação de IA logo após carregar os itens
+        if (mapped.length > 0) {
+            setTimeout(() => runAiCheck(mapped), 300)
+        }
+    }, [])
+
+    /* ── Verificação de IA para todos os itens ── */
+    const runAiCheck = useCallback(async (itemsList: ItemExtraido[]) => {
+        setAiChecking(true)
+        const atualizados = [...itemsList]
+
+        // Marcar todos como "verificando"
+        setItens(prev => prev.map(it => ({ ...it, aiStatus: 'checking' })))
+
+        for (let i = 0; i < atualizados.length; i++) {
+            const item = atualizados[i]
+            if (!item.nome.trim()) {
+                atualizados[i] = { ...item, aiStatus: 'ok' }
+                continue
+            }
+            try {
+                const payload: Record<string, unknown> = { descricao: item.nome, limite: 3 }
+                if (item.codigo_barras) payload.codigo_barras = item.codigo_barras
+
+                const res = await api.post<DuplicateCheckResponse>('/ai/check-duplicate', payload)
+                const data = res.data
+
+                if (data.candidatos.length === 0) {
+                    atualizados[i] = { ...item, aiStatus: 'ok' }
+                } else {
+                    const top = data.candidatos[0]
+                    // Duplicata exata (similaridade >= 0.98 ou nome idêntico)
+                    const nomeIgual = top.produto_nome.trim().toLowerCase() === item.nome.trim().toLowerCase()
+                    if (nomeIgual || top.similaridade >= 0.98) {
+                        atualizados[i] = {
+                            ...item,
+                            aiStatus: 'duplicata_exata',
+                            aiNomeExistente: top.produto_nome,
+                            aiProdutoId: top.produto_id,
+                            aiSimilaridade: top.similaridade,
+                            aiNivel: top.nivel,
+                        }
+                    } else {
+                        atualizados[i] = {
+                            ...item,
+                            aiStatus: 'similar',
+                            aiNomeExistente: top.produto_nome,
+                            aiProdutoId: top.produto_id,
+                            aiSimilaridade: top.similaridade,
+                            aiNivel: top.nivel,
+                        }
+                    }
+                }
+            } catch {
+                atualizados[i] = { ...item, aiStatus: 'ok' }
+            }
+        }
+
+        setItens(prev => prev.map(it => {
+            const atualizado = atualizados.find(a => a.key === it.key)
+            return atualizado ? { ...it, ...atualizado } : it
+        }))
+        setAiChecking(false)
     }, [])
 
     const uploadMutation = useMutation({
@@ -562,8 +518,18 @@ const TabImportar = () => {
     }, [taskId, taskStatus, handleTaskCompleted, POLLING_TIMEOUT_MS])
 
     const updateItem = (key: string, field: keyof ItemExtraido, value: string | number | boolean) => {
-        setItens(prev => prev.map(item => (item.key === key ? { ...item, [field]: value } : item)))
+        setItens(prev => prev.map(item => {
+            if (item.key !== key) return item
+            const updated = { ...item, [field]: value }
+            // Se o nome foi alterado, limpar status de IA para re-verificar
+            if (field === 'nome') {
+                updated.aiStatus = undefined
+                updated.aiNomeExistente = undefined
+            }
+            return updated
+        }))
     }
+
     const removeItem = (key: string) => setItens(prev => prev.filter(item => item.key !== key))
     const addItem = () => setItens(prev => [...prev, { key: nextKey(), nome: '', quantidade: 1, preco_unitario: 0, unidade: 'UN', codigo_ncm: '', codigo_barras: '', fornecedor: fornecedorGlobal, selecionado: true }])
     const toggleSelectAll = (checked: boolean) => setItens(prev => prev.map(item => ({ ...item, selecionado: checked })))
@@ -579,32 +545,79 @@ const TabImportar = () => {
                 unidade: item.unidade || 'UN', numero_nota: numeroNota || undefined,
                 cnpj_fornecedor: cnpjFornecedor || undefined, quantidade_inicial: item.quantidade,
             }))
-            const results = []; const erros: string[] = []
+            const results: { produto: unknown; acao: string }[] = []
+            const erros: string[] = []
             for (const prod of produtos) {
-                try { const res = await api.post('/produtos/', prod); results.push(res.data) }
-                catch (err: unknown) { erros.push(isAxiosError<{ message?: string; detail?: string }>(err) ? err.response?.data?.message ?? err.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"` : `Erro ao cadastrar "${prod.nome}"`) }
+                try {
+                    const res = await api.post('/produtos/', prod)
+                    const acao = res.headers['x-produto-acao'] ?? 'criado'
+                    results.push({ produto: res.data, acao })
+                } catch (err: unknown) {
+                    erros.push(isAxiosError<{ message?: string; detail?: string }>(err)
+                        ? err.response?.data?.message ?? err.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"`
+                        : `Erro ao cadastrar "${prod.nome}"`)
+                }
             }
             return { results, erros }
         },
         onSuccess: ({ results, erros }) => {
-            if (results.length > 0) toast.success(`${results.length} produto(s) importado(s)!`)
+            const criados = results.filter(r => r.acao === 'criado').length
+            const somados = results.filter(r => r.acao === 'estoque_somado').length
+            if (criados > 0) toast.success(`${criados} produto(s) novo(s) cadastrado(s)!`)
+            if (somados > 0) toast.success(`${somados} produto(s) com estoque somado ao existente!`)
             erros.forEach(e => toast.error(e))
             if (results.length > 0) setStep('done')
         },
-        onError: (err: unknown) => toast.error(isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail ?? 'Erro ao importar.' : 'Erro ao importar.'),
+        onError: (err: unknown) => toast.error(isAxiosError<{ detail?: string }>(err)
+            ? err.response?.data?.detail ?? 'Erro ao importar.' : 'Erro ao importar.'),
     })
 
-    const handleImport = () => {
+    /* ── Fluxo de importação com verificação de IA ── */
+    const handleImport = async () => {
         if (selectedItems.length === 0) { toast.error('Selecione pelo menos um item.'); return }
         if (selectedItems.some(i => !i.nome.trim())) { toast.error('Todos os itens devem ter um nome.'); return }
+
+        // Coletar itens SIMILARES (não exatos) que precisam de confirmação
+        const itensSimilares: SimilarItem[] = selectedItems
+            .filter(i => i.aiStatus === 'similar')
+            .map(i => ({
+                key: i.key,
+                nomeImportando: i.nome,
+                nomeExistente: i.aiNomeExistente!,
+                produtoId: i.aiProdutoId!,
+                similaridade: i.aiSimilaridade!,
+                nivel: i.aiNivel!,
+            }))
+
+        if (itensSimilares.length > 0) {
+            // Mostrar modal de confirmação
+            pendingImportRef.current = selectedItems
+            setModalItens(itensSimilares)
+            setShowModal(true)
+            return
+        }
+
+        // Sem similares problemáticos → importar direto
         importMutation.mutate(selectedItems)
+    }
+
+    const handleModalConfirmar = () => {
+        setShowModal(false)
+        importMutation.mutate(pendingImportRef.current)
+    }
+
+    const handleModalCancelar = () => {
+        setShowModal(false)
+        pendingImportRef.current = []
     }
 
     const handleReset = () => {
         setFile(null); setFileKind('unknown'); setTaskId(null); setTaskStatus(null)
         setErrorMsg(null); setItens([]); setFornecedorGlobal(''); setNomeFantasiaFornecedor('')
         setCnpjFornecedor(''); setNumeroNota(''); setDataEmissaoNota(''); setValorTotalNota(0)
-        setFornecedorStatus(null); setStep('upload')
+        setFornecedorStatus(null); setStep('upload'); setAiChecking(false)
+        setShowModal(false); pendingImportRef.current = []
+        setAuditoriaFiscal(null); setValidacaoCruzada([])
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
@@ -616,8 +629,21 @@ const TabImportar = () => {
     ]
     const stepIndex = steps.findIndex(s => s.id === step)
 
+    // Contadores de status de IA
+    const aiExatos = itens.filter(i => i.aiStatus === 'duplicata_exata').length
+    const aiSimilares = itens.filter(i => i.aiStatus === 'similar').length
+
     return (
         <div className="space-y-6">
+            {/* Modal de duplicatas similares */}
+            {showModal && (
+                <ModalDuplicatas
+                    itens={modalItens}
+                    onConfirmar={handleModalConfirmar}
+                    onCancelar={handleModalCancelar}
+                />
+            )}
+
             {/* Header row */}
             <div className="flex justify-end">
                 {step !== 'upload' && (
@@ -692,6 +718,7 @@ const TabImportar = () => {
             {/* STEP 3: Review */}
             {step === 'review' && (
                 <div className="space-y-4">
+                    {/* Dados da Nota */}
                     <div className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Dados da Nota Fiscal</h2>
@@ -720,12 +747,44 @@ const TabImportar = () => {
                         </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
+                    {/* Cards de resumo */}
+                    <div className="grid gap-4 md:grid-cols-4">
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"><p className="text-xs text-gray-500">Itens encontrados</p><p className="text-2xl font-semibold text-gray-800 dark:text-gray-100">{itens.length}</p></div>
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"><p className="text-xs text-gray-500">Selecionados</p><p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{selectedItems.length}</p></div>
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"><p className="text-xs text-gray-500">Valor estimado</p><p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{moneyFormatter.format(selectedItems.reduce((s, i) => s + i.preco_unitario * i.quantidade, 0))}</p></div>
+                        <div className={`rounded-lg p-4 shadow ${aiChecking ? 'bg-blue-50 dark:bg-blue-900/20' : aiSimilares > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : aiExatos > 0 ? 'bg-sky-50 dark:bg-sky-900/20' : 'bg-white dark:bg-gray-800'}`}>
+                            <p className="text-xs text-gray-500">IA — Verificação</p>
+                            {aiChecking
+                                ? <p className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mt-1"><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /> Verificando...</p>
+                                : aiSimilares > 0
+                                    ? <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mt-1">⚠️ {aiSimilares} nome(s) parecido(s)</p>
+                                    : aiExatos > 0
+                                        ? <p className="text-sm font-semibold text-sky-700 dark:text-sky-300 mt-1">🔄 {aiExatos} já no estoque</p>
+                                        : <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-1">✅ Sem duplicatas</p>
+                            }
+                        </div>
                     </div>
 
+                    {/* Painel de Auditoria Fiscal */}
+                    <PainelAuditoriaFiscal auditoria={auditoriaFiscal} validacaoCruzada={validacaoCruzada} />
+
+                    {/* Banner de alerta de IA */}
+                    {!aiChecking && (aiExatos > 0 || aiSimilares > 0) && (
+                        <div className="rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4">
+                            <div className="flex items-start gap-3">
+                                <span className="text-xl">🤖</span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">Análise de IA</p>
+                                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-0.5">
+                                        {aiExatos > 0 && <li>• <strong>{aiExatos} item(s) com nome idêntico</strong> ao já existente — o estoque será somado automaticamente, sem criar duplicata.</li>}
+                                        {aiSimilares > 0 && <li>• <strong>{aiSimilares} item(s) com nome similar</strong> — você será alertado antes de confirmar a importação.</li>}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tabela de itens */}
                     <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
                             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Itens para Importação</h3>
@@ -736,16 +795,20 @@ const TabImportar = () => {
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
                                         <th className="px-3 py-3"><input type="checkbox" checked={allSelected} onChange={e => toggleSelectAll(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" /></th>
-                                        {['Produto', 'Qtd', 'Unidade', 'Preço Unit.', 'NCM', 'Subtotal', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
+                                        {['Produto', 'Qtd', 'Unidade', 'Preço Unit.', 'NCM', 'Subtotal', 'Status IA', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                     {itens.length === 0 ? (
-                                        <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">Nenhum item encontrado.</td></tr>
+                                        <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">Nenhum item encontrado.</td></tr>
                                     ) : itens.map(item => (
                                         <tr key={item.key} className={`transition-colors ${item.selecionado ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900 opacity-60'}`}>
                                             <td className="px-3 py-2"><input type="checkbox" checked={item.selecionado} onChange={e => updateItem(item.key, 'selecionado', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" /></td>
-                                            <td className="px-3 py-2"><input type="text" value={item.nome} onChange={e => updateItem(item.key, 'nome', e.target.value)} className="w-full min-w-[200px] rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" placeholder="Nome do produto" /></td>
+                                            <td className="px-3 py-2">
+                                                <input type="text" value={item.nome} onChange={e => updateItem(item.key, 'nome', e.target.value)}
+                                                    className={`w-full min-w-[200px] rounded border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 bg-transparent ${item.aiStatus === 'similar' ? 'border-amber-400 dark:border-amber-500' : item.aiStatus === 'duplicata_exata' ? 'border-sky-400 dark:border-sky-500' : 'border-gray-300 dark:border-gray-600'}`}
+                                                    placeholder="Nome do produto" />
+                                            </td>
                                             <td className="px-3 py-2"><input type="number" min={1} value={item.quantidade} onChange={e => updateItem(item.key, 'quantidade', parseInt(e.target.value) || 1)} className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" /></td>
                                             <td className="px-3 py-2">
                                                 <select value={item.unidade} onChange={e => updateItem(item.key, 'unidade', e.target.value)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none">
@@ -755,7 +818,31 @@ const TabImportar = () => {
                                             <td className="px-3 py-2"><input type="number" min={0} step={0.01} value={item.preco_unitario} onChange={e => updateItem(item.key, 'preco_unitario', parseFloat(e.target.value) || 0)} className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" /></td>
                                             <td className="px-3 py-2"><input type="text" value={item.codigo_ncm} onChange={e => updateItem(item.key, 'codigo_ncm', e.target.value)} className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100" placeholder="00000000" /></td>
                                             <td className="px-3 py-2 text-right text-sm font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{moneyFormatter.format(item.preco_unitario * item.quantidade)}</td>
-                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} aria-label={`Remover item ${item.descricao}`} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">✕</button></td>
+                                            {/* Coluna Status IA */}
+                                            <td className="px-3 py-2 min-w-[130px]">
+                                                {item.aiStatus === 'checking' && (
+                                                    <span className="flex items-center gap-1 text-xs text-blue-500"><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />verificando</span>
+                                                )}
+                                                {item.aiStatus === 'ok' && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">✅ Novo</span>
+                                                )}
+                                                {item.aiStatus === 'duplicata_exata' && (
+                                                    <div>
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 dark:bg-sky-900/40 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">🔄 Soma estoque</span>
+                                                        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate max-w-[120px]" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
+                                                    </div>
+                                                )}
+                                                {item.aiStatus === 'similar' && (
+                                                    <div>
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">⚠️ Parecido</span>
+                                                        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate max-w-[120px]" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
+                                                    </div>
+                                                )}
+                                                {!item.aiStatus && (
+                                                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} aria-label={`Remover item ${item.nome}`} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">✕</button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -772,10 +859,24 @@ const TabImportar = () => {
 
                     <div className="flex items-center justify-between">
                         <button type="button" onClick={handleReset} className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50">Cancelar</button>
-                        <button type="button" onClick={handleImport} disabled={importMutation.isPending || selectedItems.length === 0}
-                            className="rounded-lg bg-emerald-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2">
-                            {importMutation.isPending ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Importando...</> : <>✅ Importar {selectedItems.length} {selectedItems.length === 1 ? 'Produto' : 'Produtos'}</>}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {itens.some(i => !i.aiStatus) && !aiChecking && (
+                                <button type="button" onClick={() => runAiCheck(itens)}
+                                    className="rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 transition hover:bg-blue-50 flex items-center gap-2">
+                                    🤖 Re-verificar IA
+                                </button>
+                            )}
+                            <button type="button" onClick={handleImport}
+                                disabled={importMutation.isPending || selectedItems.length === 0 || aiChecking}
+                                className="rounded-lg bg-emerald-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2">
+                                {importMutation.isPending
+                                    ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Importando...</>
+                                    : aiChecking
+                                        ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Verificando IA...</>
+                                        : <>✅ Importar {selectedItems.length} {selectedItems.length === 1 ? 'Produto' : 'Produtos'}</>
+                                }
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -786,7 +887,7 @@ const TabImportar = () => {
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-4xl">✅</div>
                     <div className="text-center">
                         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Importação Concluída!</h2>
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Todos os produtos foram cadastrados com sucesso.</p>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Produtos novos foram cadastrados e os já existentes tiveram o estoque atualizado.</p>
                     </div>
                     <div className="flex gap-3">
                         <button type="button" onClick={handleReset} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700">📤 Importar Outra Nota</button>

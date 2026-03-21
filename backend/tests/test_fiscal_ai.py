@@ -1,7 +1,10 @@
 import pytest
 
 from app.fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price, enforce_minimum_price
+from app.models.fornecedor import Fornecedor
 from app.models.fiscal_feedback import FiscalFeedback
+from app.models.ncm import NCM
+from app.models.produto import Produto
 
 
 def test_cost_calculator_calcula_campos_principais():
@@ -210,3 +213,85 @@ def test_feedback_rastreabilidade_persiste_versao_e_origem(client, auth_headers,
     assert feedback is not None
     assert feedback.origem_sugestao == "suggest-price"
     assert feedback.versao_motor == "1.2.3"
+
+
+def test_classify_ncm_ranqueia_por_hits_na_descricao(client, auth_headers, db_session):
+    db_session.add_all(
+        [
+            NCM(codigo="22030000", descricao="cerveja puro malte lata"),
+            NCM(codigo="22021000", descricao="refrigerante cola lata"),
+            NCM(codigo="10063021", descricao="arroz branco tipo 1"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/fiscal-ai/classify-ncm",
+        json={"descricao": "cerveja puro malte lata", "limite": 3},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_encontrado"] == 2
+    assert data["candidatos"][0]["codigo"] == "22030000"
+    assert data["candidatos"][0]["score"] == 1.0
+
+
+def test_supplier_ranking_agrega_por_criterio_e_normaliza_score(client, auth_headers, db_session):
+    fornecedor_top = Fornecedor(razao_social="Fornecedor A", cnpj="11111111000111", ativo=True)
+    fornecedor_base = Fornecedor(razao_social="Fornecedor B", cnpj="22222222000122", ativo=True)
+    db_session.add_all([fornecedor_top, fornecedor_base])
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            Produto(
+                nome="Produto A1",
+                fornecedor="Fornecedor A",
+                preco_unitario=20.0,
+                preco_liquido=100.0,
+                unidade_medida="UN",
+                numero_nota="NF-1",
+                cnpj_fornecedor="11111111000111",
+                ativo=True,
+            ),
+            Produto(
+                nome="Produto A2",
+                fornecedor="Fornecedor A",
+                preco_unitario=30.0,
+                preco_liquido=50.0,
+                unidade_medida="UN",
+                numero_nota="NF-2",
+                cnpj_fornecedor="11111111000111",
+                ativo=True,
+            ),
+            Produto(
+                nome="Produto B1",
+                fornecedor="Fornecedor B",
+                preco_unitario=25.0,
+                preco_liquido=80.0,
+                unidade_medida="UN",
+                numero_nota="NF-3",
+                cnpj_fornecedor="22222222000122",
+                ativo=True,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(
+        "/api/v1/fiscal-ai/supplier-ranking?criterio=valor_total&limite=10",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["criterio"] == "valor_total"
+    assert data["total"] == 2
+    assert data["fornecedores"][0]["razao_social"] == "Fornecedor A"
+    assert data["fornecedores"][0]["valor_total"] == 150.0
+    assert data["fornecedores"][0]["total_notas"] == 2
+    assert data["fornecedores"][0]["total_itens"] == 2
+    assert data["fornecedores"][0]["score_confiabilidade"] == 1.0
+    assert round(data["fornecedores"][1]["score_confiabilidade"], 4) == round(80.0 / 150.0, 4)

@@ -13,12 +13,34 @@ from ...models.conta_receber import ContaReceber
 from ...models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ...models.user import User
 from ...models.venda import Venda
-from ...schemas.pdv import VendaPDVCreate, VendaPDVRead
+from ...schemas.pdv import (
+    VendaPDVCreate,
+    VendaPDVRead,
+    VerificacaoPrecoRequest,
+    VerificacaoPrecoResponse,
+)
 from ...services.pdf_service import gerar_pdf_comprovante_venda
-from ...services.pdv_service import registrar_venda
+from ...services.pdv_service import registrar_venda, verificar_precos_minimos
 
 router = APIRouter(tags=["PDV"])
 logger = logging.getLogger(__name__)
+
+
+@router.post("/verificar-preco", response_model=VerificacaoPrecoResponse)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+def verificar_preco_pdv(
+    request: Request,
+    response: Response,
+    payload: VerificacaoPrecoRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Verifica se os preços praticados estão acima do preço mínimo (non-blocking)."""
+    alertas = verificar_precos_minimos(db, payload.itens)
+    return VerificacaoPrecoResponse(
+        alertas=alertas,
+        tem_alertas=len(alertas) > 0,
+    )
 
 
 @router.post("/venda", response_model=VendaPDVRead, status_code=201)

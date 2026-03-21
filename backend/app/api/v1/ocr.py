@@ -241,8 +241,45 @@ async def upload_arquivo_nota_fiscal(
     try:
         from ...core.nfe_parser import parse_nfe_xml
         from ...fiscal.normalizer import normalizar_nota_fiscal
+        from ...fiscal.cross_validator import validar_nota_cruzado
+        from ...ai.audit_service import auditar_nota_fiscal
         nota = parse_nfe_xml(content)
         nota_normalizada = normalizar_nota_fiscal(nota)
+
+        # ── Auditoria fiscal automática ──────────────────────────────────
+        try:
+            audit_result = auditar_nota_fiscal(
+                nota_normalizada,
+                regime_tributario=None,
+                uf_emitente=None,
+                tipo_operacao="entrada",
+            )
+            cross_findings = validar_nota_cruzado(nota_normalizada)
+
+            auditoria_fiscal = {
+                "classificacao": audit_result.classificacao,
+                "score": audit_result.score,
+                "confianca": audit_result.confianca,
+                "explicacao": audit_result.explicacao,
+                "fatores": [
+                    {"regra": f.regra, "resultado": f.resultado, "peso": f.peso, "detalhe": f.detalhe}
+                    for f in audit_result.fatores
+                ],
+                "versao_engine": audit_result.versao_engine,
+            }
+            validacao_cruzada = [
+                {"regra": f.regra, "severidade": f.severidade, "item_sequencia": f.item_sequencia, "descricao": f.descricao}
+                for f in cross_findings
+            ]
+            logger.info(
+                "[OCR] Auditoria fiscal executada | task=%s | score=%s | classificacao=%s | findings=%d",
+                task_id, audit_result.score, audit_result.classificacao, len(cross_findings),
+            )
+        except Exception as audit_exc:
+            logger.warning("[OCR] Falha na auditoria fiscal (não bloqueante) | task=%s | erro=%s", task_id, audit_exc)
+            auditoria_fiscal = None
+            validacao_cruzada = []
+        # ─────────────────────────────────────────────────────────────────
 
         fornecedor_status, fornecedor_id = None, None
         if nota.fornecedor and nota.cnpj_fornecedor:
@@ -271,6 +308,8 @@ async def upload_arquivo_nota_fiscal(
                     "fornecedor_id": fornecedor_id,
                 },
                 "payload_fiscal_normalizado": nota_normalizada.model_dump(mode="json"),
+                "auditoria_fiscal": auditoria_fiscal,
+                "validacao_cruzada": validacao_cruzada,
             },
         }
         ocr_task_index_by_hash[file_hash] = task_id

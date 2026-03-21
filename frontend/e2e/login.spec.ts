@@ -8,11 +8,11 @@ test.describe('Login', () => {
 
     await page.goto('/#/login')
 
-    await page.getByLabel('Email').fill('invalido@empresa.com')
+    await page.getByLabel(/usu[aá]rio/i).fill('invalido@empresa.com')
     await page.getByLabel('Senha').fill('senha-errada')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
-    await expect(page.getByText(/Email ou senha inv(a|á)lid[oa]s?\.?/i)).toBeVisible()
+    await expect(page.getByText(/nome de usu[aá]rio ou senha inv[aá]lid[oa]s?\.?/i)).toBeVisible()
   })
 
   test('deve redirecionar para dashboard com credenciais válidas', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Login', () => {
 
     await page.goto('/#/login')
 
-    await page.getByLabel('Email').fill('admin@empresa.com')
+    await page.getByLabel(/usu[aá]rio/i).fill('admin@empresa.com')
     await page.getByLabel('Senha').fill('senha-valida')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
