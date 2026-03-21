@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ...ai.audit_service import auditar_nota_fiscal
 from ...core.database import get_db
@@ -11,13 +11,16 @@ from ...fiscal.cost_calculator import CostCalculationInput, calculate_minimum_pr
 from ...models.fiscal_feedback import FiscalFeedback
 from ...models.fornecedor import Fornecedor
 from ...models.ncm import NCM
-from ...models.nota_fiscal import NotaFiscal
+from ...models.nota_fiscal import NotaFiscal, NotaFiscalItem
 from ...models.produto import Produto
 from ...models.user import User
+from ...services.configuracao_loja_service import obter_configuracao_loja
 from ...schemas.fiscal_ai import (
     FiscalAuditFactorResponse,
     FiscalAuditResponse,
     FiscalAuditValidateRequest,
+    FiscalRiskDashboardResponse,
+    FiscalRiskDashboardSupplier,
     FiscalPriceRange,
     FiscalPriceSuggestionRequest,
     FiscalPriceSuggestionResponse,
@@ -32,6 +35,18 @@ from ...schemas.fiscal_payload import FiscalItemPayload, NotaFiscalPayloadNormal
 
 
 router = APIRouter(tags=["Fiscal AI"])
+
+
+def _nome_fornecedor_nota(nota: NotaFiscal) -> str:
+    for item in nota.itens:
+        produto = item.produto
+        if produto is None:
+            continue
+        if getattr(produto, "fornecedor_rel", None) and produto.fornecedor_rel.razao_social:
+            return produto.fornecedor_rel.razao_social
+        if produto.fornecedor:
+            return produto.fornecedor
+    return f"Nota {nota.numero_legado}"
 
 
 @router.post("/suggest-price/{product_id}", response_model=FiscalPriceSuggestionResponse)
@@ -144,6 +159,94 @@ def validate_note(
             )
             for f in result.fatores
         ],
+    )
+
+
+@router.get("/risk-dashboard", response_model=FiscalRiskDashboardResponse)
+def risk_dashboard(
+    limite_notas: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ = current_user
+    configuracao_loja = obter_configuracao_loja(db)
+    notas = (
+        db.query(NotaFiscal)
+        .options(
+            joinedload(NotaFiscal.itens).joinedload(NotaFiscalItem.produto).joinedload(Produto.fornecedor_rel),
+        )
+        .order_by(NotaFiscal.data_emissao.desc(), NotaFiscal.id.desc())
+        .limit(limite_notas)
+        .all()
+    )
+
+    if not notas:
+        return FiscalRiskDashboardResponse(
+            total_notas=0,
+            score_medio=0.0,
+            notas_risco_alto=0,
+            periodo_rotulo=f"ultimas {limite_notas} notas",
+            top_fornecedores_alertas=[],
+        )
+
+    fornecedores_alertas: dict[str, int] = {}
+    score_total = 0.0
+    notas_risco_alto = 0
+
+    for nota in notas:
+        itens_normalizados = [
+            FiscalItemPayload(
+                sequencia=index,
+                descricao=item.nome_produto or f"Item {index}",
+                quantidade=Decimal(str(item.quantidade or 0)),
+                unidade_comercial=item.unidade or "UN",
+                valor_unitario=Decimal(str(item.preco_unitario or 0)),
+                valor_total_item=Decimal(str(item.preco_total or 0)),
+                ncm=item.ncm,
+                cfop=item.cfop,
+                codigo_barras=item.codigo_barras,
+                cst=item.cst,
+                icms_base_calculo=Decimal(str(nota.base_icms or 0)),
+                icms_aliquota=Decimal(str(item.icms or 0)) if item.icms is not None else None,
+                icms_valor=Decimal(str(nota.valor_icms or 0)),
+            )
+            for index, item in enumerate(nota.itens, start=1)
+        ]
+        nota_normalizada = NotaFiscalPayloadNormalizado(
+            versao_payload="1.0.0",
+            fornecedor_nome=_nome_fornecedor_nota(nota),
+            numero_nota=str(nota.numero_legado),
+            data_emissao=nota.data_emissao,
+            valor_total_nota=Decimal(str(nota.valor_total or 0)),
+            itens=itens_normalizados,
+        )
+        audit = auditar_nota_fiscal(
+            nota_normalizada,
+            regime_tributario=configuracao_loja.regime_tributario,
+            uf_emitente=configuracao_loja.uf,
+            tipo_operacao="entrada",
+        )
+        score_total += audit.score
+        if audit.classificacao == "alto":
+            notas_risco_alto += 1
+        fornecedores_alertas[nota_normalizada.fornecedor_nome] = (
+            fornecedores_alertas.get(nota_normalizada.fornecedor_nome, 0) + len(audit.fatores)
+        )
+
+    top_fornecedores = [
+        FiscalRiskDashboardSupplier(nome=nome, alertas=alertas)
+        for nome, alertas in sorted(
+            fornecedores_alertas.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:3]
+    ]
+
+    return FiscalRiskDashboardResponse(
+        total_notas=len(notas),
+        score_medio=round(score_total / len(notas), 2),
+        notas_risco_alto=notas_risco_alto,
+        periodo_rotulo=f"ultimas {len(notas)} notas",
+        top_fornecedores_alertas=top_fornecedores,
     )
 
 

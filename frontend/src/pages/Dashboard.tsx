@@ -37,6 +37,19 @@ interface EstoqueAlerta {
   estoque_baixo?: boolean
 }
 
+interface FiscalRiskDashboardSupplier {
+  nome: string
+  alertas: number
+}
+
+interface FiscalRiskDashboardResponse {
+  total_notas: number
+  score_medio: number
+  notas_risco_alto: number
+  periodo_rotulo: string
+  top_fornecedores_alertas: FiscalRiskDashboardSupplier[]
+}
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -53,6 +66,8 @@ const getVendaTotal = (venda: Venda) => {
 }
 
 const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
 
 const Dashboard = () => {
   const queryClient = useQueryClient()
@@ -141,11 +156,22 @@ const Dashboard = () => {
     refetchInterval: 60_000
   })
 
+  const fiscalDashboardQuery = useQuery({
+    queryKey: ['dashboard', 'fiscal-risk'],
+    queryFn: async () => {
+      const response = await api.get('/fiscal-ai/risk-dashboard')
+      return response.data as FiscalRiskDashboardResponse
+    },
+    refetchInterval: 60_000
+  })
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
   const estoqueAlertas = estoqueAlertasQuery.data ?? []
+  const fiscalDashboard = fiscalDashboardQuery.data
+  const fiscalScore = clampPercent(fiscalDashboard?.score_medio ?? 0)
 
   return (
     <div className="space-y-6">
@@ -221,6 +247,77 @@ const Dashboard = () => {
           )}
         </article>
       </div>
+
+      <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Saúde Fiscal</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {fiscalDashboard?.periodo_rotulo ?? 'ultimas notas importadas'}
+            </p>
+          </div>
+          {fiscalDashboard && fiscalDashboard.total_notas > 0 && (
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+              {fiscalDashboard.notas_risco_alto} com risco alto
+            </span>
+          )}
+        </div>
+
+        {fiscalDashboardQuery.isLoading ? (
+          <div className="space-y-3">
+            <CardSkeleton />
+            <div className="h-2 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+        ) : fiscalDashboardQuery.isError ? (
+          <p className="text-sm text-red-600 dark:text-red-400">Erro ao carregar indicadores fiscais.</p>
+        ) : !fiscalDashboard || fiscalDashboard.total_notas === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
+            Nenhuma nota importada ainda para calcular a saúde fiscal.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr]">
+              <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/30">
+                <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Score médio</p>
+                <p className="mt-2 text-3xl font-semibold text-emerald-900 dark:text-emerald-100">{fiscalScore.toFixed(1)}</p>
+              </div>
+              <div>
+                <div className="h-3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div
+                    className={`h-full rounded-full transition-all ${fiscalScore >= 61 ? 'bg-red-500' : fiscalScore >= 31 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${fiscalScore}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                  <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60">
+                    <p className="text-gray-500 dark:text-gray-400">Notas analisadas</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{fiscalDashboard.total_notas}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60">
+                    <p className="text-gray-500 dark:text-gray-400">Risco alto</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{fiscalDashboard.notas_risco_alto}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Top fornecedores com alertas</h3>
+              <ul className="mt-3 space-y-2">
+                {fiscalDashboard.top_fornecedores_alertas.map((fornecedor, index) => (
+                  <li
+                    key={`${fornecedor.nome}-${index}`}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-700/60"
+                  >
+                    <span className="font-medium text-gray-800 dark:text-gray-100">{fornecedor.nome}</span>
+                    <span className="text-gray-500 dark:text-gray-300">{fornecedor.alertas} alertas</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </section>
 
       {estoqueAlertas.length > 0 && (
         <section className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">
