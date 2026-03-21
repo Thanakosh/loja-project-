@@ -3,15 +3,14 @@ from math import ceil
 from typing import List
 
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.config import settings
-from ...core.database import get_db
+from ...core.database import get_async_db
 from ...core.exceptions import EstoqueInsuficienteError, ProdutoNaoEncontradoError
 from ...core.limiter import limiter
-from ...core.pagination import paginate
-from ...core.security import get_current_active_user
+from ...core.security import get_current_active_user_async
 from ...models.produto import Produto
 from ...models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ...models.user import User
@@ -24,25 +23,30 @@ logger = logging.getLogger(__name__)
 
 @router.post("/transacao", response_model=TransacaoEstoqueRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def criar_transacao_estoque(
+async def criar_transacao_estoque(
     request: Request,
     response: Response,
     transacao: TransacaoEstoqueCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
     """
-    Cria uma nova transação de estoque (entrada, saída, ajuste ou devolução).
-    O estoque é atualizado automaticamente.
+    Cria uma nova transacao de estoque (entrada, saida, ajuste ou devolucao).
+    O estoque e atualizado automaticamente.
     """
     trace_id = getattr(request.state, "trace_id", "")
-    produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
+    produto = await db.get(Produto, transacao.produto_id)
     if not produto:
         raise ProdutoNaoEncontradoError()
 
     if transacao.tipo == TipoTransacao.SAIDA:
-        estoque_atual = db.query(func.sum(TransacaoEstoque.quantidade))\
-            .filter(TransacaoEstoque.produto_id == transacao.produto_id).scalar() or 0
+        estoque_atual = (
+            await db.scalar(
+                select(func.sum(TransacaoEstoque.quantidade)).where(
+                    TransacaoEstoque.produto_id == transacao.produto_id
+                )
+            )
+        ) or 0
 
         if abs(transacao.quantidade) > estoque_atual:
             logger.warning(
@@ -69,11 +73,11 @@ def criar_transacao_estoque(
         usuario_id=current_user.id
     )
     db.add(db_transacao)
-    db.commit()
-    db.refresh(db_transacao)
+    await db.commit()
+    await db.refresh(db_transacao)
 
     logger.info(
-        "Transação de estoque criada",
+        "Transacao de estoque criada",
         extra={
             "tipo": db_transacao.tipo.value if hasattr(db_transacao.tipo, "value") else db_transacao.tipo,
             "produto_id": db_transacao.produto_id,
@@ -88,22 +92,26 @@ def criar_transacao_estoque(
 
 @router.get("/produto/{produto_id}", response_model=EstoqueAtual)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def obter_estoque_produto(
+async def obter_estoque_produto(
     request: Request,
     response: Response,
     produto_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
-    """Obtém o estoque atual de um produto específico"""
-    produto = db.query(Produto).filter(Produto.id == produto_id).first()
+    """Obtem o estoque atual de um produto especifico."""
+    produto = await db.get(Produto, produto_id)
     if not produto:
         raise ProdutoNaoEncontradoError()
 
-    stats = db.query(
-        func.sum(TransacaoEstoque.quantidade).label("total"),
-        func.max(TransacaoEstoque.data_transacao).label("ultima")
-    ).filter(TransacaoEstoque.produto_id == produto_id).first()
+    stats = (
+        await db.execute(
+            select(
+                func.sum(TransacaoEstoque.quantidade).label("total"),
+                func.max(TransacaoEstoque.data_transacao).label("ultima")
+            ).where(TransacaoEstoque.produto_id == produto_id)
+        )
+    ).one()
 
     quantidade_atual = stats.total or 0
 
@@ -119,15 +127,15 @@ def obter_estoque_produto(
 
 @router.get("/", response_model=PaginatedResponse[EstoqueAtual])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def listar_estoque_completo(
+async def listar_estoque_completo(
     request: Request,
     response: Response,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     apenas_ativos: bool = True,
     apenas_baixo: bool = False,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
     """
     Lista o estoque de todos os produtos.
@@ -136,7 +144,7 @@ def listar_estoque_completo(
     - **apenas_baixo**: Se True, lista apenas produtos com estoque baixo
     """
     sub_estoque = (
-        db.query(
+        select(
             TransacaoEstoque.produto_id.label("produto_id"),
             func.coalesce(func.sum(TransacaoEstoque.quantidade), 0).label("quantidade_atual"),
             func.max(TransacaoEstoque.data_transacao).label("ultima_data"),
@@ -146,7 +154,7 @@ def listar_estoque_completo(
     )
 
     query = (
-        db.query(
+        select(
             Produto.id,
             Produto.nome,
             Produto.estoque_minimo,
@@ -157,9 +165,9 @@ def listar_estoque_completo(
     )
 
     if apenas_ativos:
-        query = query.filter(Produto.ativo.is_(True))
+        query = query.where(Produto.ativo.is_(True))
 
-    rows = query.all()
+    rows = (await db.execute(query)).all()
 
     resultado: List[EstoqueAtual] = []
     for row in rows:
@@ -196,41 +204,62 @@ def listar_estoque_completo(
 
 @router.get("/historico/{produto_id}", response_model=PaginatedResponse[TransacaoEstoqueRead])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def obter_historico_produto(
+async def obter_historico_produto(
     request: Request,
     response: Response,
     produto_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
-    """Obtém o histórico de transações de um produto com paginação"""
-    produto = db.query(Produto).filter(Produto.id == produto_id).first()
+    """Obtem o historico de transacoes de um produto com paginacao."""
+    produto = await db.get(Produto, produto_id)
     if not produto:
         raise ProdutoNaoEncontradoError()
 
-    query = db.query(TransacaoEstoque)\
-        .filter(TransacaoEstoque.produto_id == produto_id)\
-        .order_by(TransacaoEstoque.data_transacao.desc())
+    total = (
+        await db.scalar(
+            select(func.count()).select_from(TransacaoEstoque).where(
+                TransacaoEstoque.produto_id == produto_id
+            )
+        )
+    ) or 0
+    pages = ceil(total / page_size) if page_size > 0 else 0
+    offset = (page - 1) * page_size
+    items = (
+        await db.execute(
+            select(TransacaoEstoque)
+            .where(TransacaoEstoque.produto_id == produto_id)
+            .order_by(desc(TransacaoEstoque.data_transacao))
+            .offset(offset)
+            .limit(page_size)
+        )
+    ).scalars().all()
 
-    return paginate(query, page=page, page_size=page_size)
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
 
 
-@router.get("/alertas", response_model=List[EstoqueAtual], summary="Lista produtos com estoque abaixo do mínimo")
+@router.get("/alertas", response_model=List[EstoqueAtual], summary="Lista produtos com estoque abaixo do minimo")
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def listar_alertas_estoque(
+async def listar_alertas_estoque(
     request: Request,
     response: Response,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
     """
-    Retorna todos os produtos ativos com estoque atual abaixo ou igual ao estoque mínimo.
+    Retorna todos os produtos ativos com estoque atual abaixo ou igual ao estoque minimo.
     Usado pelo Dashboard para exibir o card de alertas.
     """
     sub_estoque = (
-        db.query(
+        select(
             TransacaoEstoque.produto_id.label("produto_id"),
             func.coalesce(func.sum(TransacaoEstoque.quantidade), 0).label("quantidade_atual"),
             func.max(TransacaoEstoque.data_transacao).label("ultima_data"),
@@ -240,17 +269,18 @@ def listar_alertas_estoque(
     )
 
     rows = (
-        db.query(
-            Produto.id,
-            Produto.nome,
-            Produto.estoque_minimo,
-            func.coalesce(sub_estoque.c.quantidade_atual, 0).label("quantidade_atual"),
-            sub_estoque.c.ultima_data,
+        await db.execute(
+            select(
+                Produto.id,
+                Produto.nome,
+                Produto.estoque_minimo,
+                func.coalesce(sub_estoque.c.quantidade_atual, 0).label("quantidade_atual"),
+                sub_estoque.c.ultima_data,
+            )
+            .outerjoin(sub_estoque, sub_estoque.c.produto_id == Produto.id)
+            .where(Produto.ativo.is_(True))
         )
-        .outerjoin(sub_estoque, sub_estoque.c.produto_id == Produto.id)
-        .filter(Produto.ativo.is_(True))
-        .all()
-    )
+    ).all()
 
     return [
         EstoqueAtual(
@@ -268,18 +298,18 @@ def listar_alertas_estoque(
 
 @router.post("/entrada-lote", response_model=List[TransacaoEstoqueRead])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def entrada_lote_produtos(
+async def entrada_lote_produtos(
     request: Request,
     response: Response,
     transacoes: List[TransacaoEstoqueCreate],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async)
 ):
-    """Registra entrada em lote de múltiplos produtos."""
+    """Registra entrada em lote de multiplos produtos."""
     resultado = []
     try:
         for transacao in transacoes:
-            produto = db.query(Produto).filter(Produto.id == transacao.produto_id).first()
+            produto = await db.get(Produto, transacao.produto_id)
             if not produto:
                 raise ProdutoNaoEncontradoError(details={"produto_id": transacao.produto_id})
 
@@ -290,12 +320,12 @@ def entrada_lote_produtos(
             db.add(db_transacao)
             resultado.append(db_transacao)
 
-        db.commit()
+        await db.commit()
 
         for transacao in resultado:
-            db.refresh(transacao)
+            await db.refresh(transacao)
 
         return resultado
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise

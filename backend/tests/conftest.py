@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,18 +13,18 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Variáveis mínimas para inicialização dos módulos durante os testes
+# Variaveis minimas para inicializacao dos modulos durante os testes
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_async_db, get_db
 from app.core.limiter import limiter
 from app.core.security import get_password_hash
 from app.main import app
 from app.models.user import User
 
-# Banco de testes em memória (SQLite)
+# Banco de testes em memoria (SQLite)
 TEST_DB_SYNC_URL = "sqlite:///:memory:"
 
 sync_engine = create_engine(
@@ -34,6 +35,47 @@ sync_engine = create_engine(
 TestSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
 
+class ScalarResultAdapter:
+    def __init__(self, result):
+        self._result = result
+
+    def all(self):
+        return self._result.all()
+
+    def one(self):
+        return self._result.one()
+
+    def scalar_one_or_none(self):
+        return self._result.scalar_one_or_none()
+
+    def scalars(self):
+        return self._result.scalars()
+
+
+class AsyncSessionAdapter:
+    def __init__(self, session: Session):
+        self._session = session
+
+    async def get(self, *args, **kwargs):
+        return self._session.get(*args, **kwargs)
+
+    async def scalar(self, *args, **kwargs):
+        return self._session.scalar(*args, **kwargs)
+
+    async def execute(self, *args, **kwargs):
+        return ScalarResultAdapter(self._session.execute(*args, **kwargs))
+
+    def add(self, *args, **kwargs):
+        return self._session.add(*args, **kwargs)
+
+    async def commit(self):
+        self._session.commit()
+
+    async def refresh(self, *args, **kwargs):
+        self._session.refresh(*args, **kwargs)
+
+    async def rollback(self):
+        self._session.rollback()
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -41,6 +83,7 @@ def reset_limiter_storage() -> None:
     storage = getattr(limiter.limiter, "storage", None) or getattr(limiter.limiter, "_storage", None)
     if storage and hasattr(storage, "reset"):
         storage.reset()
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database() -> None:
@@ -62,12 +105,21 @@ def db_session(setup_test_database) -> Session:
         connection.close()
 
 
+@pytest_asyncio.fixture(scope="function")
+async def async_db(db_session: Session):
+    yield AsyncSessionAdapter(db_session)
+
+
 @pytest.fixture(scope="function")
 def client(db_session: Session):
     def override_get_db():
         yield db_session
 
+    async def override_get_async_db():
+        yield AsyncSessionAdapter(db_session)
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_async_db] = override_get_async_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -100,7 +152,7 @@ def auth_headers(client: TestClient, test_user: User) -> dict[str, str]:
 
 @pytest.fixture(scope="function")
 def caixa_aberto(client: TestClient, auth_headers: dict) -> dict:
-    """Abre um caixa diário para testes que registram vendas."""
+    """Abre um caixa diario para testes que registram vendas."""
     resp = client.post(
         "/api/v1/caixa/abrir",
         json={"valor_abertura": 100.0},
