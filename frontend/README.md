@@ -13,6 +13,21 @@ Aplicação React + Vite com TailwindCSS para interface do **Loja Project**.
 
 ## Como executar (desenvolvimento)
 
+Antes de iniciar, configure a URL do backend:
+
+```bash
+cp .env.example .env
+```
+
+Defina `VITE_API_URL` no arquivo `.env` com a URL base do backend, sem barra no final.
+Exemplo:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+Se `VITE_API_URL` não estiver definida, o frontend usa a mesma origem da aplicação carregada no navegador.
+
 ```bash
 cd frontend
 npm install

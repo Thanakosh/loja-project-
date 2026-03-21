@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+import { API_BASE_URL } from '../config/api'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
 
-const apiV2 = axios.create({ baseURL: api.defaults.baseURL?.replace('/api/v1', '/api/v2') || 'http://localhost:8000/api/v2' })
+const apiV2 = axios.create({ baseURL: `${API_BASE_URL}/api/v2` })
 apiV2.interceptors.request.use((config) => {
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`

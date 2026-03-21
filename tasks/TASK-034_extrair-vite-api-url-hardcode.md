@@ -1,7 +1,7 @@
 ---
 task_id: TASK-034
 title: "Extrair VITE_API_URL do hardcode no frontend"
-status: pendente
+status: concluída
 priority: alta
 agent_chat_executable: "sim"
 depends_on: []
