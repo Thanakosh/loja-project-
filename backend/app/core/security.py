@@ -8,12 +8,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import get_db
-from ..models.user import User
+from .database import get_async_db, get_db
 from ..models.refresh_token import RefreshToken
+from ..models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
@@ -34,7 +36,7 @@ def len_b_str(s: str) -> int:
 
 
 def authenticate_user(db: Session, identifier: str, password: str):
-    """Autentica usuário por username ou email e senha."""
+    """Autentica usuario por username ou email e senha."""
     user = db.query(User).filter(User.username == identifier).first()
     if not user:
         user = db.query(User).filter(User.email == identifier).first()
@@ -70,13 +72,11 @@ def create_token_pair(
     Returns:
         Tuple[str, str]: (access_token, refresh_token_raw)
     """
-    # Access token (JWT, curto)
     access_token = create_access_token(
         data={"sub": user.email},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    # Refresh token (opaco, longo)
     refresh_token_raw = secrets.token_urlsafe(64)
     refresh_token_hash = _hash_token(refresh_token_raw)
 
@@ -100,10 +100,10 @@ def rotate_refresh_token(
 
     - Revoga o token antigo
     - Cria novo par (access + refresh)
-    - Detecta reuso de token já revogado (possível roubo)
+    - Detecta reuso de token ja revogado (possivel roubo)
 
     Returns:
-        Tuple[User, access_token, new_refresh_token] ou None se inválido
+        Tuple[User, access_token, new_refresh_token] ou None se invalido
     """
     token_hash = _hash_token(raw_token)
 
@@ -114,12 +114,10 @@ def rotate_refresh_token(
     if not db_token:
         return None
 
-    # Token já revogado → possível roubo! Revogar TODA a família
     if db_token.revoked:
         _revoke_all_user_tokens(db, db_token.user_id)
         return None
 
-    # Token expirado
     expires_at = db_token.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -130,7 +128,6 @@ def rotate_refresh_token(
         db.commit()
         return None
 
-    # Revogar o token atual
     db_token.revoked = True
     db_token.revoked_at = datetime.now(timezone.utc)
 
@@ -139,10 +136,7 @@ def rotate_refresh_token(
         db.commit()
         return None
 
-    # Criar novo par
     access_token, new_refresh = create_token_pair(db, user)
-
-    # Registrar qual token substituiu este
     db_token.replaced_by = _hash_token(new_refresh)
     db.commit()
 
@@ -150,12 +144,12 @@ def rotate_refresh_token(
 
 
 def revoke_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os refresh tokens ativos de um usuário (logout global)."""
+    """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
     return _revoke_all_user_tokens(db, user_id)
 
 
 def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os tokens não-revogados de um usuário."""
+    """Revoga todos os tokens nao-revogados de um usuario."""
     count = (
         db.query(RefreshToken)
         .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
@@ -215,3 +209,35 @@ async def get_current_user_optional(
         return None
 
     return db.query(User).filter(User.email == email).first()
+
+
+async def get_current_user_async(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db)
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não foi possível validar as credenciais",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user_async(
+    current_user: User = Depends(get_current_user_async),
+) -> User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Usuário inativo")
+    return current_user

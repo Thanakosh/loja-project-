@@ -86,3 +86,11 @@ Para cada modulo:
 ### Branch sugerida
 
 `refactor/async-<nome-modulo>` (ex: `refactor/async-estoque-v2`)
+
+## Atualizacao de progresso
+
+- Modulo `estoque_v2.py` migrado para `AsyncSession` em `refactor/async-estoque-v2`.
+- Dependencias de autenticacao async adicionadas em `app/core/security.py` para evitar misturar sync/async no endpoint.
+- `backend/tests/conftest.py` recebeu adapter async sobre a mesma sessao de teste, permitindo validar o modulo incrementalmente sem reestruturar toda a suite.
+- Validacao executada: `pytest backend/tests/test_estoque_v2.py -q` com `8 passed`.
+- Task geral permanece `pendente`, pois os proximos modulos (`pdv.py`, `ocr.py`, `produto.py` e demais) ainda nao foram migrados.
