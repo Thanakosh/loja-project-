@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 *.pyc
 *.pyo
 *.pyd
@@ -17,7 +17,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# Variáveis de ambiente (NUNCA commitar)
+# Variaveis de ambiente (NUNCA commitar)
 .env
 .env.*
 !.env.example
@@ -30,6 +30,12 @@ venv.bak/
 test.db
 demo.db
 data/
+
+# Cobertura e cache de testes
+.coverage
+coverage.json
+htmlcov/
+backend/.pytest_cache/
 
 # Node
 node_modules/
@@ -52,14 +58,15 @@ yarn.lock
 # OS
 .DS_Store
 Thumbs.db
-# Entrega cliente (bin�rios Electron)
+
+# Entrega cliente (binarios Electron)
 entrega-cliente/
 
 # Arquivos criados acidentalmente pelo Windows Explorer
 "Novo(a)*"
 "New *"
 
-# Arquivos temporários de análise
+# Arquivos temporarios de analise
 analyze_dbf.py
 dbf_analysis.txt
 test_users_output.txt

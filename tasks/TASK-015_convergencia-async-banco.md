@@ -1,28 +1,28 @@
 ---
 task_id: TASK-015
-title: "Planejar convergência para arquitetura async no banco"
-priority: 🟢 arquitetura
+title: "Planejar convergencia para arquitetura async no banco"
+priority: arquitetura
 scope: backend/app/core/database.py, backend/app/api/v1/, backend/tests/
 branch: refactor/plano-migracao-async-db
-commit_message: "refactor(db): define plano incremental de migração para AsyncSession"
+commit_message: "refactor(db): define plano incremental de migracao para AsyncSession"
 estimated_effort: 60 minutos
 status: pendente
 depends_on: ["TASK-003"]
-recomendacao_ref: "#13 — Convergência para arquitetura async no banco"
+recomendacao_ref: "#13 Convergencia para arquitetura async no banco"
 ---
 
-# TASK-015: Convergência para async no banco
+# TASK-015: Convergencia para async no banco
 
 ## Contexto
-A direção técnica prevê migração para `AsyncEngine/AsyncSession`,
-mas ainda sem plano incremental versionado por módulo.
+A direcao tecnica preve migracao para `AsyncEngine/AsyncSession`,
+mas ainda sem plano incremental versionado por modulo.
 
 ## Objetivo
-Criar plano de migração faseado, iniciando por módulos de maior I/O
-(OCR e estoque), com critérios de rollback e cobertura de testes.
+Criar plano de migracao faseado, iniciando por modulos de maior I/O
+(OCR e estoque), com criterios de rollback e cobertura de testes.
 
-## Critérios de aceite
-- [ ] Documento técnico com fases da migração
-- [ ] Lista de endpoints/módulos candidatos por ordem de risco
-- [ ] Estratégia de testes antes/depois por módulo
-- [ ] POC com pelo menos 1 endpoint assíncrono validado
+## Criterios de aceite
+- [ ] Documento tecnico com fases da migracao
+- [ ] Lista de endpoints/modulos candidatos por ordem de risco
+- [ ] Estrategia de testes antes/depois por modulo
+- [ ] POC com pelo menos 1 endpoint assincrono validado

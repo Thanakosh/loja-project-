@@ -1,40 +1,40 @@
 ---
 task_id: TASK-009
-title: "Refresh token rotativo com revogação e blacklist"
-priority: 🟢 arquitetura
+title: "Refresh token rotativo com revogacao e blacklist"
+priority: arquitetura
 scope: backend/app/core/security.py, backend/app/api/v1/users.py, backend/app/models/
 branch: feat/refresh-token
-commit_message: "feat(auth): implementa refresh token rotativo com revogação"
+commit_message: "feat(auth): implementa refresh token rotativo com revogacao"
 estimated_effort: 90 minutos
-status: concluída
+status: concluida
 depends_on: []
-recomendacao_ref: "#11 — Evolução de autenticação com refresh token"
+recomendacao_ref: "#11 Evolucao de autenticacao com refresh token"
 ---
 
-# TASK-009: Refresh token rotativo com revogação e blacklist
+# TASK-009: Refresh token rotativo com revogacao e blacklist
 
 ## Contexto
-Atualmente o sistema usa apenas **access token** (JWT) com expiração de 30 minutos (`ACCESS_TOKEN_EXPIRE_MINUTES`). Quando o token expira, o usuário precisa fazer login novamente. Isso cria uma experiência ruim para sessões longas.
+Atualmente o sistema usa apenas **access token** (JWT) com expiracao de 30 minutos (`ACCESS_TOKEN_EXPIRE_MINUTES`). Quando o token expira, o usuario precisa fazer login novamente. Isso cria uma experiencia ruim para sessoes longas.
 
 **Problemas atuais:**
-1. Sem refresh token — o usuário precisa re-autenticar a cada 30 min
-2. Sem mecanismo de revogação — não é possível invalidar tokens após logout ou comprometimento
+1. Sem refresh token - o usuario precisa re-autenticar a cada 30 min
+2. Sem mecanismo de revogacao - nao e possivel invalidar tokens apos logout ou comprometimento
 3. O endpoint `POST /api/v1/users/token` retorna apenas `{ access_token, token_type }`
 
-**Solução:**
+**Solucao:**
 - Access token curto (15 min) + Refresh token longo (7 dias)
 - Refresh token rotativo: cada uso gera um novo par (access + refresh)
-- Blacklist em banco para revogação (logout / comprometimento)
+- Blacklist em banco para revogacao (logout / comprometimento)
 
 ## Arquivos afetados
-- `backend/app/models/refresh_token.py` — **NOVO** — modelo de refresh token
-- `backend/app/core/security.py` — funções de criação/validação de refresh token
-- `backend/app/core/config.py` — novas configurações de token
-- `backend/app/api/v1/users.py` — endpoints `/refresh` e `/logout`
-- `backend/app/schemas/user.py` — schema de resposta com refresh token
-- `migrations/` — nova migração para tabela `refresh_token`
+- `backend/app/models/refresh_token.py` - **NOVO** - modelo de refresh token
+- `backend/app/core/security.py` - funcoes de criacao/validacao de refresh token
+- `backend/app/core/config.py` - novas configuracoes de token
+- `backend/app/api/v1/users.py` - endpoints `/refresh` e `/logout`
+- `backend/app/schemas/user.py` - schema de resposta com refresh token
+- `migrations/` - nova migracao para tabela `refresh_token`
 
-## Alteração 1: Criar modelo `backend/app/models/refresh_token.py`
+## Alteracao 1: Criar modelo `backend/app/models/refresh_token.py`
 
 ```python
 from datetime import datetime, timezone
@@ -59,7 +59,7 @@ class RefreshToken(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    # Qual token gerou este (para detecção de reuso)
+    # Qual token gerou este (para deteccao de reuso)
     replaced_by = Column(String, nullable=True)
 
     user = relationship("User", backref="refresh_tokens")
@@ -72,19 +72,19 @@ class RefreshToken(Base):
         return f"<RefreshToken(id={self.id}, user_id={self.user_id}, revoked={self.revoked})>"
 ```
 
-## Alteração 2: Adicionar configs no `config.py`
+## Alteracao 2: Adicionar configs no `config.py`
 
-Adicionar à classe `Settings`:
+Adicionar a classe `Settings`:
 
 ```python
     # Token Configuration
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # ← REDUZIR de 30 para 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  #  REDUZIR de 30 para 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 ```
 
-## Alteração 3: Atualizar `security.py`
+## Alteracao 3: Atualizar `security.py`
 
-Adicionar funções de criação e validação de refresh token:
+Adicionar funcoes de criacao e validacao de refresh token:
 
 ```python
 import hashlib
@@ -142,10 +142,10 @@ def rotate_refresh_token(
 
     - Revoga o token antigo
     - Cria novo par (access + refresh)
-    - Detecta reuso de token já revogado (possível roubo)
+    - Detecta reuso de token ja revogado (possivel roubo)
 
     Returns:
-        Tuple[User, access_token, new_refresh_token] ou None se inválido
+        Tuple[User, access_token, new_refresh_token] ou None se invalido
     """
     token_hash = _hash_token(raw_token)
 
@@ -156,7 +156,7 @@ def rotate_refresh_token(
     if not db_token:
         return None
 
-    # Token já revogado → possível roubo! Revogar TODA a família
+    # Token ja revogado  possivel roubo! Revogar TODA a familia
     if db_token.revoked:
         _revoke_all_user_tokens(db, db_token.user_id)
         return None
@@ -188,12 +188,12 @@ def rotate_refresh_token(
 
 
 def revoke_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os refresh tokens ativos de um usuário (logout global)."""
+    """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
     return _revoke_all_user_tokens(db, user_id)
 
 
 def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
-    """Revoga todos os tokens não-revogados de um usuário."""
+    """Revoga todos os tokens nao-revogados de um usuario."""
     count = (
         db.query(RefreshToken)
         .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
@@ -206,17 +206,17 @@ def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
     return count
 ```
 
-## Alteração 4: Atualizar esquemas em `schemas/user.py`
+## Alteracao 4: Atualizar esquemas em `schemas/user.py`
 
 Adicionar schema de resposta com tokens:
 
 ```python
 class TokenResponse(BaseModel):
-    """Resposta de autenticação com access e refresh tokens."""
+    """Resposta de autenticacao com access e refresh tokens."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    expires_in: int  # segundos até expiração do access token
+    expires_in: int  # segundos ate expiracao do access token
 
 
 class RefreshTokenRequest(BaseModel):
@@ -224,7 +224,7 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 ```
 
-## Alteração 5: Atualizar endpoints em `users.py`
+## Alteracao 5: Atualizar endpoints em `users.py`
 
 ```python
 from ...core.security import (
@@ -266,17 +266,17 @@ async def refresh_access_token(
     db: Session = Depends(get_db)
 ):
     """
-    Renova o par de tokens usando um refresh token válido.
+    Renova o par de tokens usando um refresh token valido.
 
-    O refresh token usado é revogado e um novo par é emitido (rotação).
-    Se um refresh token já revogado for apresentado, TODOS os tokens
-    do usuário são revogados por segurança (detecção de roubo).
+    O refresh token usado e revogado e um novo par e emitido (rotacao).
+    Se um refresh token ja revogado for apresentado, TODOS os tokens
+    do usuario sao revogados por seguranca (deteccao de roubo).
     """
     result = rotate_refresh_token(db, body.refresh_token)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido ou expirado",
+            detail="Refresh token invalido ou expirado",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -295,28 +295,28 @@ async def logout(
     db: Session = Depends(get_db)
 ):
     """
-    Revoga todos os refresh tokens do usuário (logout global).
-    O access token atual continua válido até expirar (15 min max).
+    Revoga todos os refresh tokens do usuario (logout global).
+    O access token atual continua valido ate expirar (15 min max).
     """
     count = revoke_user_tokens(db, current_user.id)
     return {"message": "Logout realizado com sucesso", "tokens_revogados": count}
 ```
 
-## Alteração 6: Registrar model e gerar migração
+## Alteracao 6: Registrar model e gerar migracao
 
 No `backend/app/models/__init__.py`, adicionar:
 ```python
 from .refresh_token import RefreshToken
 ```
 
-Gerar migração:
+Gerar migracao:
 ```bash
 cd backend
 alembic revision --autogenerate -m "add_refresh_token_table"
 alembic upgrade head
 ```
 
-## Alteração 7: Atualizar `.env.example`
+## Alteracao 7: Atualizar `.env.example`
 
 ```env
 # Token Configuration
@@ -324,23 +324,23 @@ ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-## Fluxo de autenticação (após implementação)
+## Fluxo de autenticacao (apos implementacao)
 
 ```
-1. Login:      POST /api/v1/users/token  → { access_token, refresh_token, expires_in }
+1. Login:      POST /api/v1/users/token   { access_token, refresh_token, expires_in }
 2. Usar API:   Authorization: Bearer <access_token>
-3. Renovar:    POST /api/v1/users/refresh { refresh_token } → { novo_access, novo_refresh }
-4. Logout:     POST /api/v1/users/logout  → revoga todos os refresh tokens
+3. Renovar:    POST /api/v1/users/refresh { refresh_token }  { novo_access, novo_refresh }
+4. Logout:     POST /api/v1/users/logout   revoga todos os refresh tokens
 ```
 
-## Segurança implementada
+## Seguranca implementada
 
-| Risco | Mitigação |
+| Risco | Mitigacao |
 |-------|-----------|
-| Roubo de refresh token | Rotação: cada uso gera novo token |
-| Reuso de token revogado | Detecção de roubo: revoga TODA a família |
-| Token exposto em DB | Armazenado como hash SHA-256 (não reversível) |
-| Sessão comprometida | `/logout` revoga todos os tokens ativos |
+| Roubo de refresh token | Rotacao: cada uso gera novo token |
+| Reuso de token revogado | Deteccao de roubo: revoga TODA a familia |
+| Token exposto em DB | Armazenado como hash SHA-256 (nao reversivel) |
+| Sessao comprometida | `/logout` revoga todos os tokens ativos |
 | Access token longo | Reduzido de 30 para 15 minutos |
 
 ## Passos
@@ -349,37 +349,37 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 3. Registrar modelo em `backend/app/models/__init__.py`
 4. Adicionar `REFRESH_TOKEN_EXPIRE_DAYS` ao `config.py`
 5. Alterar `ACCESS_TOKEN_EXPIRE_MINUTES` de 30 para 15
-6. Adicionar funções de refresh token ao `security.py`
+6. Adicionar funcoes de refresh token ao `security.py`
 7. Adicionar schemas `TokenResponse` e `RefreshTokenRequest` ao `schemas/user.py`
 8. Atualizar endpoints em `users.py` (`/token`, `/refresh`, `/logout`)
-9. Gerar migração Alembic: `alembic revision --autogenerate -m "add_refresh_token_table"`
+9. Gerar migracao Alembic: `alembic revision --autogenerate -m "add_refresh_token_table"`
 10. Atualizar `.env.example`
 11. Rodar testes: `cd backend && pytest tests/ -v`
 12. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [ ] `POST /api/v1/users/token` retorna `{ access_token, refresh_token, token_type, expires_in }`
 - [ ] `POST /api/v1/users/refresh` aceita refresh token e retorna novo par
-- [ ] Refresh token antigo é revogado após uso (rotação)
-- [ ] Reuso de token revogado revoga TODOS os tokens do usuário
+- [ ] Refresh token antigo e revogado apos uso (rotacao)
+- [ ] Reuso de token revogado revoga TODOS os tokens do usuario
 - [ ] `POST /api/v1/users/logout` revoga todos os refresh tokens ativos
 - [ ] Refresh tokens armazenados como hash SHA-256 (nunca em texto puro)
-- [ ] Migração Alembic criada e aplicável
+- [ ] Migracao Alembic criada e aplicavel
 - [ ] Testes existentes adaptados para novo formato de resposta do `/token`
 - [ ] Testes existentes passam sem erros
 
-## ⚠️ Cuidado com os testes existentes
+##  Cuidado com os testes existentes
 Os testes atuais esperam que `POST /api/v1/users/token` retorne `{ access_token, token_type }`.
-Com esta mudança, a resposta incluirá `refresh_token` e `expires_in` adicionais.
+Com esta mudanca, a resposta incluira `refresh_token` e `expires_in` adicionais.
 Verificar e ajustar:
-- `conftest.py` — fixture `auth_headers` (linha 82-88)
-- `test_users.py` — testes de login
+- `conftest.py` - fixture `auth_headers` (linha 82-88)
+- `test_users.py` - testes de login
 
-Os testes devem continuar extraindo `access_token` normalmente, já que o campo ainda existe.
+Os testes devem continuar extraindo `access_token` normalmente, ja que o campo ainda existe.
 
 ## Notas
-- NÃO implementar JWT para o refresh token — usar token opaco (secrets.token_urlsafe)
-- NÃO armazenar o refresh token em texto puro — sempre hash
-- O access token JWT NÃO é revogável (stateless) — ele expira naturalmente em 15 min
+- NAO implementar JWT para o refresh token - usar token opaco (secrets.token_urlsafe)
+- NAO armazenar o refresh token em texto puro - sempre hash
+- O access token JWT NAO e revogavel (stateless) - ele expira naturalmente em 15 min
 - A limpeza de tokens expirados pode ser feita em task futura (cron job)
-- Consultar `AGENTS.md` para padrões do projeto
+- Consultar `AGENTS.md` para padroes do projeto

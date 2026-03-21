@@ -1,26 +1,26 @@
 ---
 task_id: TASK-012
 title: "Rate limiting granular para OCR e LLM com slowapi"
-priority: 🟡 média
+priority: media
 scope: backend/app/api/v1/ocr.py, backend/app/api/v1/llm.py, backend/app/core/limiter.py
 branch: feat/rate-limiting-granular
 commit_message: "feat(security): rate limiting granular por endpoint OCR e LLM"
 estimated_effort: 30 minutos
-status: concluída
+status: concluida
 depends_on: []
-recomendacao_ref: "#6 — Rate limiting em OCR e LLM"
+recomendacao_ref: "#6 Rate limiting em OCR e LLM"
 ---
 
 # TASK-012: Rate limiting granular para OCR e LLM
 
 ## Contexto
-O projeto já possui `slowapi` instalado e um limiter global configurado (`backend/app/core/limiter.py`), mas os endpoints de OCR e LLM — que são os mais caros computacionalmente — **não possuem limites específicos** diferenciados. Um único usuário pode abusar desses endpoints sem restrição.
+O projeto ja possui `slowapi` instalado e um limiter global configurado (`backend/app/core/limiter.py`), mas os endpoints de OCR e LLM - que sao os mais caros computacionalmente - **nao possuem limites especificos** diferenciados. Um unico usuario pode abusar desses endpoints sem restricao.
 
 **Problemas atuais:**
-1. O limiter existe mas não está aplicado com granularidade nos endpoints caros
+1. O limiter existe mas nao esta aplicado com granularidade nos endpoints caros
 2. OCR e LLM consomem recursos significativos (CPU, GPU, API calls externas)
-3. Sem diferenciação entre limites por IP e por usuário autenticado
-4. Sem feedback claro ao usuário sobre limites e retry-after
+3. Sem diferenciacao entre limites por IP e por usuario autenticado
+4. Sem feedback claro ao usuario sobre limites e retry-after
 
 **Arquivo existente `limiter.py`:**
 ```python
@@ -31,12 +31,12 @@ limiter = Limiter(key_func=get_remote_address)
 ```
 
 ## Arquivos afetados
-- `backend/app/core/limiter.py` — adicionar key_func por usuário
-- `backend/app/api/v1/ocr.py` — decorar endpoints com rate limit
-- `backend/app/api/v1/llm.py` — decorar endpoints com rate limit
-- `backend/app/core/config.py` — configurações de limites
+- `backend/app/core/limiter.py` - adicionar key_func por usuario
+- `backend/app/api/v1/ocr.py` - decorar endpoints com rate limit
+- `backend/app/api/v1/llm.py` - decorar endpoints com rate limit
+- `backend/app/core/config.py` - configuracoes de limites
 
-## Alteração 1: Expandir `limiter.py`
+## Alteracao 1: Expandir `limiter.py`
 
 ```python
 from fastapi import Request
@@ -46,8 +46,8 @@ from slowapi.util import get_remote_address
 
 def get_user_or_ip(request: Request) -> str:
     """
-    Identifica o rate limit key: user_id se autenticado, IP se não.
-    Permite limites diferentes para usuários autenticados vs anônimos.
+    Identifica o rate limit key: user_id se autenticado, IP se nao.
+    Permite limites diferentes para usuarios autenticados vs anonimos.
     """
     # Tenta extrair user do request state (setado pelo middleware de auth)
     user = getattr(request.state, "current_user", None)
@@ -59,7 +59,7 @@ def get_user_or_ip(request: Request) -> str:
 limiter = Limiter(key_func=get_user_or_ip)
 ```
 
-## Alteração 2: Configs no `config.py`
+## Alteracao 2: Configs no `config.py`
 
 ```python
     # Rate Limiting
@@ -68,7 +68,7 @@ limiter = Limiter(key_func=get_user_or_ip)
     RATE_LIMIT_DEFAULT: str = "100/minute" # endpoints comuns
 ```
 
-## Alteração 3: Decorar endpoints OCR em `ocr.py`
+## Alteracao 3: Decorar endpoints OCR em `ocr.py`
 
 ```python
 from app.core.limiter import limiter
@@ -85,9 +85,9 @@ async def analisar_imagem(request: Request, ...):
     ...
 ```
 
-**IMPORTANTE:** O `request: Request` deve ser o **primeiro parâmetro** do endpoint para `slowapi` funcionar corretamente.
+**IMPORTANTE:** O `request: Request` deve ser o **primeiro parametro** do endpoint para `slowapi` funcionar corretamente.
 
-## Alteração 4: Decorar endpoints LLM em `llm.py`
+## Alteracao 4: Decorar endpoints LLM em `llm.py`
 
 ```python
 from app.core.limiter import limiter
@@ -104,7 +104,7 @@ async def chat_llm(request: Request, ...):
     ...
 ```
 
-## Alteração 5: Atualizar `.env.example`
+## Alteracao 5: Atualizar `.env.example`
 
 ```env
 # Rate Limiting
@@ -113,9 +113,9 @@ RATE_LIMIT_LLM=30/hour
 RATE_LIMIT_DEFAULT=100/minute
 ```
 
-## Alteração 6: Verificar handler 429 no `main.py`
+## Alteracao 6: Verificar handler 429 no `main.py`
 
-O handler de `RateLimitExceeded` já existe (linhas 116-124):
+O handler de `RateLimitExceeded` ja existe (linhas 116-124):
 ```python
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
@@ -127,11 +127,11 @@ Apenas verificar que ele retorna `Retry-After` no header.
 
 | Endpoint | Limite | Justificativa |
 |----------|--------|---------------|
-| `POST /api/v1/ocr/processar` | 10/hour | OCR é pesado (CPU + storage) |
+| `POST /api/v1/ocr/processar` | 10/hour | OCR e pesado (CPU + storage) |
 | `POST /api/v1/ocr/analisar` | 10/hour | Similar ao processar |
 | `POST /api/v1/llm/analisar` | 30/hour | API call externa (Ollama) |
 | `POST /api/v1/llm/chat` | 30/hour | API call externa (Ollama) |
-| Demais endpoints | 100/minute | Default razoável |
+| Demais endpoints | 100/minute | Default razoavel |
 
 ## Passos
 1. Criar branch `feat/rate-limiting-granular`
@@ -144,18 +144,18 @@ Apenas verificar que ele retorna `Retry-After` no header.
 8. Rodar testes: `cd backend && pytest tests/ -v`
 9. Commit seguindo Conventional Commits
 
-## Critérios de aceite
-- [ ] Endpoints OCR limitados a 10/hora por usuário/IP
-- [ ] Endpoints LLM limitados a 30/hora por usuário/IP
+## Criterios de aceite
+- [ ] Endpoints OCR limitados a 10/hora por usuario/IP
+- [ ] Endpoints LLM limitados a 30/hora por usuario/IP
 - [ ] Resposta 429 com formato padronizado (`code`, `message`, `trace_id`)
-- [ ] Limites configuráveis via variáveis de ambiente
-- [ ] Key function diferencia usuário autenticado de IP anônimo
+- [ ] Limites configuraveis via variaveis de ambiente
+- [ ] Key function diferencia usuario autenticado de IP anonimo
 - [ ] Testes existentes passam sem erros
 - [ ] `.env.example` atualizado
 
 ## Notas
-- `Request` DEVE ser o primeiro parâmetro do endpoint para `slowapi` funcionar
-- O handler 429 já existe no `main.py` — apenas verificar
-- Testes de rate limit já existem em `test_ratelimit.py` — expandir se necessário
-- NÃO aplicar rate limit em endpoints de leitura (GET) por enquanto
-- Consultar `AGENTS.md` para padrões do projeto
+- `Request` DEVE ser o primeiro parametro do endpoint para `slowapi` funcionar
+- O handler 429 ja existe no `main.py` - apenas verificar
+- Testes de rate limit ja existem em `test_ratelimit.py` - expandir se necessario
+- NAO aplicar rate limit em endpoints de leitura (GET) por enquanto
+- Consultar `AGENTS.md` para padroes do projeto

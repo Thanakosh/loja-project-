@@ -1,131 +1,131 @@
-# AGENTS.md — Guia de Operação para IAs
+# AGENTS.md - Guia de Operacao para IAs
 
-> Este arquivo é lido automaticamente por agentes de IA (Codex, Cursor, Claude, Copilot, etc.).
-> **Siga estas regras antes de qualquer ação no repositório.**
+> Este arquivo e lido automaticamente por agentes de IA (Codex, Cursor, Claude, Copilot, etc.).
+> **Siga estas regras antes de qualquer acao no repositorio.**
 
 ---
 
-## 🗂️ Visão Geral do Projeto
+##  Visao Geral do Projeto
 
-**Loja Project** é um sistema de gerenciamento comercial com backend em FastAPI + PostgreSQL.
-Versão atual: `2.1.0` | Branch principal: `main`
+**Loja Project** e um sistema de gerenciamento comercial com backend em FastAPI + PostgreSQL.
+Versao atual: `2.1.0` | Branch principal: `main`
 
 ```
 loja-project-/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/        # Endpoints REST
-│   │   ├── core/          # Config, database, security
-│   │   ├── models/        # Modelos SQLAlchemy
-│   │   └── schemas/       # Schemas Pydantic v2
-│   ├── tests/             # Testes automatizados
-│   └── requirements.txt   # Dependências principais
-├── migrations/            # Migrações Alembic
-├── checkpoints/           # Snapshots de estado do projeto
-├── docs/                  # Documentação
-├── AGENTS.md              # ← Este arquivo (leia sempre primeiro)
-├── frontend/              # (Novo) Aplicação Desktop/Web React + Electron
-├── CHANGELOG.md           # Histórico de versões
-├── STRATEGY.md            # Direção técnica de longo prazo
-└── RECOMENDACOES_TECNICAS.md  # Backlog técnico priorizado
+ backend/
+    app/
+       api/v1/        # Endpoints REST
+       core/          # Config, database, security
+       models/        # Modelos SQLAlchemy
+       schemas/       # Schemas Pydantic v2
+    tests/             # Testes automatizados
+    requirements.txt   # Dependencias principais
+ migrations/            # Migracoes Alembic
+ checkpoints/           # Snapshots de estado do projeto
+ docs/                  # Documentacao
+ AGENTS.md              #  Este arquivo (leia sempre primeiro)
+ frontend/              # (Novo) Aplicacao Desktop/Web React + Electron
+ CHANGELOG.md           # Historico de versoes
+ STRATEGY.md            # Direcao tecnica de longo prazo
+ RECOMENDACOES_TECNICAS.md  # Backlog tecnico priorizado
 ```
 
 ---
 
-## ⚙️ Stack e Versões Obrigatórias
+##  Stack e Versoes Obrigatorias
 
-| Tecnologia       | Versão mínima | Observação                          |
+| Tecnologia       | Versao minima | Observacao                          |
 |------------------|---------------|-------------------------------------|
 | Python           | 3.12          | Ambiente do Codex usa 3.12          |
-| FastAPI          | >=0.109.0     | Não fixar versão exata              |
-| Pydantic         | >=2.6.4       | **v2 obrigatório** — sem v1         |
-| SQLAlchemy       | >=2.0.27      | Async engine disponível             |
-| Alembic          | ==1.13.1      | Fixado — não alterar                |
-| httpx            | >=0.26.0      | Não reduzir esta versão             |
+| FastAPI          | >=0.109.0     | Nao fixar versao exata              |
+| Pydantic         | >=2.6.4       | **v2 obrigatorio** - sem v1         |
+| SQLAlchemy       | >=2.0.27      | Async engine disponivel             |
+| Alembic          | ==1.13.1      | Fixado - nao alterar                |
+| httpx            | >=0.26.0      | Nao reduzir esta versao             |
 
-## 🎨 Stack Frontend (Novo)
+##  Stack Frontend (Novo)
 
-| Tecnologia       | Versão        | Finalidade                          |
+| Tecnologia       | Versao        | Finalidade                          |
 |------------------|---------------|-------------------------------------|
-| React            | 18+           | Interface de usuário (UI)           |
+| React            | 18+           | Interface de usuario (UI)           |
 | Electron         | Latest        | Desktop App (Windows/Linux)         |
 | Vite             | Latest        | Build tool e Dev Server             |
-| TailwindCSS      | 3.4+          | Estilização (obrigatório)           |
+| TailwindCSS      | 3.4+          | Estilizacao (obrigatorio)           |
 | React Query      | Latest        | State management server-side        |
 | Shadcn/ui        | Latest        | (Recomendado) Componentes UI        |
 
-**⚠️ Regra de Ouro do Frontend:**
-> **NUNCA DUPLICAR REGRAS DE NEGÓCIO NO FRONTEND.**
-> O frontend deve ser apenas uma camada de visualização e interação.
-> Cálculos de impostos, validações complexas e regras de estoque ficam **exclusivamente no Backend**.
+** Regra de Ouro do Frontend:**
+> **NUNCA DUPLICAR REGRAS DE NEGOCIO NO FRONTEND.**
+> O frontend deve ser apenas uma camada de visualizacao e interacao.
+> Calculos de impostos, validacoes complexas e regras de estoque ficam **exclusivamente no Backend**.
 
 ---
 
-## 🚦 Regras de Branch
+##  Regras de Branch
 
 | Branch                              | Finalidade                                 | Quem usa          |
 |-------------------------------------|--------------------------------------------|-------------------|
-| `main`                              | Código estável e revisado                  | Merge após revisão|
+| `main`                              | Codigo estavel e revisado                  | Merge apos revisao|
 | `codex/<descricao-curta>`           | Tarefas do OpenAI Codex                    | Codex             |
 | `cursor/<descricao-curta>`          | Tarefas do Cursor                          | Cursor            |
 | `claude/<descricao-curta>`          | Tarefas do Claude                          | Claude            |
 | `frontend/<descricao-curta>`        | Features de UI (React/Electron)            | Qualquer agente   |
 | `feature/<descricao-curta>`         | Novas funcionalidades (Backend/Geral)      | Humano            |
-| `fix/<descricao-curta>`             | Correções de bugs                          | Qualquer agente   |
+| `fix/<descricao-curta>`             | Correcoes de bugs                          | Qualquer agente   |
 
 **Regras:**
-- ❌ Nunca commitar diretamente na `main`
-- ✅ Sempre criar branch antes de qualquer alteração
-- ✅ Um PR por tarefa — escopo pequeno e focado
-- ✅ Resolver conflitos de merge antes do push
+-  Nunca commitar diretamente na `main`
+-  Sempre criar branch antes de qualquer alteracao
+-  Um PR por tarefa - escopo pequeno e focado
+-  Resolver conflitos de merge antes do push
 
 ---
 
-## 📝 Padrão de Commits
+##  Padrao de Commits
 
-Use o padrão **Conventional Commits**:
+Use o padrao **Conventional Commits**:
 
 ```
-<tipo>(<escopo>): <descrição curta em português>
+<tipo>(<escopo>): <descricao curta em portugues>
 
-[corpo opcional explicando o porquê]
+[corpo opcional explicando o porque]
 ```
 
 | Tipo       | Quando usar                                      |
 |------------|--------------------------------------------------|
 | `feat`     | Nova funcionalidade                              |
-| `fix`      | Correção de bug                                  |
-| `refactor` | Refatoração sem mudança de comportamento         |
-| `test`     | Adição ou correção de testes                     |
-| `docs`     | Alterações em documentação                       |
-| `chore`    | Tarefas de manutenção (deps, config, etc.)       |
+| `fix`      | Correcao de bug                                  |
+| `refactor` | Refatoracao sem mudanca de comportamento         |
+| `test`     | Adicao ou correcao de testes                     |
+| `docs`     | Alteracoes em documentacao                       |
+| `chore`    | Tarefas de manutencao (deps, config, etc.)       |
 | `perf`     | Melhoria de performance                          |
 
 **Exemplos:**
 ```
 feat(estoque): adiciona endpoint de entrada em lote
-fix(auth): corrige validação de token expirado
+fix(auth): corrige validacao de token expirado
 chore(deps): atualiza httpx para >=0.27.0
-test(produto): adiciona testes de criação com estoque inicial
+test(produto): adiciona testes de criacao com estoque inicial
 ```
 
 ---
 
-## 🔒 Regras de Segurança — CRÍTICO
+##  Regras de Seguranca - CRITICO
 
-1. **Nunca commitar arquivos `.env`** — já está no `.gitignore`
-2. **Usar `.env.example`** como referência de variáveis (sem valores reais)
-3. **Nunca hardcodar** secrets, senhas ou tokens no código
-4. **`test.db`** não deve ir para o repositório — adicionar ao `.gitignore` se necessário
-5. **CORS:** nunca usar `["*"]` com `allow_credentials=True` em produção
+1. **Nunca commitar arquivos `.env`** - ja esta no `.gitignore`
+2. **Usar `.env.example`** como referencia de variaveis (sem valores reais)
+3. **Nunca hardcodar** secrets, senhas ou tokens no codigo
+4. **`test.db`** nao deve ir para o repositorio - adicionar ao `.gitignore` se necessario
+5. **CORS:** nunca usar `["*"]` com `allow_credentials=True` em producao
 
 ---
 
-## 🐍 Padrões de Código Python
+##  Padroes de Codigo Python
 
 ### Schemas Pydantic
 ```python
-# ✅ CORRETO — Pydantic v2
+#  CORRETO - Pydantic v2
 from pydantic import BaseModel, ConfigDict, field_validator
 
 class MeuSchema(BaseModel):
@@ -136,7 +136,7 @@ class MeuSchema(BaseModel):
     def validar_campo(cls, v):
         return v
 
-# ❌ ERRADO — Pydantic v1 (não usar)
+#  ERRADO - Pydantic v1 (nao usar)
 class MeuSchema(BaseModel):
     class Config:
         orm_mode = True
@@ -146,19 +146,19 @@ class MeuSchema(BaseModel):
         return v
 ```
 
-### Serialização de modelos
+### Serializacao de modelos
 ```python
-# ✅ CORRETO
+#  CORRETO
 dados = schema.model_dump()
 dados = schema.model_dump(exclude_unset=True)
 
-# ❌ ERRADO
+#  ERRADO
 dados = schema.dict()
 ```
 
 ### Endpoints
 ```python
-# ✅ CORRETO — sempre requer autenticação
+#  CORRETO - sempre requer autenticacao
 @router.get("/", response_model=List[MeuSchema])
 def listar(
     db: Session = Depends(get_db),
@@ -169,37 +169,37 @@ def listar(
 
 ### Estoque
 ```python
-# ✅ CORRETO — usar sistema de transações (v2)
+#  CORRETO - usar sistema de transacoes (v2)
 # Endpoint: POST /api/v2/estoque/transacao
 
-# ❌ EVITAR — campo quantidade direto no produto (legado v1)
+#  EVITAR - campo quantidade direto no produto (legado v1)
 produto.quantidade = 100
 ```
 
 ---
 
-## 🗄️ Banco de Dados e Migrações
+##  Banco de Dados e Migracoes
 
-- **Nunca alterar tabelas manualmente** — sempre via Alembic
-- **Sempre criar migração** ao adicionar/alterar modelos:
+- **Nunca alterar tabelas manualmente** - sempre via Alembic
+- **Sempre criar migracao** ao adicionar/alterar modelos:
   ```bash
   alembic revision --autogenerate -m "descricao_da_mudanca"
   alembic upgrade head
   ```
-- **Nomear arquivos de migração** com data: `YYYYMMDD_descricao.py`
-- **Não deletar migrações antigas** — histório deve ser preservado
+- **Nomear arquivos de migracao** com data: `YYYYMMDD_descricao.py`
+- **Nao deletar migracoes antigas** - historio deve ser preservado
 
 ---
 
-## 🧪 Testes
+##  Testes
 
-- Localização: `backend/tests/`
+- Localizacao: `backend/tests/`
 - Framework: `pytest` + `pytest-asyncio` + `httpx`
-- Banco de testes: SQLite em memória (configurado em `conftest.py`)
-- **Sempre adicionar testes** para novas features nos módulos críticos:
-  - Autenticação
+- Banco de testes: SQLite em memoria (configurado em `conftest.py`)
+- **Sempre adicionar testes** para novas features nos modulos criticos:
+  - Autenticacao
   - Estoque v2
-  - OCR (criação e status de tarefa)
+  - OCR (criacao e status de tarefa)
 
 ```bash
 # Rodar testes
@@ -212,48 +212,60 @@ pytest tests/ --cov=app --cov-report=term-missing
 
 ---
 
-## 📦 Dependências
+##  Dependencias
 
 - **Arquivo principal:** `backend/requirements.txt`
-- **Dependências OCR/ML:** `backend/requirements-ocr.txt` (instalar separado)
-- **Ao adicionar dependência:**
+- **Dependencias OCR/ML:** `backend/requirements-ocr.txt` (instalar separado)
+- **Ao adicionar dependencia:**
   1. Verificar conflitos com as existentes antes de adicionar
-  2. Usar `>=versao` (sem fixar exato) salvo casos específicos
-  3. Nunca reduzir versão de `httpx` abaixo de `>=0.26.0`
-  4. Documentar no commit o motivo da adição
-- **⚠️ bcrypt:** usar `==4.0.1` — a versão 5.x quebra compatibilidade com passlib 1.7.4 no Python 3.13 (erro: *password cannot be longer than 72 bytes*)
+  2. Usar `>=versao` (sem fixar exato) salvo casos especificos
+  3. Nunca reduzir versao de `httpx` abaixo de `>=0.26.0`
+  4. Documentar no commit o motivo da adicao
+- ** bcrypt:** usar `==4.0.1` - a versao 5.x quebra compatibilidade com passlib 1.7.4 no Python 3.13 (erro: *password cannot be longer than 72 bytes*)
 
 ---
 
-## 📋 Documentos de Referência
+##  Documentos de Referencia
 
-| Arquivo                      | Finalidade                                           | Atualizar quando?              |
+| Arquivo                      | Finalidade                                           | Atualizar quando              |
 |------------------------------|------------------------------------------------------|--------------------------------|
-| `AGENTS.md`                  | Regras para IAs (este arquivo)                       | Quando mudar padrões do projeto|
-| `CHANGELOG.md`               | Histórico de versões no formato Keep a Changelog     | A cada release                 |
-| `STRATEGY.md`                | Direção técnica e arquitetural de longo prazo        | A cada mudança de direção      |
-| `RECOMENDACOES_TECNICAS.md`  | Backlog de melhorias priorizadas (🔴🟡🟢)            | Ao concluir ou adicionar itens |
-| `MIGRATION_GUIDE.md`         | Guia de migração entre versões                       | A cada breaking change         |
+| `AGENTS.md`                  | Regras para IAs (este arquivo)                       | Quando mudar padroes do projeto|
+| `CHANGELOG.md`               | Historico de versoes no formato Keep a Changelog     | A cada release                 |
+| `STRATEGY.md`                | Direcao tecnica e arquitetural de longo prazo        | A cada mudanca de direcao      |
+| `RECOMENDACOES_TECNICAS.md`  | Backlog de melhorias priorizadas ()            | Ao concluir ou adicionar itens |
+| `MIGRATION_GUIDE.md`         | Guia de migracao entre versoes                       | A cada breaking change         |
 
 ---
 
-## ✅ Checklist antes do Push
+##  Checklist antes do Push
 
-- [ ] Estou em uma branch correta (não `main`)
+- [ ] Estou em uma branch correta (nao `main`)
 - [ ] Sem marcadores de conflito (`<<<<<<<`, `=======`, `>>>>>>>`) em nenhum arquivo
 - [ ] Sem arquivos `.env` ou secrets no commit
 - [ ] Pydantic v2 em todos os schemas novos/editados (`model_dump`, `ConfigDict`)
-- [ ] Dependências novas não conflitam com as existentes
+- [ ] Dependencias novas nao conflitam com as existentes
 - [ ] Testes passando localmente (`pytest tests/ -v`)
-- [ ] Commit segue o padrão Conventional Commits
+- [ ] Commit segue o padrao Conventional Commits
 - [ ] `CHANGELOG.md` atualizado se for uma feature ou fix relevante
 
 ---
 
-## ❓ Dúvidas sobre o projeto
+##  Duvidas sobre o projeto
 
 Consulte nesta ordem:
 1. Este arquivo (`AGENTS.md`)
-2. `STRATEGY.md` — para decisões arquiteturais
-3. `RECOMENDACOES_TECNICAS.md` — para o backlog de melhorias
-4. `CHANGELOG.md` — para entender o histórico de decisões
+2. `STRATEGY.md` - para decisoes arquiteturais
+3. `RECOMENDACOES_TECNICAS.md` - para o backlog de melhorias
+4. `CHANGELOG.md` - para entender o historico de decisoes
+---
+
+## Padrao de Tasks
+
+Arquivos em `tasks/` devem manter o frontmatter YAML em ASCII puro.
+
+Regras:
+- usar `status` apenas como `pendente`, `concluida` ou `concluido`
+- usar `priority` em texto simples, como `alta`, `media`, `baixa` ou `arquitetura`
+- nao usar emojis no frontmatter
+- evitar acentos e outros caracteres Unicode no frontmatter
+- o corpo do arquivo pode permanecer em portugues normal quando necessario

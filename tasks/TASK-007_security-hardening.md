@@ -1,31 +1,31 @@
 ---
 task_id: TASK-007
-title: "Hardening de segurança: CORS por ambiente e validação de startup"
-priority: 🔴 alta
+title: "Hardening de seguranca: CORS por ambiente e validacao de startup"
+priority: alta
 scope: backend/app/core/ (config.py, security.py, main.py)
 branch: fix/security-hardening
-commit_message: "fix(security): CORS restrito por ambiente e validação de segredos no startup"
+commit_message: "fix(security): CORS restrito por ambiente e validacao de segredos no startup"
 estimated_effort: 15 minutos
-status: concluída
+status: concluida
 ---
 
-# TASK-007: Hardening de segurança — CORS por ambiente e validação de startup
+# TASK-007: Hardening de seguranca - CORS por ambiente e validacao de startup
 
 ## Contexto
-Existem pontos de segurança que precisam ser endurecidos antes de ir para produção:
+Existem pontos de seguranca que precisam ser endurecidos antes de ir para producao:
 
 1. **CORS** permite `["*"]` se configurado assim no `.env`, sem warning
-2. **JWT_SECRET** pode ser qualquer valor curto ou previsível — sem validação de força
-3. **Nenhuma validação** no startup para detectar configurações inseguras
-4. **Mensagens de erro** de autenticação estão em inglês (inconsistência com o restante da API)
+2. **JWT_SECRET** pode ser qualquer valor curto ou previsivel - sem validacao de forca
+3. **Nenhuma validacao** no startup para detectar configuracoes inseguras
+4. **Mensagens de erro** de autenticacao estao em ingles (inconsistencia com o restante da API)
 
 ## Arquivos afetados
-- `backend/app/core/config.py` — validações de segurança
-- `backend/app/main.py` — warning de CORS no startup
+- `backend/app/core/config.py` - validacoes de seguranca
+- `backend/app/main.py` - warning de CORS no startup
 
-## Alteração 1: Validações no `config.py`
+## Alteracao 1: Validacoes no `config.py`
 
-Adicionar validadores para detectar configurações inseguras:
+Adicionar validadores para detectar configuracoes inseguras:
 
 ```python
 import secrets
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     @field_validator("JWT_SECRET")
     @classmethod
     def validate_jwt_secret(cls, v: str) -> str:
-        """Valida que o JWT_SECRET é suficientemente seguro."""
+        """Valida que o JWT_SECRET e suficientemente seguro."""
         if not v or len(v) < 16:
             raise ValueError(
                 "JWT_SECRET deve ter pelo menos 16 caracteres. "
@@ -85,8 +85,8 @@ class Settings(BaseSettings):
         ]
         if v.lower() in insecure_values:
             raise ValueError(
-                f"JWT_SECRET com valor '{v}' é inseguro. "
-                "Use um valor aleatório forte."
+                f"JWT_SECRET com valor '{v}' e inseguro. "
+                "Use um valor aleatorio forte."
             )
         return v
 
@@ -108,51 +108,51 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Warnings de configuração no startup
+# Warnings de configuracao no startup
 if "*" in settings.CORS_ORIGINS:
     logger.warning(
-        "⚠️  CORS_ORIGINS contém wildcard '*'. "
-        "Isso é aceitável em desenvolvimento, mas NUNCA em produção. "
-        "Configure uma lista restrita de origens para ambientes de produção."
+        "  CORS_ORIGINS contem wildcard '*'. "
+        "Isso e aceitavel em desenvolvimento, mas NUNCA em producao. "
+        "Configure uma lista restrita de origens para ambientes de producao."
     )
 
 if settings.DEBUG:
     logger.warning(
-        "⚠️  DEBUG=True está ativo. Desative em produção."
+        "  DEBUG=True esta ativo. Desative em producao."
     )
 ```
 
-## Alteração 2: Warning no `main.py`
+## Alteracao 2: Warning no `main.py`
 
-Adicionar log no startup da aplicação:
+Adicionar log no startup da aplicacao:
 
 ```python
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Após app = FastAPI(...)
+# Apos app = FastAPI(...)
 @app.on_event("startup")
 async def startup_warnings():
     if "*" in settings.CORS_ORIGINS:
         logger.warning(
-            "CORS wildcard ativo — não usar em produção"
+            "CORS wildcard ativo - nao usar em producao"
         )
     logger.info(f"Loja API v2.0 iniciada | DEBUG={settings.DEBUG}")
 ```
 
-## Alteração 3: Padronizar mensagens de autenticação (opcional)
+## Alteracao 3: Padronizar mensagens de autenticacao (opcional)
 
-No `backend/app/core/security.py`, padronizar mensagens para português:
+No `backend/app/core/security.py`, padronizar mensagens para portugues:
 
 ```python
 # ANTES
 detail="Could not validate credentials"
 detail="Inactive user"
 
-# DEPOIS  
-detail="Não foi possível validar as credenciais"
-detail="Usuário inativo"
+# DEPOIS
+detail="Nao foi possivel validar as credenciais"
+detail="Usuario inativo"
 ```
 
 E no `backend/app/api/v1/users.py`:
@@ -163,33 +163,33 @@ detail="Email already registered"
 
 # DEPOIS
 detail="Email ou senha incorretos"
-detail="Email já cadastrado"
+detail="Email ja cadastrado"
 ```
 
 ## Passos
 1. Criar branch `fix/security-hardening`
-2. Atualizar `backend/app/core/config.py` com validação de JWT_SECRET e warnings
+2. Atualizar `backend/app/core/config.py` com validacao de JWT_SECRET e warnings
 3. Adicionar startup event no `backend/app/main.py`
-4. (Opcional) Padronizar mensagens de erro para português
+4. (Opcional) Padronizar mensagens de erro para portugues
 5. Rodar testes: `cd backend && pytest tests/ -v`
 6. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [x] Servidor **recusa iniciar** se `JWT_SECRET` tiver menos de 16 caracteres
 - [x] Servidor **recusa iniciar** se `JWT_SECRET` for um valor trivial ("secret", "password", etc.)
 - [x] Warning no log quando CORS tem wildcard `*`
 - [x] Warning no log quando `DEBUG=True`
-- [x] Testes passam sem erros (ajustar `.env` de teste se necessário)
+- [x] Testes passam sem erros (ajustar `.env` de teste se necessario)
 
-## ⚠️ Cuidado com os testes
-Os testes atuais usam `conftest.py` que pode definir o `JWT_SECRET` via variável de ambiente.
-Verificar que o valor usado nos testes tem >= 16 caracteres, senão o validador vai rejeitar.
-Se necessário, ajustar o `conftest.py`:
+##  Cuidado com os testes
+Os testes atuais usam `conftest.py` que pode definir o `JWT_SECRET` via variavel de ambiente.
+Verificar que o valor usado nos testes tem >= 16 caracteres, senao o validador vai rejeitar.
+Se necessario, ajustar o `conftest.py`:
 ```python
 os.environ["JWT_SECRET"] = "test-secret-key-with-minimum-length-ok"
 ```
 
 ## Notas
-- NÃO bloquear o startup por causa do CORS wildcard — apenas warnar (dev pode precisar)
-- SIM bloquear por causa do JWT_SECRET fraco — isso é crítico
-- Consultar `AGENTS.md` para padrões de segurança do projeto
+- NAO bloquear o startup por causa do CORS wildcard - apenas warnar (dev pode precisar)
+- SIM bloquear por causa do JWT_SECRET fraco - isso e critico
+- Consultar `AGENTS.md` para padroes de seguranca do projeto

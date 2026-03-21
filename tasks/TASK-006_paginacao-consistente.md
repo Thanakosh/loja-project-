@@ -1,32 +1,32 @@
 ---
 task_id: TASK-006
-title: "Implementar paginação consistente nos endpoints de listagem"
-priority: 🟡 média
+title: "Implementar paginacao consistente nos endpoints de listagem"
+priority: media
 scope: backend/app/ (schemas + endpoints de listagem)
 branch: feat/paginacao-consistente
-commit_message: "feat(api): implementa paginação consistente com metadados em todos os endpoints de listagem"
+commit_message: "feat(api): implementa paginacao consistente com metadados em todos os endpoints de listagem"
 estimated_effort: 25 minutos
-status: concluída
+status: concluida
 ---
 
-# TASK-006: Implementar paginação consistente nos endpoints de listagem
+# TASK-006: Implementar paginacao consistente nos endpoints de listagem
 
 ## Contexto
 
-Atualmente os endpoints de listagem usam `skip`/`limit` simples, mas NÃO retornam metadados
-de paginação (`total`, `page`, `pages`, etc.). O cliente não sabe quantos itens existem no total
-nem se há mais páginas. Isso dificulta a criação de um frontend com paginação.
+Atualmente os endpoints de listagem usam `skip`/`limit` simples, mas NAO retornam metadados
+de paginacao (`total`, `page`, `pages`, etc.). O cliente nao sabe quantos itens existem no total
+nem se ha mais paginas. Isso dificulta a criacao de um frontend com paginacao.
 
 ### Endpoints afetados
-| Endpoint | Arquivo | Paginação atual |
+| Endpoint | Arquivo | Paginacao atual |
 |----------|---------|-----------------|
 | `GET /api/v1/produtos` | `produto.py` | `skip`/`limit` sem `total` |
 | `GET /api/v1/orcamentos` | `orcamento.py` | Nenhuma (retorna tudo) |
 | `GET /api/v2/estoque/` | `estoque_v2.py` | Nenhuma (retorna tudo) |
 | `GET /api/v2/estoque/historico/{id}` | `estoque_v2.py` | `limite` sem `total` |
-| `GET /api/v1/estoque` | `estoque.py` | Nenhuma (legado, não alterar) |
+| `GET /api/v1/estoque` | `estoque.py` | Nenhuma (legado, nao alterar) |
 
-## Passo 1: Criar schema genérico de paginação
+## Passo 1: Criar schema generico de paginacao
 
 ### Criar arquivo `backend/app/schemas/pagination.py`
 
@@ -38,7 +38,7 @@ T = TypeVar("T")
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
-    """Schema genérico de resposta paginada."""
+    """Schema generico de resposta paginada."""
     items: List[T]
     total: int
     page: int
@@ -58,7 +58,7 @@ E ao `__all__`:
 "PaginatedResponse",
 ```
 
-## Passo 2: Criar função helper de paginação
+## Passo 2: Criar funcao helper de paginacao
 
 ### Adicionar ao final de `backend/app/core/database.py` (ou criar `backend/app/core/pagination.py`)
 
@@ -69,13 +69,13 @@ from math import ceil
 
 def paginate(query: Query, page: int = 1, page_size: int = 50) -> dict:
     """
-    Aplica paginação a uma query SQLAlchemy e retorna dict com metadados.
-    
+    Aplica paginacao a uma query SQLAlchemy e retorna dict com metadados.
+
     Args:
         query: SQLAlchemy Query object
-        page: Número da página (1-indexed)
-        page_size: Itens por página
-    
+        page: Numero da pagina (1-indexed)
+        page_size: Itens por pagina
+
     Returns:
         dict com keys: items, total, page, page_size, pages
     """
@@ -83,7 +83,7 @@ def paginate(query: Query, page: int = 1, page_size: int = 50) -> dict:
     pages = ceil(total / page_size) if page_size > 0 else 0
     offset = (page - 1) * page_size
     items = query.offset(offset).limit(page_size).all()
-    
+
     return {
         "items": items,
         "total": total,
@@ -95,7 +95,7 @@ def paginate(query: Query, page: int = 1, page_size: int = 50) -> dict:
 
 ## Passo 3: Atualizar endpoints
 
-### 3a. `backend/app/api/v1/produto.py` — `listar_produtos`
+### 3a. `backend/app/api/v1/produto.py` - `listar_produtos`
 
 ```python
 from ...schemas.pagination import PaginatedResponse
@@ -103,22 +103,22 @@ from ...core.pagination import paginate
 
 @router.get("/", response_model=PaginatedResponse[ProdutoRead])
 def listar_produtos(
-    page: int = Query(1, ge=1, description="Número da página"),
-    page_size: int = Query(50, ge=1, le=200, description="Itens por página"),
+    page: int = Query(1, ge=1, description="Numero da pagina"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por pagina"),
     incluir_inativos: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Lista todos os produtos com paginação (requer autenticação)"""
+    """Lista todos os produtos com paginacao (requer autenticacao)"""
     query = db.query(Produto)
     if not incluir_inativos:
         query = query.filter(Produto.ativo == True)
     return paginate(query, page=page, page_size=page_size)
 ```
 
-> **Nota:** adicionar `from fastapi import Query` ao import se não estiver presente.
+> **Nota:** adicionar `from fastapi import Query` ao import se nao estiver presente.
 
-### 3b. `backend/app/api/v1/orcamento.py` — `listar_orcamentos`
+### 3b. `backend/app/api/v1/orcamento.py` - `listar_orcamentos`
 
 ```python
 from ...schemas.pagination import PaginatedResponse
@@ -132,11 +132,11 @@ def listar_orcamentos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Lista todos os orçamentos com paginação (requer autenticação)"""
+    """Lista todos os orcamentos com paginacao (requer autenticacao)"""
     return paginate(db.query(Orcamento), page=page, page_size=page_size)
 ```
 
-### 3c. `backend/app/api/v1/estoque_v2.py` — `obter_historico_produto`
+### 3c. `backend/app/api/v1/estoque_v2.py` - `obter_historico_produto`
 
 ```python
 from ...schemas.pagination import PaginatedResponse
@@ -150,7 +150,7 @@ def obter_historico_produto(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Obtém o histórico de transações de um produto com paginação"""
+    """Obtem o historico de transacoes de um produto com paginacao"""
     produto = db.query(Produto).filter(Produto.id == produto_id).first()
     if not produto:
         raise ProdutoNaoEncontradoError()
@@ -162,9 +162,9 @@ def obter_historico_produto(
     return paginate(query, page=page, page_size=page_size)
 ```
 
-### 3d. `GET /api/v2/estoque/` — listagem de estoque
-Este endpoint usa lógica customizada (subquery + construção manual de EstoqueAtual),
-então NÃO usar o helper genérico. Apenas adicionar os metadados manualmente:
+### 3d. `GET /api/v2/estoque/` - listagem de estoque
+Este endpoint usa logica customizada (subquery + construcao manual de EstoqueAtual),
+entao NAO usar o helper generico. Apenas adicionar os metadados manualmente:
 
 ```python
 @router.get("/", response_model=PaginatedResponse[EstoqueAtual])
@@ -176,14 +176,14 @@ def listar_estoque_completo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # ... (mesma lógica de query existente) ...
-    
+    # ... (mesma logica de query existente) ...
+
     # Ao final, paginar o resultado manualmente:
     total = len(resultado)
     pages = ceil(total / page_size) if page_size > 0 else 0
     start = (page - 1) * page_size
     end = start + page_size
-    
+
     return {
         "items": resultado[start:end],
         "total": total,
@@ -236,14 +236,14 @@ assert isinstance(data["items"], list)
 6. Rodar: `cd backend && pytest tests/ -v`
 7. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [x] Todos os endpoints de listagem retornam `{ items, total, page, page_size, pages }`
-- [x] Parâmetros `page` e `page_size` funcionam corretamente
+- [x] Parametros `page` e `page_size` funcionam corretamente
 - [x] Testes atualizados e passando
-- [x] Endpoint legado `/api/v1/estoque` NÃO foi alterado (manter retrocompatibilidade)
+- [x] Endpoint legado `/api/v1/estoque` NAO foi alterado (manter retrocompatibilidade)
 
 ## Notas
-- **NÃO alterar** o endpoint legado `GET /api/v1/estoque` — ele será depreciado
-- Parâmetros antigos `skip`/`limit` devem ser substituídos por `page`/`page_size`
+- **NAO alterar** o endpoint legado `GET /api/v1/estoque` - ele sera depreciado
+- Parametros antigos `skip`/`limit` devem ser substituidos por `page`/`page_size`
 - Usar `page` 1-indexed (mais intuitivo que 0-indexed)
-- Consultar `AGENTS.md` para padrões do projeto
+- Consultar `AGENTS.md` para padroes do projeto

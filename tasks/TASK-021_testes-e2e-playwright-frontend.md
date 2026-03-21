@@ -9,27 +9,27 @@ depends_on: ["TASK-019"]
 
 ## Objetivo
 
-O `playwright.config.ts` já foi adicionado ao projeto, mas ainda não há nenhum
-teste E2E escrito. Criar suíte mínima de smoke tests para os fluxos críticos do
+O `playwright.config.ts` ja foi adicionado ao projeto, mas ainda nao ha nenhum
+teste E2E escrito. Criar suite minima de smoke tests para os fluxos criticos do
 frontend.
 
-### Escopo mínimo
+### Escopo minimo
 
-1. **Login:** email/senha inválidos exibe erro; credenciais válidas redireciona
+1. **Login:** email/senha invalidos exibe erro; credenciais validas redireciona
    para Dashboard.
-2. **Dashboard:** após login, cards de vendas e alertas de estoque são renderizados.
-3. **Vendas:** listagem carrega, paginação funciona (Anterior/Próxima), modal de
+2. **Dashboard:** apos login, cards de vendas e alertas de estoque sao renderizados.
+3. **Vendas:** listagem carrega, paginacao funciona (Anterior/Proxima), modal de
    detalhes abre e fecha.
 4. **PDV:** abrir tela, adicionar item, finalizar venda (happy path).
 
-### Ações
+### Acoes
 
-1. Instalar dependências de Playwright (`npx playwright install`).
+1. Instalar dependencias de Playwright (`npx playwright install`).
 2. Criar pasta `frontend/e2e/` com testes separados por fluxo.
 3. Adicionar script `npm run test:e2e` ao `package.json`.
 4. Integrar no CI (`.github/workflows/`) como job opcional.
 
-### Critério de aceite
+### Criterio de aceite
 
 - 4+ testes passando localmente.
 - `npm run test:e2e` roda sem erro.

@@ -1,7 +1,7 @@
 ---
 task_id: TASK-032
-title: "Iniciar auditoria fiscal híbrida (regras + score)"
-status: pendente
+title: "Iniciar auditoria fiscal hibrida (regras + score)"
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-030"]
@@ -9,22 +9,22 @@ depends_on: ["TASK-030"]
 
 ## Objetivo
 
-Criar a primeira versão da auditoria fiscal combinando validações
-determinísticas com score de risco explicável.
+Criar a primeira versao da auditoria fiscal combinando validacoes
+deterministicas com score de risco explicavel.
 
-### Ações
+### Acoes
 
-1. Implementar `backend/app/fiscal/engine.py` com regras de inconsistência:
-   - CST incompatível com regime
-   - alíquota fora de faixa esperada
-   - outlier de preço por NCM
+1. Implementar `backend/app/fiscal/engine.py` com regras de inconsistencia:
+   - CST incompativel com regime
+   - aliquota fora de faixa esperada
+   - outlier de preco por NCM
 2. Criar estrutura inicial de `backend/app/ai/audit_service.py` para ranking
-   de risco e explicações textuais.
+   de risco e explicacoes textuais.
 3. Expor endpoint `POST /api/v1/fiscal-ai/validate-note` autenticado.
 4. Retornar contrato com `classificacao`, `confianca`, `explicacao` e `fatores`.
-5. Cobrir com testes unitários e integração de endpoint.
+5. Cobrir com testes unitarios e integracao de endpoint.
 
-### Critério de aceite
+### Criterio de aceite
 
 - Auditoria classifica risco em `baixo`, `medio` ou `alto` com justificativa.
-- Regras determinísticas continuam sendo a camada mandatória da decisão.
+- Regras deterministicas continuam sendo a camada mandatoria da decisao.
