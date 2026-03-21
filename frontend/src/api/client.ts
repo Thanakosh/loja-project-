@@ -1,9 +1,10 @@
 import axios, { AxiosError } from 'axios'
 
+import { API_BASE_URL } from '../config/api'
 import { getToken, getRefreshToken, saveToken, saveRefreshToken, removeToken } from '../utils/auth'
 
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_BASE_URL,
 })
 
 apiClient.interceptors.request.use((config) => {
@@ -68,7 +69,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const res = await axios.post('http://localhost:8000/api/v1/users/refresh', {
+        const res = await axios.post(`${API_BASE_URL}/api/v1/users/refresh`, {
           refresh_token: refreshToken,
         })
 

@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 *.pyc
 *.pyo
 *.pyd
@@ -17,7 +17,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# VariÃ¡veis de ambiente (NUNCA commitar)
+# Variáveis de ambiente (NUNCA commitar)
 .env
 .env.*
 !.env.example
@@ -35,7 +35,6 @@ data/
 node_modules/
 npm-debug.log
 yarn-error.log
-package-lock.json
 yarn.lock
 
 # Docker
@@ -53,14 +52,14 @@ yarn.lock
 # OS
 .DS_Store
 Thumbs.db
-# Entrega cliente (binários Electron)
+# Entrega cliente (bin�rios Electron)
 entrega-cliente/
 
 # Arquivos criados acidentalmente pelo Windows Explorer
 "Novo(a)*"
 "New *"
 
-# Arquivos temporÃ¡rios de anÃ¡lise
+# Arquivos temporários de análise
 analyze_dbf.py
 dbf_analysis.txt
 test_users_output.txt

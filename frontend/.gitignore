@@ -38,4 +38,8 @@ vite.log
 package-full.log
 make-error.log
 eslint-report.json
-package-lock.json
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
+.env.*
+!.env.example

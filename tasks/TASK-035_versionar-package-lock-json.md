@@ -1,7 +1,7 @@
 ---
 task_id: TASK-035
 title: "Versionar package-lock.json no repositÃ³rio"
-status: pendente
+status: concluída
 priority: alta
 agent_chat_executable: "sim"
 depends_on: []
