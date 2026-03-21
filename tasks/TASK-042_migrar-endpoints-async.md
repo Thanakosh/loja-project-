@@ -93,4 +93,34 @@ Para cada modulo:
 - Dependencias de autenticacao async adicionadas em `app/core/security.py` para evitar misturar sync/async no endpoint.
 - `backend/tests/conftest.py` recebeu adapter async sobre a mesma sessao de teste, permitindo validar o modulo incrementalmente sem reestruturar toda a suite.
 - Validacao executada: `pytest backend/tests/test_estoque_v2.py -q` com `8 passed`.
-- Task geral permanece `pendente`, pois os proximos modulos (`pdv.py`, `ocr.py`, `produto.py` e demais) ainda nao foram migrados.
+- Modulo `pdv.py` migrado para `AsyncSession` em `refactor/async-pdv`, incluindo leitura, criacao, cancelamento de vendas e verificacao de preco minimo.
+- `app/services/pdv_service.py` passou a expor funcoes async para evitar misturar `Session` e `AsyncSession` no mesmo fluxo.
+- `app/services/configuracao_loja_service.py` recebeu helper async para suportar os calculos do PDV sem fallback sincrono.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_pdv_preco_minimo.py -q` com `32 passed`.
+- Modulo `ocr.py` migrado para `AsyncSession` em `refactor/async-pdv`, mantendo a semantica atual do upload XML e dos endpoints desativados.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_ocr.py backend/tests/test_ocr_fiscal_validation.py -q` com `16 passed`.
+- Modulo `produto.py` migrado para `AsyncSession`, incluindo CRUD, filtros por categoria/barcode e paginacao.
+- `app/core/pagination.py` recebeu helper `paginate_async()` para suportar listagens migradas sem manter `Query` sincrona no endpoint.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_produto.py -q` com `39 passed`.
+- Modulo `configuracoes.py` migrado para `AsyncSession`, reaproveitando o helper async de configuracao da loja ja usado por `pdv` e `ocr`.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_configuracoes.py -q` com `3 passed`.
+- Modulo `categorias.py` migrado para `AsyncSession`, incluindo CRUD, arvore hierarquica e listagem paginada.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_categorias.py -q` com `3 passed`.
+- Modulo `caixa.py` migrado para `AsyncSession`, incluindo abertura, fechamento, consulta do caixa atual e historico.
+- `app/services/caixa_service.py` passou a expor funcoes async para manter o fluxo do router integralmente assincrono.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_caixa.py -q` com `14 passed`.
+- Modulo `clientes.py` migrado para `AsyncSession`, preservando busca por texto/codigo legado e o historico de observacoes/autorizacoes.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_clientes.py -q` com `3 passed`.
+- Modulo `fornecedores.py` migrado para `AsyncSession`, incluindo CRUD, busca textual, soft delete e reativacao.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_fornecedores.py -q` com `15 passed`.
+- Modulo `contas_receber.py` migrado para `AsyncSession`, incluindo resumo agregado, listagem paginada e baixa de conta.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_contas_receber.py -q` com `4 passed`.
+- Modulo `notas_fiscais.py` migrado para `AsyncSession`, incluindo listagem com filtros e carregamento de itens via eager loading.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_notas_fiscais.py -q` com `3 passed`.
+- `app/core/security.py` recebeu helpers async para autenticacao, emissao/rotacao de refresh token e revogacao de tokens, evitando misturar `Session` e `AsyncSession` no modulo de usuarios.
+- Modulo `users.py` migrado para `AsyncSession`, incluindo login, refresh, logout, registro e listagem.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_users.py -q` com `7 passed`.
+- Modulo `orcamento.py` migrado para `AsyncSession`, incluindo CRUD, exportacao de PDF e conversao em venda via fluxo async do PDV.
+- `app/core/pagination.py` passou a aplicar `unique()` em `paginate_async()` para suportar paginacao de queries com `joinedload` em colecoes.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_orcamento.py -q` com `19 passed`.
+- Task geral permanece `pendente`, pois os proximos modulos (demais endpoints sync) ainda nao foram migrados.

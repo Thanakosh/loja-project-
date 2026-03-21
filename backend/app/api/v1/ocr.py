@@ -1,11 +1,11 @@
 """
-Módulo OCR — Versão atual: apenas XML de NFe.
+Modulo OCR - Versao atual: apenas XML de NFe.
 
-Processamento de imagens (EasyOCR) e PDFs via IA (Gemini) estão planejados
-para uma versão futura e foram desativados intencionalmente.
+Processamento de imagens (EasyOCR) e PDFs via IA (Gemini) estao planejados
+para uma versao futura e foram desativados intencionalmente.
 
-Fila assíncrona: endpoints /processar e /status/{task_id} usam ARQ + Redis.
-O endpoint /upload-arquivo (XML síncrono) NÃO usa a fila — continua ativo independente do Redis.
+Fila assincrona: endpoints /processar e /status/{task_id} usam ARQ + Redis.
+O endpoint /upload-arquivo (XML sincrono) NAO usa a fila - continua ativo independente do Redis.
 """
 
 import hashlib
@@ -17,15 +17,17 @@ from typing import Dict
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.database import get_db
-from ...core.security import get_current_active_user
+from ...core.config import settings
+from ...core.database import get_async_db
+from ...core.limiter import limiter
+from ...core.security import get_current_active_user_async
+from ...models.fornecedor import Fornecedor
 from ...models.user import User
 from ...schemas.ocr import OCRTaskResponse, OCRTaskStatus
-from ...services.configuracao_loja_service import obter_configuracao_loja
-from ...core.config import settings
-from ...core.limiter import limiter
+from ...services.configuracao_loja_service import obter_configuracao_loja_async
 
 import logging
 logger = logging.getLogger(__name__)
@@ -60,11 +62,13 @@ def _build_file_hash(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
 
-def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str, nome_fantasia: str | None = None):
+async def _auto_cadastrar_fornecedor_async(
+    db: AsyncSession, razao_social: str, cnpj_raw: str, nome_fantasia: str | None = None
+):
     """
-    Verifica se o fornecedor já existe pelo CNPJ.
-    Se não existir, cadastra automaticamente.
-    Retorna (status, fornecedor_id) onde status é 'novo' | 'existente' | None
+    Verifica se o fornecedor ja existe pelo CNPJ.
+    Se nao existir, cadastra automaticamente.
+    Retorna (status, fornecedor_id) onde status e 'novo' | 'existente' | None
     """
     try:
         cnpj_digits = re.sub(r"\D", "", cnpj_raw)
@@ -72,38 +76,31 @@ def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str, nome_fantasia: 
             return None, None
         cnpj_fmt = f"{cnpj_digits[:2]}.{cnpj_digits[2:5]}.{cnpj_digits[5:8]}/{cnpj_digits[8:12]}-{cnpj_digits[12:]}"
 
-        from ...core.database import get_engine
-        from ...models.fornecedor import Fornecedor
-        from sqlalchemy.orm import sessionmaker
+        existente = (
+            await db.execute(select(Fornecedor).where(Fornecedor.cnpj == cnpj_fmt))
+        ).scalars().first()
+        if existente:
+            houve_atualizacao = False
+            if razao_social and existente.razao_social != razao_social[:120]:
+                existente.razao_social = razao_social[:120]
+                houve_atualizacao = True
+            if nome_fantasia and existente.nome_fantasia != nome_fantasia[:80]:
+                existente.nome_fantasia = nome_fantasia[:80]
+                houve_atualizacao = True
+            if houve_atualizacao:
+                await db.commit()
+            return "existente", existente.id
 
-        engine = get_engine()
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
-        try:
-            existente = db.query(Fornecedor).filter(Fornecedor.cnpj == cnpj_fmt).first()
-            if existente:
-                houve_atualizacao = False
-                if razao_social and existente.razao_social != razao_social[:120]:
-                    existente.razao_social = razao_social[:120]
-                    houve_atualizacao = True
-                if nome_fantasia and existente.nome_fantasia != nome_fantasia[:80]:
-                    existente.nome_fantasia = nome_fantasia[:80]
-                    houve_atualizacao = True
-                if houve_atualizacao:
-                    db.commit()
-                return "existente", existente.id
-            novo = Fornecedor(
-                razao_social=razao_social[:120],
-                nome_fantasia=nome_fantasia[:80] if nome_fantasia else None,
-                cnpj=cnpj_fmt,
-                ativo=True,
-            )
-            db.add(novo)
-            db.commit()
-            db.refresh(novo)
-            return "novo", novo.id
-        finally:
-            db.close()
+        novo = Fornecedor(
+            razao_social=razao_social[:120],
+            nome_fantasia=nome_fantasia[:80] if nome_fantasia else None,
+            cnpj=cnpj_fmt,
+            ativo=True,
+        )
+        db.add(novo)
+        await db.commit()
+        await db.refresh(novo)
+        return "novo", novo.id
     except Exception as exc:
         logger.warning(
             "[OCR] Falha no auto-cadastro de fornecedor | razao_social=%s | cnpj=%s | erro=%s",
@@ -115,14 +112,12 @@ def _auto_cadastrar_fornecedor(razao_social: str, cnpj_raw: str, nome_fantasia: 
         return None, None
 
 
-
-
 def _ensure_ocr_dependencies() -> None:
     """Mantido por compatibilidade: OCR por imagem/PDF segue desativado."""
     if importlib.util.find_spec("lxml") is None:
         raise HTTPException(
             status_code=503,
-            detail="Dependências de OCR não instaladas no ambiente.",
+            detail="Dependencias de OCR nao instaladas no ambiente.",
         )
 
 
@@ -144,18 +139,18 @@ def _get_file_type(file: UploadFile) -> str:
 @router.get("/status/{task_id}", response_model=OCRTaskStatus, summary="Consulta status de tarefa OCR")
 async def get_ocr_status(
     task_id: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     """
     Consulta o status de uma tarefa OCR.
 
-    Estratégia de busca (fallback em camadas):
-    1. Redis (tarefas enfileiradas via ARQ) — sobrevivem a restart da API.
-    2. Dict em memória (tarefas XML síncronas do /upload-arquivo e sessão corrente).
+    Estrategia de busca (fallback em camadas):
+    1. Redis (tarefas enfileiradas via ARQ) - sobrevivem a restart da API.
+    2. Dict em memoria (tarefas XML sincronas do /upload-arquivo e sessao corrente).
     """
-    # 1. Tenta Redis primeiro
     try:
         from ...core.task_queue import get_task_status as redis_get_status
+
         redis_result = await redis_get_status(task_id)
         if redis_result.get("status") not in ("not_found", None):
             return OCRTaskStatus(
@@ -165,12 +160,11 @@ async def get_ocr_status(
                 error=redis_result.get("error"),
             )
     except Exception as exc:
-        logger.warning("[OCR] Redis indisponível para consulta de status: %s", exc)
+        logger.warning("[OCR] Redis indisponivel para consulta de status: %s", exc)
 
-    # 2. Fallback: dict em memória (XML síncrono + sessão atual)
     _cleanup_expired_tasks()
     if task_id not in ocr_tasks:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada ou expirada")
+        raise HTTPException(status_code=404, detail="Tarefa nao encontrada ou expirada")
 
     task = ocr_tasks[task_id]
     return OCRTaskStatus(
@@ -184,23 +178,23 @@ async def get_ocr_status(
 @router.post(
     "/upload-arquivo",
     response_model=OCRTaskResponse,
-    summary="Upload de arquivo para extração de nota fiscal (somente XML nesta versão)",
+    summary="Upload de arquivo para extracao de nota fiscal (somente XML nesta versao)",
 )
 @limiter.limit(settings.RATE_LIMIT_OCR)
 async def upload_arquivo_nota_fiscal(
     request: Request,
     response: Response,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     """
     Processa o arquivo da nota fiscal enviado.
 
     **Suporte atual:** apenas XML de NFe.
 
-    Processamento de **imagens** e **PDFs** via IA está previsto para uma versão
-    futura e não está disponível neste momento.
+    Processamento de **imagens** e **PDFs** via IA esta previsto para uma versao
+    futura e nao esta disponivel neste momento.
     """
     _cleanup_expired_tasks()
 
@@ -210,7 +204,7 @@ async def upload_arquivo_nota_fiscal(
         raise HTTPException(
             status_code=422,
             detail=(
-                f"Processamento de {'imagens' if file_type == 'image' else 'PDF'} via IA não está disponível nesta versão. "
+                f"Processamento de {'imagens' if file_type == 'image' else 'PDF'} via IA nao esta disponivel nesta versao. "
                 "Utilize o XML da NFe para importar sua nota fiscal."
             ),
         )
@@ -218,10 +212,9 @@ async def upload_arquivo_nota_fiscal(
     if file_type == "unknown":
         raise HTTPException(
             status_code=400,
-            detail="Tipo de arquivo não suportado. Envie o XML da NFe.",
+            detail="Tipo de arquivo nao suportado. Envie o XML da NFe.",
         )
 
-    # — XML de NFe —
     content = await file.read()
     file_hash = _build_file_hash(content)
 
@@ -230,7 +223,7 @@ async def upload_arquivo_nota_fiscal(
         existing_task = ocr_tasks[existing_task_id]
         if existing_task.get("status") in {"pending", "processing", "completed"}:
             logger.info(
-                f"[OCR] Cache hit — reutilizando task existente | task={existing_task_id} | status={existing_task['status']}"
+                f"[OCR] Cache hit - reutilizando task existente | task={existing_task_id} | status={existing_task['status']}"
             )
             return OCRTaskResponse(
                 task_id=existing_task_id,
@@ -241,15 +234,15 @@ async def upload_arquivo_nota_fiscal(
     task_id = str(uuid.uuid4())
 
     try:
-        from ...core.nfe_parser import parse_nfe_xml
-        from ...fiscal.normalizer import normalizar_nota_fiscal
-        from ...fiscal.cross_validator import validar_nota_cruzado
         from ...ai.audit_service import auditar_nota_fiscal
+        from ...core.nfe_parser import parse_nfe_xml
+        from ...fiscal.cross_validator import validar_nota_cruzado
+        from ...fiscal.normalizer import normalizar_nota_fiscal
+
         nota = parse_nfe_xml(content)
         nota_normalizada = normalizar_nota_fiscal(nota)
-        configuracao_loja = obter_configuracao_loja(db)
+        configuracao_loja = await obter_configuracao_loja_async(db)
 
-        # ── Auditoria fiscal automática ──────────────────────────────────
         try:
             audit_result = auditar_nota_fiscal(
                 nota_normalizada,
@@ -276,18 +269,20 @@ async def upload_arquivo_nota_fiscal(
             ]
             logger.info(
                 "[OCR] Auditoria fiscal executada | task=%s | score=%s | classificacao=%s | findings=%d",
-                task_id, audit_result.score, audit_result.classificacao, len(cross_findings),
+                task_id,
+                audit_result.score,
+                audit_result.classificacao,
+                len(cross_findings),
             )
         except Exception as audit_exc:
-            logger.warning("[OCR] Falha na auditoria fiscal (não bloqueante) | task=%s | erro=%s", task_id, audit_exc)
+            logger.warning("[OCR] Falha na auditoria fiscal (nao bloqueante) | task=%s | erro=%s", task_id, audit_exc)
             auditoria_fiscal = None
             validacao_cruzada = []
-        # ─────────────────────────────────────────────────────────────────
 
         fornecedor_status, fornecedor_id = None, None
         if nota.fornecedor and nota.cnpj_fornecedor:
-            fornecedor_status, fornecedor_id = _auto_cadastrar_fornecedor(
-                nota.fornecedor, nota.cnpj_fornecedor, nota.nome_fantasia_fornecedor
+            fornecedor_status, fornecedor_id = await _auto_cadastrar_fornecedor_async(
+                db, nota.fornecedor, nota.cnpj_fornecedor, nota.nome_fantasia_fornecedor
             )
 
         ocr_tasks[task_id] = {
@@ -298,7 +293,7 @@ async def upload_arquivo_nota_fiscal(
             "hash": file_hash,
             "file_type": "xml",
             "result": {
-                "texto": f"[XML NFe] Nota {nota.numero_nota or 'S/N'} — {nota.fornecedor}",
+                "texto": f"[XML NFe] Nota {nota.numero_nota or 'S/N'} - {nota.fornecedor}",
                 "nota_fiscal": {
                     "fornecedor": nota.fornecedor,
                     "nome_fantasia_fornecedor": nota.nome_fantasia_fornecedor,
@@ -335,12 +330,10 @@ async def upload_arquivo_nota_fiscal(
         )
 
 
-# ─── Endpoints legados mantidos por compatibilidade ──────────────────────────
-
 @router.post(
     "/upload",
     response_model=OCRTaskResponse,
-    summary="[DESATIVADO] Upload de imagem para OCR — disponível em versão futura",
+    summary="[DESATIVADO] Upload de imagem para OCR - disponivel em versao futura",
     deprecated=True,
 )
 @limiter.limit(settings.RATE_LIMIT_OCR)
@@ -349,12 +342,12 @@ async def upload_ocr_async(
     response: Response,
     file: UploadFile = File(...),
     use_llm: bool = False,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     raise HTTPException(
         status_code=422,
         detail=(
-            "Processamento de imagens via OCR/IA não está disponível nesta versão. "
+            "Processamento de imagens via OCR/IA nao esta disponivel nesta versao. "
             "Utilize o XML da NFe para importar sua nota fiscal."
         ),
     )
@@ -363,17 +356,17 @@ async def upload_ocr_async(
 @router.post(
     "/upload-sync",
     response_model=OCRTaskResponse,
-    summary="[DESATIVADO] OCR síncrono — disponível em versão futura",
+    summary="[DESATIVADO] OCR sincrono - disponivel em versao futura",
     deprecated=True,
 )
 async def upload_ocr_sync(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     raise HTTPException(
         status_code=422,
         detail=(
-            "Processamento de imagens via OCR/IA não está disponível nesta versão. "
+            "Processamento de imagens via OCR/IA nao esta disponivel nesta versao. "
             "Utilize o XML da NFe para importar sua nota fiscal."
         ),
     )
@@ -382,7 +375,7 @@ async def upload_ocr_sync(
 @router.post(
     "/processar-nota-fiscal",
     response_model=OCRTaskResponse,
-    summary="[DESATIVADO] Processamento de nota fiscal com IA — disponível em versão futura",
+    summary="[DESATIVADO] Processamento de nota fiscal com IA - disponivel em versao futura",
     deprecated=True,
 )
 @limiter.limit(settings.RATE_LIMIT_OCR)
@@ -391,13 +384,13 @@ async def processar_nota_fiscal_completa(
     response: Response,
     file: UploadFile = File(...),
     auto_cadastrar: bool = True,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     raise HTTPException(
         status_code=422,
         detail=(
-            "Processamento com IA não está disponível nesta versão. "
+            "Processamento com IA nao esta disponivel nesta versao. "
             "Utilize o XML da NFe para importar sua nota fiscal."
         ),
     )

@@ -47,6 +47,20 @@ def authenticate_user(db: Session, identifier: str, password: str):
     return user
 
 
+async def authenticate_user_async(db: AsyncSession, identifier: str, password: str):
+    """Autentica usuario por username ou email e senha."""
+    result = await db.execute(select(User).where(User.username == identifier))
+    user = result.scalar_one_or_none()
+    if not user:
+        result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
@@ -87,6 +101,35 @@ def create_token_pair(
     )
     db.add(db_refresh)
     db.commit()
+
+    return access_token, refresh_token_raw
+
+
+async def create_token_pair_async(
+    db: AsyncSession,
+    user: User,
+) -> Tuple[str, str]:
+    """
+    Cria um par access_token + refresh_token.
+
+    Returns:
+        Tuple[str, str]: (access_token, refresh_token_raw)
+    """
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    refresh_token_raw = secrets.token_urlsafe(64)
+    refresh_token_hash = _hash_token(refresh_token_raw)
+
+    db_refresh = RefreshToken(
+        token_hash=refresh_token_hash,
+        user_id=user.id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+    db.add(db_refresh)
+    await db.commit()
 
     return access_token, refresh_token_raw
 
@@ -143,9 +186,66 @@ def rotate_refresh_token(
     return user, access_token, new_refresh
 
 
+async def rotate_refresh_token_async(
+    db: AsyncSession,
+    raw_token: str,
+) -> Optional[Tuple[User, str, str]]:
+    """
+    Valida e rotaciona um refresh token.
+
+    - Revoga o token antigo
+    - Cria novo par (access + refresh)
+    - Detecta reuso de token ja revogado (possivel roubo)
+
+    Returns:
+        Tuple[User, access_token, new_refresh_token] ou None se invalido
+    """
+    token_hash = _hash_token(raw_token)
+
+    db_token = (
+        await db.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
+    ).scalar_one_or_none()
+
+    if not db_token:
+        return None
+
+    if db_token.revoked:
+        await _revoke_all_user_tokens_async(db, db_token.user_id)
+        return None
+
+    expires_at = db_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
+        db_token.revoked = True
+        db_token.revoked_at = datetime.now(timezone.utc)
+        await db.commit()
+        return None
+
+    db_token.revoked = True
+    db_token.revoked_at = datetime.now(timezone.utc)
+
+    user = await db.get(User, db_token.user_id)
+    if not user or not user.is_active:
+        await db.commit()
+        return None
+
+    access_token, new_refresh = await create_token_pair_async(db, user)
+    db_token.replaced_by = _hash_token(new_refresh)
+    await db.commit()
+
+    return user, access_token, new_refresh
+
+
 def revoke_user_tokens(db: Session, user_id: int) -> int:
     """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
     return _revoke_all_user_tokens(db, user_id)
+
+
+async def revoke_user_tokens_async(db: AsyncSession, user_id: int) -> int:
+    """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
+    return await _revoke_all_user_tokens_async(db, user_id)
 
 
 def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
@@ -160,6 +260,19 @@ def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
     )
     db.commit()
     return count
+
+
+async def _revoke_all_user_tokens_async(db: AsyncSession, user_id: int) -> int:
+    """Revoga todos os tokens nao-revogados de um usuario."""
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+    )
+    tokens = result.scalars().all()
+    for token in tokens:
+        token.revoked = True
+        token.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    return len(tokens)
 
 
 async def get_current_user(

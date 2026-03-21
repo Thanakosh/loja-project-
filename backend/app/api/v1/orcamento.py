@@ -3,10 +3,13 @@ import logging
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from ...core.config import settings
-from ...core.database import get_db
+from ...core.database import get_async_db
+from ...core.enums import FormaPagamento
 from ...core.exceptions import (
     ClienteNaoIdentificadoError,
     OrcamentoNaoAbertoError,
@@ -14,14 +17,13 @@ from ...core.exceptions import (
     OrcamentoNaoEncontradoError,
     SemItensElegiveisError,
 )
-from ...core.enums import FormaPagamento
 from ...core.limiter import limiter
-from ...core.pagination import paginate
-from ...core.security import get_current_active_user
+from ...core.pagination import paginate_async
+from ...core.security import get_current_active_user_async
 from ...models.orcamento import Orcamento, OrcamentoItem, StatusOrcamento
 from ...models.user import User
-from ...schemas.pagination import PaginatedResponse
 from ...schemas.orcamento import OrcamentoCreate, OrcamentoRead, OrcamentoUpdate
+from ...schemas.pagination import PaginatedResponse
 from ...schemas.pdv import VendaPDVCreate, VendaPDVItemCreate, VendaPDVRead
 from ...services import pdv_service
 from ...services.pdf_service import gerar_pdf_orcamento
@@ -39,14 +41,22 @@ def _calcular_preco_total_item(quantidade: float, preco_unitario: float, descont
     return quantidade * preco_unitario * (1 - (desconto / 100))
 
 
+async def _buscar_orcamento_com_itens(db: AsyncSession, orcamento_id: int) -> Orcamento | None:
+    return (
+        await db.execute(
+            select(Orcamento).options(joinedload(Orcamento.itens)).where(Orcamento.id == orcamento_id)
+        )
+    ).unique().scalars().first()
+
+
 @router.post("/", response_model=OrcamentoRead, status_code=201)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def criar_orcamento(
+async def criar_orcamento(
     request: Request,
     response: Response,
     orcamento: OrcamentoCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     if not orcamento.cliente_id and not orcamento.cliente_nome:
         raise ClienteNaoIdentificadoError()
@@ -72,11 +82,11 @@ def criar_orcamento(
     ]
 
     db.add(db_orcamento)
-    db.commit()
-    db.refresh(db_orcamento)
+    await db.commit()
+    await db.refresh(db_orcamento)
 
     logger.info(
-        "Orçamento criado",
+        "OrÃ§amento criado",
         extra={
             "trace_id": getattr(request.state, "trace_id", ""),
             "orcamento_id": db_orcamento.id,
@@ -84,42 +94,37 @@ def criar_orcamento(
         },
     )
 
-    return db_orcamento
+    return await _buscar_orcamento_com_itens(db, db_orcamento.id)
 
 
 @router.get("/", response_model=PaginatedResponse[OrcamentoRead])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def listar_orcamentos(
+async def listar_orcamentos(
     request: Request,
     response: Response,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     status: StatusOrcamento | None = Query(default=None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    query = db.query(Orcamento).options(joinedload(Orcamento.itens)).order_by(Orcamento.id.desc())
+    query = select(Orcamento).options(joinedload(Orcamento.itens)).order_by(Orcamento.id.desc())
     if status:
-        query = query.filter(Orcamento.status == status.value)
+        query = query.where(Orcamento.status == status.value)
 
-    return paginate(query, page=page, page_size=page_size)
+    return await paginate_async(db, query, page=page, page_size=page_size)
 
 
 @router.get("/{orcamento_id}", response_model=OrcamentoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def buscar_orcamento(
+async def buscar_orcamento(
     request: Request,
     response: Response,
     orcamento_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    orcamento = (
-        db.query(Orcamento)
-        .options(joinedload(Orcamento.itens))
-        .filter(Orcamento.id == orcamento_id)
-        .first()
-    )
+    orcamento = await _buscar_orcamento_com_itens(db, orcamento_id)
     if not orcamento:
         raise OrcamentoNaoEncontradoError()
     return orcamento
@@ -127,20 +132,15 @@ def buscar_orcamento(
 
 @router.put("/{orcamento_id}", response_model=OrcamentoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def atualizar_orcamento(
+async def atualizar_orcamento(
     request: Request,
     response: Response,
     orcamento_id: int,
     orcamento: OrcamentoUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    db_orcamento = (
-        db.query(Orcamento)
-        .options(joinedload(Orcamento.itens))
-        .filter(Orcamento.id == orcamento_id)
-        .first()
-    )
+    db_orcamento = await _buscar_orcamento_com_itens(db, orcamento_id)
     if not db_orcamento:
         raise OrcamentoNaoEncontradoError()
 
@@ -164,51 +164,47 @@ def atualizar_orcamento(
                     quantidade=item.quantidade,
                     preco_unitario=item.preco_unitario,
                     desconto=item.desconto,
-                    preco_total=_calcular_preco_total_item(item.quantidade, item.preco_unitario, item.desconto),
+                    preco_total=_calcular_preco_total_item(
+                        item.quantidade, item.preco_unitario, item.desconto
+                    ),
                 )
                 for item in orcamento.itens
             ]
         )
 
-    db.commit()
-    db.refresh(db_orcamento)
-    return db_orcamento
+    await db.commit()
+    return await _buscar_orcamento_com_itens(db, orcamento_id)
 
 
 @router.delete("/{orcamento_id}")
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def cancelar_orcamento(
+async def cancelar_orcamento(
     request: Request,
     response: Response,
     orcamento_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    db_orcamento = db.query(Orcamento).filter(Orcamento.id == orcamento_id).first()
+    db_orcamento = await db.get(Orcamento, orcamento_id)
     if not db_orcamento:
         raise OrcamentoNaoEncontradoError()
 
     db_orcamento.status = StatusOrcamento.CANCELADO.value
-    db.commit()
+    await db.commit()
     return {"ok": True}
 
 
 @router.get("/{orcamento_id}/pdf", response_class=FastAPIResponse)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def exportar_orcamento_pdf(
+async def exportar_orcamento_pdf(
     request: Request,
     response: Response,
     orcamento_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    """Gera e retorna o PDF de um orçamento (requer autenticação)."""
-    orcamento = (
-        db.query(Orcamento)
-        .options(joinedload(Orcamento.itens))
-        .filter(Orcamento.id == orcamento_id)
-        .first()
-    )
+    """Gera e retorna o PDF de um orÃ§amento (requer autenticaÃ§Ã£o)."""
+    orcamento = await _buscar_orcamento_com_itens(db, orcamento_id)
     if not orcamento:
         raise OrcamentoNaoEncontradoError()
 
@@ -226,20 +222,15 @@ def exportar_orcamento_pdf(
 
 @router.post("/{orcamento_id}/converter", response_model=VendaPDVRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def converter_orcamento_em_venda(
+async def converter_orcamento_em_venda(
     request: Request,
     response: Response,
     orcamento_id: int,
     payload: ConverterOrcamentoRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    db_orcamento = (
-        db.query(Orcamento)
-        .options(joinedload(Orcamento.itens))
-        .filter(Orcamento.id == orcamento_id)
-        .first()
-    )
+    db_orcamento = await _buscar_orcamento_com_itens(db, orcamento_id)
     if not db_orcamento:
         raise OrcamentoNaoEncontradoError()
 
@@ -269,13 +260,13 @@ def converter_orcamento_em_venda(
         itens=itens_venda,
     )
 
-    venda = pdv_service.registrar_venda(db, venda_in, current_user.id)
+    venda = await pdv_service.registrar_venda_async(db, venda_in, current_user.id)
     db_orcamento.status = StatusOrcamento.CONVERTIDO.value
     db_orcamento.venda_id = venda.id
-    db.commit()
+    await db.commit()
 
     logger.info(
-        "Orçamento convertido em venda",
+        "OrÃ§amento convertido em venda",
         extra={
             "trace_id": getattr(request.state, "trace_id", ""),
             "orcamento_id": db_orcamento.id,

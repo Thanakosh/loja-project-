@@ -51,6 +51,9 @@ class ScalarResultAdapter:
     def scalars(self):
         return self._result.scalars()
 
+    def unique(self):
+        return ScalarResultAdapter(self._result.unique())
+
 
 class AsyncSessionAdapter:
     def __init__(self, session: Session):
@@ -67,6 +70,9 @@ class AsyncSessionAdapter:
 
     def add(self, *args, **kwargs):
         return self._session.add(*args, **kwargs)
+
+    async def flush(self):
+        self._session.flush()
 
     async def commit(self):
         self._session.commit()
