@@ -15,6 +15,7 @@ from app.ai.duplicate_detector import (
     DuplicateCheckResult,
     SIMILARITY_THRESHOLD,
     SIMILARITY_WARNING,
+    verificar_duplicatas,
 )
 
 
@@ -188,6 +189,52 @@ class TestDuplicateCheckResult:
         assert d["candidatos"][0]["produto_id"] == 42
 
 
+class TestVerificarDuplicatasTFIDF:
+    def test_fallback_tfidf_recalcula_query_e_candidatos_no_mesmo_lote(self, monkeypatch):
+        import app.ai.duplicate_detector as detector
+
+        class FakeEngine:
+            method = "tfidf"
+
+            def ensure_loaded(self):
+                return None
+
+            def encode_single(self, texto):
+                raise AssertionError("encode_single não deve ser usado no fallback TF-IDF")
+
+            def encode(self, textos):
+                assert textos == [
+                    "coca cola 2 litros",
+                    "coca cola 2 litros pet",
+                    "sabao em po 1 kg",
+                ]
+                return np.array(
+                    [
+                        [1.0, 0.0, 0.0],
+                        [0.95, 0.0, 0.0],
+                        [0.2, 0.0, 0.0],
+                    ],
+                    dtype=np.float32,
+                )
+
+        monkeypatch.setattr(detector, "get_engine", lambda: FakeEngine())
+
+        result = verificar_duplicatas(
+            descricao_nova="Coca Cola 2L",
+            produtos_existentes=[
+                (1, "Coca Cola 2L PET", "nao-e-json"),
+                (2, "Sabao em po 1kg", "tambem-invalido"),
+            ],
+            limite_resultados=5,
+        )
+
+        assert result.metodo == "tfidf"
+        assert result.tem_duplicata is True
+        assert len(result.candidatos) == 1
+        assert result.candidatos[0].produto_id == 1
+        assert result.candidatos[0].nivel == "duplicata"
+
+
 # ─── Endpoint (integração com TestClient) ───
 
 
@@ -260,6 +307,26 @@ class TestCheckDuplicateEndpoint:
         if resp.status_code == 200:
             data = resp.json()
             assert data["candidatos"] == []
+
+    def test_check_duplicate_retorna_503_quando_motor_nao_esta_disponivel(self, client, auth_headers, monkeypatch):
+        import app.ai.duplicate_detector as detector
+
+        class BrokenEngine:
+            def ensure_loaded(self):
+                raise RuntimeError("Nenhum motor disponível")
+
+        monkeypatch.setattr(detector, "get_engine", lambda: BrokenEngine())
+
+        resp = client.post(
+            "/api/v1/ai/check-duplicate",
+            json={"descricao": "Coca Cola 2L"},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 503
+        data = resp.json()
+        assert "requirements-ai.txt" in data["message"]
+        assert "requirements-ai.txt" in data["details"]
 
     def test_generate_embeddings_sem_auth_retorna_401(self, client):
         resp = client.post("/api/v1/ai/generate-embeddings", json={})

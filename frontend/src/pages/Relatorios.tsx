@@ -54,7 +54,7 @@ interface EstoqueAtual {
   ultima_movimentacao: string | null
 }
 
-type Tab = 'vendas' | 'estoque' | 'resumo' | 'itens-mais-vendidos'
+type Tab = 'vendas' | 'estoque' | 'resumo' | 'itens-mais-vendidos' | 'ranking-fornecedores'
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -73,6 +73,155 @@ const downloadPdf = async (endpoint: string, filename: string, params?: Record<s
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+interface SupplierRankingItem {
+  fornecedor_id: number
+  razao_social: string
+  cnpj: string
+  total_notas: number
+  total_itens: number
+  valor_total: number
+  score_confiabilidade: number
+}
+
+const AbaRankingFornecedores = () => {
+  const [criterio, setCriterio] = useState<'valor_total' | 'total_notas' | 'total_itens'>('valor_total')
+  const [limite, setLimite] = useState(10)
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['supplier-ranking', criterio, limite],
+    queryFn: async () => {
+      const res = await api.get(`/fiscal-ai/supplier-ranking?criterio=${criterio}&limite=${limite}`)
+      return res.data as { fornecedores: SupplierRankingItem[]; total: number; criterio: string }
+    },
+  })
+
+  const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  const criterioLabels = {
+    valor_total: { label: 'Valor Total', icon: '💰' },
+    total_notas: { label: 'Nº de Notas', icon: '🧾' },
+    total_itens: { label: 'Nº de Itens', icon: '📦' },
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow border border-gray-200 dark:border-gray-700 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ordenar por</label>
+          <div className="flex gap-2">
+            {(Object.entries(criterioLabels) as [typeof criterio, { label: string; icon: string }][]).map(([key, { label, icon }]) => (
+              <button
+                key={key}
+                onClick={() => setCriterio(key)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  criterio === key
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Exibir</label>
+          <select
+            value={limite}
+            onChange={e => setLimite(Number(e.target.value))}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {[5, 10, 20].map(n => <option key={n} value={n}>Top {n}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="ml-auto rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+        >
+          🔄 Atualizar
+        </button>
+      </div>
+
+      <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            🏆 Ranking de Fornecedores — por {criterioLabels[criterio].label}
+          </h3>
+          {data && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">{data.total} fornecedor(es) com dados</span>
+          )}
+        </div>
+
+        {isLoading && (
+          <div className="flex items-center justify-center py-12 gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            Carregando ranking...
+          </div>
+        )}
+
+        {isError && (
+          <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">
+            Erro ao carregar ranking. Verifique se o servidor está rodando.
+          </div>
+        )}
+
+        {data && data.fornecedores.length === 0 && (
+          <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            Nenhum fornecedor com dados. Importe notas fiscais primeiro.
+          </div>
+        )}
+
+        {data && data.fornecedores.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  {['#', 'Fornecedor', 'CNPJ', 'Notas', 'Itens', 'Valor Total', 'Score'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {data.fornecedores.map((f, i) => {
+                  const scorePct = Math.round(f.score_confiabilidade * 100)
+                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                  return (
+                    <tr key={f.fornecedor_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {medal ? <span>{medal}</span> : <span className="text-gray-400">#{i + 1}</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate max-w-[200px]">{f.razao_social}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">{f.cnpj}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-300">{f.total_notas}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-700 dark:text-gray-300">{f.total_itens}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{moneyFmt.format(f.valor_total)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600">
+                            <div
+                              className={`h-1.5 rounded-full ${
+                                scorePct >= 75 ? 'bg-emerald-500' : scorePct >= 40 ? 'bg-yellow-500' : 'bg-red-400'
+                              }`}
+                              style={{ width: `${scorePct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-7">{scorePct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 const formatDate = (dateStr: string) => {
@@ -708,6 +857,15 @@ const Relatorios = () => {
           >
             Itens Mais Vendidos
           </button>
+          <button
+            onClick={() => setActiveTab('ranking-fornecedores')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'ranking-fornecedores'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+          >
+            🏆 Ranking Fornecedores
+          </button>
         </nav>
       </div>
 
@@ -716,6 +874,7 @@ const Relatorios = () => {
         {activeTab === 'estoque' && <AbaEstoque />}
         {activeTab === 'resumo' && <AbaResumoMes />}
         {activeTab === 'itens-mais-vendidos' && <AbaItensMaisVendidos />}
+        {activeTab === 'ranking-fornecedores' && <AbaRankingFornecedores />}
       </div>
     </div>
   )

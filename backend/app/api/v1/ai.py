@@ -21,6 +21,32 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _get_duplicate_detector_module():
+    try:
+        from app.ai import duplicate_detector
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Motor de embeddings não disponível. "
+                "Instale as dependências: pip install -r requirements-ai.txt"
+            ),
+        ) from exc
+
+    try:
+        duplicate_detector.ensure_embedding_engine_available()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Motor de embeddings não disponível. "
+                "Instale as dependências: pip install -r requirements-ai.txt"
+            ),
+        ) from exc
+
+    return duplicate_detector
+
+
 @router.post("/check-duplicate", response_model=DuplicateCheckResponse)
 def check_duplicate(
     payload: DuplicateCheckRequest,
@@ -60,16 +86,7 @@ def check_duplicate(
             )
 
     # ── Verificação por similaridade de embedding ──
-    try:
-        from app.ai.duplicate_detector import verificar_duplicatas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Motor de embeddings não disponível. "
-                "Instale as dependências: pip install -r requirements-ai.txt"
-            ),
-        ) from exc
+    duplicate_detector = _get_duplicate_detector_module()
 
     # Buscar todos os produtos ativos com nome e embedding
     produtos_db = (
@@ -90,7 +107,7 @@ def check_duplicate(
     # Converter para o formato esperado: (id, nome, embedding_json | None)
     produtos_tuples = [(p.id, p.nome, p.embedding) for p in produtos_db]
 
-    result = verificar_duplicatas(
+    result = duplicate_detector.verificar_duplicatas(
         descricao_nova=payload.descricao,
         produtos_existentes=produtos_tuples,
         limite_resultados=payload.limite,
@@ -124,13 +141,7 @@ def generate_embeddings(
     Se `produto_ids` for fornecido, gera apenas para esses produtos.
     Se omitido, gera para todos os produtos ativos sem embedding.
     """
-    try:
-        from app.ai.duplicate_detector import gerar_embedding_produto
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Motor de embeddings não disponível.",
-        ) from exc
+    duplicate_detector = _get_duplicate_detector_module()
 
     query = db.query(Produto).filter(Produto.ativo.is_(True))
 
@@ -151,7 +162,7 @@ def generate_embeddings(
             texto = produto.nome
             if produto.descricao:
                 texto = f"{produto.nome} {produto.descricao}"
-            produto.embedding = gerar_embedding_produto(texto)
+            produto.embedding = duplicate_detector.gerar_embedding_produto(texto)
             atualizados += 1
         except Exception as exc:
             erros.append({"produto_id": produto.id, "erro": str(exc)})

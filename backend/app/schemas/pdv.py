@@ -63,6 +63,29 @@ class VendaPDVCreate(BaseModel):
         return value
 
 
+# ── Alertas de preço mínimo ──────────────────────────────────────────────
+
+
+class AlertaPrecoMinimo(BaseModel):
+    """Alerta emitido quando o preço praticado está abaixo do preço mínimo calculado."""
+    produto_id: int
+    produto_nome: str
+    preco_praticado: float
+    preco_minimo: float
+    prejuizo_estimado: float
+
+
+class VerificacaoPrecoRequest(BaseModel):
+    """Request para verificar preços antes de registrar a venda."""
+    itens: List[VendaPDVItemCreate] = Field(min_length=1)
+
+
+class VerificacaoPrecoResponse(BaseModel):
+    """Resultado da verificação de preço mínimo."""
+    alertas: List[AlertaPrecoMinimo] = []
+    tem_alertas: bool = False
+
+
 class VendaPDVRead(BaseModel):
     id: int
     numero_legado: int
@@ -79,6 +102,7 @@ class VendaPDVRead(BaseModel):
     autorizacao_terceiro_observacao: Optional[str] = None
     itens: List[VendaItemRead] = []
     cancelada: bool
+    alertas_preco: List[AlertaPrecoMinimo] = []
 
     @model_validator(mode='after')
     def populate_forma_pagamento_label(self):
@@ -99,3 +123,4 @@ class VendaPDVRead(BaseModel):
         return self
 
     model_config = ConfigDict(from_attributes=True)
+

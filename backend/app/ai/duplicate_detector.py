@@ -225,6 +225,13 @@ def get_engine() -> _EmbeddingEngine:
     return _engine
 
 
+def ensure_embedding_engine_available() -> str:
+    """Garante que pelo menos um motor de embeddings esteja disponível."""
+    engine = get_engine()
+    engine.ensure_loaded()
+    return engine.method
+
+
 # ─── Serialização de embeddings para o banco ───
 
 
@@ -290,8 +297,19 @@ def verificar_duplicatas(
         DuplicateCheckResult com os candidatos ordenados por similaridade
     """
     engine = get_engine()
+    engine.ensure_loaded()
 
     desc_normalizada = normalizar_descricao(descricao_nova)
+
+    if engine.method == "tfidf":
+        return _verificar_duplicatas_tfidf(
+            engine=engine,
+            descricao_nova=descricao_nova,
+            desc_normalizada=desc_normalizada,
+            produtos_existentes=produtos_existentes,
+            limite_resultados=limite_resultados,
+        )
+
     query_vec = engine.encode_single(desc_normalizada)
 
     # Separar produtos com e sem embedding salvo
@@ -337,6 +355,55 @@ def verificar_duplicatas(
         nivel = classificar_nivel(sim_float)
         if nivel == "ok":
             break  # Os próximos serão ainda menores
+        candidatos.append(DuplicateCandidate(
+            produto_id=ids[idx],
+            produto_nome=nomes[idx],
+            similaridade=sim_float,
+            nivel=nivel,
+        ))
+
+    return DuplicateCheckResult(
+        descricao_consultada=descricao_nova,
+        candidatos=candidatos,
+        metodo=engine.method,
+    )
+
+
+def _verificar_duplicatas_tfidf(
+    engine: _EmbeddingEngine,
+    descricao_nova: str,
+    desc_normalizada: str,
+    produtos_existentes: Sequence[tuple[int, str, Optional[str]]],
+    limite_resultados: int,
+) -> DuplicateCheckResult:
+    """Executa a comparação TF-IDF no mesmo espaço vetorial da requisição.
+
+    Embeddings TF-IDF persistidos não são comparáveis entre requisições distintas,
+    então o fallback sempre recalcula query e candidatos no mesmo fit_transform.
+    """
+    if not produtos_existentes:
+        return DuplicateCheckResult(
+            descricao_consultada=descricao_nova,
+            metodo=engine.method,
+        )
+
+    ids = [prod_id for prod_id, _, _ in produtos_existentes]
+    nomes = [prod_nome for _, prod_nome, _ in produtos_existentes]
+    textos = [desc_normalizada, *[normalizar_descricao(nome) for nome in nomes]]
+    vectors = engine.encode(textos)
+
+    query_vec = vectors[0]
+    candidates_matrix = vectors[1:]
+    sims = cosine_similarity_batch(query_vec, candidates_matrix)
+
+    indexed = sorted(enumerate(sims), key=lambda x: x[1], reverse=True)
+    candidatos: List[DuplicateCandidate] = []
+
+    for idx, sim_score in indexed[:limite_resultados]:
+        sim_float = float(sim_score)
+        nivel = classificar_nivel(sim_float)
+        if nivel == "ok":
+            break
         candidatos.append(DuplicateCandidate(
             produto_id=ids[idx],
             produto_nome=nomes[idx],
