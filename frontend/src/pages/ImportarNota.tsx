@@ -3,7 +3,9 @@ import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
+import ModalDuplicatas from '../components/ModalDuplicatas'
 import api from '../services/api'
+import type { DuplicateResolution, SimilarItem } from '../types/importacaoNota'
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -90,6 +92,7 @@ let keyCounter = 0
 const nextKey = () => `item-${++keyCounter}`
 const POLLING_INTERVAL = 2000
 const ACCEPT_STRING = '.xml,text/xml,application/xml'
+const normalizeProductName = (value: string) => value.trim().toLowerCase()
 type FileKind = 'xml' | 'unknown'
 function detectFileKind(file: File): FileKind {
     const name = file.name.toLowerCase()
@@ -104,22 +107,7 @@ const FILE_KIND_LABELS: Record<FileKind, { icon: string; label: string }> = {
 /* ─────────────────────────────────────────────
    MODAL DE CONFIRMAÇÃO DE DUPLICATAS SIMILARES
 ───────────────────────────────────────────── */
-interface SimilarItem {
-    key: string
-    nomeImportando: string
-    nomeExistente: string
-    produtoId: number
-    similaridade: number
-    nivel: 'duplicata' | 'alerta'
-}
-
-interface ModalDuplicatasProps {
-    itens: SimilarItem[]
-    onConfirmar: () => void
-    onCancelar: () => void
-}
-
-const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProps) => {
+const ModalDuplicatasLegacy = ({ itens, onConfirmar, onCancelar }: { itens: SimilarItem[]; onConfirmar: () => void; onCancelar: () => void }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
@@ -188,6 +176,8 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
 /* ─────────────────────────────────────────────
    PAINEL DE AUDITORIA FISCAL
 ───────────────────────────────────────────── */
+void ModalDuplicatasLegacy
+
 const CLASSIFICACAO_CONFIG = {
     baixo: { emoji: '🟢', label: 'Baixo Risco', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200', badge: 'bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200' },
     medio: { emoji: '🟡', label: 'Risco Médio', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200' },
@@ -344,6 +334,7 @@ const TabImportar = () => {
     const [modalItens, setModalItens] = useState<SimilarItem[]>([])
     const [showModal, setShowModal] = useState(false)
     const pendingImportRef = useRef<ItemExtraido[]>([])
+    const runAiCheckRef = useRef<(itemsList: ItemExtraido[]) => Promise<void>>(async () => {})
 
     type Step = 'upload' | 'processing' | 'review' | 'done'
     const [step, setStep] = useState<Step>('upload')
@@ -398,7 +389,9 @@ const TabImportar = () => {
 
         // Disparar verificação de IA logo após carregar os itens
         if (mapped.length > 0) {
-            setTimeout(() => runAiCheck(mapped), 300)
+            setTimeout(() => {
+                void runAiCheckRef.current(mapped)
+            }, 300)
         }
     }, [])
 
@@ -460,6 +453,10 @@ const TabImportar = () => {
         }))
         setAiChecking(false)
     }, [])
+
+    useEffect(() => {
+        runAiCheckRef.current = runAiCheck
+    }, [runAiCheck])
 
     const uploadMutation = useMutation({
         mutationFn: async (fileToUpload: File) => {
@@ -525,9 +522,33 @@ const TabImportar = () => {
             if (field === 'nome') {
                 updated.aiStatus = undefined
                 updated.aiNomeExistente = undefined
+                updated.aiProdutoId = undefined
+                updated.aiSimilaridade = undefined
+                updated.aiNivel = undefined
             }
             return updated
         }))
+    }
+
+    const applyDuplicateResolution = (item: ItemExtraido, resolution: DuplicateResolution) => {
+        if (resolution.mode === 'importado') return item
+
+        const resolvedName = resolution.resolvedName.trim()
+        if (!resolvedName) return item
+
+        const matchesExisting =
+            !!item.aiNomeExistente &&
+            normalizeProductName(resolvedName) === normalizeProductName(item.aiNomeExistente)
+
+        return {
+            ...item,
+            nome: resolvedName,
+            aiStatus: matchesExisting ? 'duplicata_exata' : 'ok',
+            aiNomeExistente: matchesExisting ? item.aiNomeExistente : undefined,
+            aiProdutoId: matchesExisting ? item.aiProdutoId : undefined,
+            aiSimilaridade: matchesExisting ? item.aiSimilaridade : undefined,
+            aiNivel: matchesExisting ? item.aiNivel : undefined,
+        }
     }
 
     const removeItem = (key: string) => setItens(prev => prev.filter(item => item.key !== key))
@@ -601,13 +622,28 @@ const TabImportar = () => {
         importMutation.mutate(selectedItems)
     }
 
-    const handleModalConfirmar = () => {
+    const handleModalConfirmar = (resolutions: DuplicateResolution[]) => {
+        const resolutionsByKey = new Map(resolutions.map((resolution) => [resolution.key, resolution]))
+        const resolvedItems = pendingImportRef.current.map((item) => {
+            const resolution = resolutionsByKey.get(item.key)
+            return resolution ? applyDuplicateResolution(item, resolution) : item
+        })
+
+        setItens((prev) =>
+            prev.map((item) => {
+                const resolution = resolutionsByKey.get(item.key)
+                return resolution ? applyDuplicateResolution(item, resolution) : item
+            })
+        )
         setShowModal(false)
-        importMutation.mutate(pendingImportRef.current)
+        setModalItens([])
+        pendingImportRef.current = []
+        importMutation.mutate(resolvedItems)
     }
 
     const handleModalCancelar = () => {
         setShowModal(false)
+        setModalItens([])
         pendingImportRef.current = []
     }
 
@@ -616,7 +652,7 @@ const TabImportar = () => {
         setErrorMsg(null); setItens([]); setFornecedorGlobal(''); setNomeFantasiaFornecedor('')
         setCnpjFornecedor(''); setNumeroNota(''); setDataEmissaoNota(''); setValorTotalNota(0)
         setFornecedorStatus(null); setStep('upload'); setAiChecking(false)
-        setShowModal(false); pendingImportRef.current = []
+        setShowModal(false); setModalItens([]); pendingImportRef.current = []
         setAuditoriaFiscal(null); setValidacaoCruzada([])
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
