@@ -1,66 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
-import api from '../services/api'
+import {
+  useCategoriasArvore,
+  useCheckProdutoDuplicate,
+  useCreateProduto,
+  useDeactivateProduto,
+  useDeleteProdutoPermanente,
+  useProdutos,
+  useReactivateProduto,
+  useUpdateProduto,
+} from '../hooks/useProdutos'
 import { useAccessibleModal } from '../hooks/useAccessibleModal'
-
-interface Produto {
-  id: number
-  nome: string
-  descricao?: string | null
-  fornecedor: string
-  preco_unitario: number
-  preco_liquido: number
-  codigo_ncm?: string | null
-  unidade?: string | null
-  unidade_medida?: string | null
-  estoque_atual: number
-  estoque_baixo: boolean
-  estoque_minimo: number
-  ativo: boolean
-  data_emissao?: string | null
-  numero_nota?: string | null
-  cnpj_fornecedor?: string | null
-  categoria_id?: number | null
-  preco_custo?: number | null
-  preco_varejo?: number | null
-  preco_atacado?: number | null
-  qtd_minima_atacado?: number | null
-}
-
-interface CategoriaTreeNode {
-  id: number
-  nome: string
-  parent_id?: number | null
-  ativo: boolean
-  children: CategoriaTreeNode[]
-}
-
-interface ProdutoFormPayload {
-  nome: string
-  fornecedor: string
-  preco_unitario: number
-  preco_liquido: number
-  estoque_minimo: number
-  quantidade_inicial?: number
-  unidade?: string
-  unidade_medida?: string
-  codigo_ncm?: string
-  descricao?: string
-  categoria_id?: number
-  preco_custo?: number
-  preco_varejo?: number
-  preco_atacado?: number
-  qtd_minima_atacado?: number
-}
-
-interface ProdutoListResponse {
-  items: Produto[]
-  total: number
-  page: number
-  pages: number
-}
+import type {
+  CategoriaTreeNode,
+  Produto,
+  ProdutoFormPayload,
+} from '../types/produtos'
 
 interface FormState {
   nome: string
@@ -95,13 +51,6 @@ interface DuplicateCandidate {
   produto_nome: string
   similaridade: number
   nivel: 'duplicata' | 'alerta'
-}
-
-interface DuplicateCheckResponse {
-  tem_duplicata: boolean
-  tem_alerta: boolean
-  metodo: string
-  candidatos: DuplicateCandidate[]
 }
 
 interface AiResult {
@@ -286,7 +235,6 @@ const ModalExclusao = ({ produto, onConfirmar, onCancelar, isPending }: ModalExc
 }
 
 const Produtos = () => {
-  const queryClient = useQueryClient()
   const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(1)
@@ -307,92 +255,25 @@ const Produtos = () => {
   const aiDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastCheckedNomeRef = useRef<string>('')
 
-  const produtosQuery = useQuery({
-    queryKey: ['produtos', page, searchTerm, incluirInativos, categoriaFiltro],
-    queryFn: async () => {
-      const response = await api.get('/produtos/', {
-        params: {
-          page, page_size: PAGE_SIZE, incluir_inativos: incluirInativos,
-          search: searchTerm || undefined,
-          categoria_id: categoriaFiltro ? Number(categoriaFiltro) : undefined
-        }
-      })
-      return response.data as ProdutoListResponse
-    },
-    placeholderData: (previousData) => previousData
+  const produtosQuery = useProdutos({
+    page,
+    page_size: PAGE_SIZE,
+    incluir_inativos: incluirInativos,
+    search: searchTerm || undefined,
+    categoria_id: categoriaFiltro ? Number(categoriaFiltro) : undefined,
   })
 
-  const categoriasQuery = useQuery({
-    queryKey: ['categorias-arvore'],
-    queryFn: async () => {
-      const response = await api.get('/categorias/arvore')
-      return response.data as CategoriaTreeNode[]
-    }
-  })
+  const categoriasQuery = useCategoriasArvore()
+  const checkDuplicateMutation = useCheckProdutoDuplicate()
 
   const produtos = produtosQuery.data?.items ?? []
   const totalPages = Math.max(1, produtosQuery.data?.pages ?? 1)
 
-  const createMutation = useMutation({
-    mutationFn: async (payload: ProdutoFormPayload) => {
-      const response = await api.post('/produtos/', payload)
-      return { data: response.data as Produto, acao: response.headers['x-produto-acao'] ?? 'criado' }
-    },
-    onSuccess: ({ acao }) => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      closeModal()
-      if (acao === 'estoque_somado') {
-        toast.success('Produto já existia — estoque somado com sucesso!')
-      } else {
-        toast.success('Produto criado com sucesso!')
-      }
-    },
-    onError: () => { setFormError('Não foi possível criar o produto. Verifique os dados e tente novamente.') }
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: number; payload: ProdutoFormPayload }) => {
-      const response = await api.put(`/produtos/${id}`, payload)
-      return response.data as Produto
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      closeModal()
-      toast.success('Produto atualizado com sucesso!')
-    },
-    onError: () => { setFormError('Não foi possível atualizar o produto. Verifique os dados e tente novamente.') }
-  })
-
-  const deactivateMutation = useMutation({
-    mutationFn: async (id: number) => { await api.delete(`/produtos/${id}`) },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      toast.success('Produto desativado com sucesso!')
-    }
-  })
-
-  const reactivateMutation = useMutation({
-    mutationFn: async (id: number) => { await api.post(`/produtos/${id}/reativar`) },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      toast.success('Produto reativado com sucesso!')
-    }
-  })
-
-  const deletePermanenteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await api.delete(`/produtos/${id}/permanente`)
-      return response.data
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      setProdutoParaExcluir(null)
-      toast.success(data.message ?? 'Produto removido permanentemente.')
-    },
-    onError: () => {
-      toast.error('Não foi possível remover o produto. Tente novamente.')
-    }
-  })
+  const createMutation = useCreateProduto()
+  const updateMutation = useUpdateProduto()
+  const deactivateMutation = useDeactivateProduto()
+  const reactivateMutation = useReactivateProduto()
+  const deletePermanenteMutation = useDeleteProdutoPermanente()
 
   const isSaving = createMutation.isPending || updateMutation.isPending
   const modalRef = useAccessibleModal(isModalOpen, closeModal)
@@ -406,10 +287,7 @@ const Produtos = () => {
     setAiResult({ status: 'checking' })
 
     try {
-      const res = await api.post<DuplicateCheckResponse>('/ai/check-duplicate', {
-        descricao: nomeTrimmed, limite: 3,
-      })
-      const data = res.data
+      const data = await checkDuplicateMutation.mutateAsync(nomeTrimmed)
 
       if (data.candidatos.length === 0) {
         setAiResult({ status: 'ok' })
@@ -544,17 +422,57 @@ const Produtos = () => {
     event.preventDefault(); setFormError('')
     if (!validateForm()) return
     const payload = buildPayload()
-    if (modalMode === 'create') { createMutation.mutate(payload); return }
-    if (!editingProduto) { setFormError('Produto inválido para edição.'); return }
-    updateMutation.mutate({ id: editingProduto.id, payload })
+
+    if (modalMode === 'create') {
+      createMutation.mutate(payload, {
+        onSuccess: ({ acao }) => {
+          closeModal()
+          if (acao === 'estoque_somado') {
+            toast.success('Produto já existia — estoque somado com sucesso!')
+          } else {
+            toast.success('Produto criado com sucesso!')
+          }
+        },
+        onError: () => {
+          setFormError('Não foi possível criar o produto. Verifique os dados e tente novamente.')
+        },
+      })
+      return
+    }
+
+    if (!editingProduto) {
+      setFormError('Produto inválido para edição.')
+      return
+    }
+
+    updateMutation.mutate(
+      { id: editingProduto.id, payload },
+      {
+        onSuccess: () => {
+          closeModal()
+          toast.success('Produto atualizado com sucesso!')
+        },
+        onError: () => {
+          setFormError('Não foi possível atualizar o produto. Verifique os dados e tente novamente.')
+        },
+      },
+    )
   }
 
   const handleToggleStatus = (produto: Produto) => {
     if (produto.ativo) {
       if (!window.confirm(`Deseja desativar o produto "${produto.nome}"?`)) return
-      deactivateMutation.mutate(produto.id)
+      deactivateMutation.mutate(produto.id, {
+        onSuccess: () => {
+          toast.success('Produto desativado com sucesso!')
+        },
+      })
     } else {
-      reactivateMutation.mutate(produto.id)
+      reactivateMutation.mutate(produto.id, {
+        onSuccess: () => {
+          toast.success('Produto reativado com sucesso!')
+        },
+      })
     }
   }
 
@@ -573,7 +491,17 @@ const Produtos = () => {
         <ModalExclusao
           produto={produtoParaExcluir}
           isPending={deletePermanenteMutation.isPending}
-          onConfirmar={() => deletePermanenteMutation.mutate(produtoParaExcluir.id)}
+          onConfirmar={() =>
+            deletePermanenteMutation.mutate(produtoParaExcluir.id, {
+              onSuccess: (data) => {
+                setProdutoParaExcluir(null)
+                toast.success(data.message ?? 'Produto removido permanentemente.')
+              },
+              onError: () => {
+                toast.error('Não foi possível remover o produto. Tente novamente.')
+              },
+            })
+          }
           onCancelar={() => { if (!deletePermanenteMutation.isPending) setProdutoParaExcluir(null) }}
         />
       )}
@@ -846,3 +774,5 @@ const Produtos = () => {
 }
 
 export default Produtos
+
+
