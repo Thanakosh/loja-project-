@@ -129,4 +129,7 @@ Para cada modulo:
 - Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_fiscal_ai.py -q` com `16 passed`.
 - Modulo `vendas.py` migrado para `AsyncSession`, incluindo listagem paginada, resumo por periodo, detalhamento e listagem por cliente.
 - Validacao indireta executada: `$env:DEBUG='false'; pytest backend/tests/test_pdv.py backend/tests/test_orcamento.py backend/tests/test_relatorios_pdf.py backend/tests/test_fiscal_ai.py -q` com `64 passed`.
-- Task geral permanece `pendente`, pois os proximos modulos (demais endpoints sync) ainda nao foram migrados.
+- Modulos `movimentacao.py`, `politica_desconto.py`, `estoque.py` (legado) e `ai.py` migrados para `AsyncSession`, cobrindo o bloco final de routers remanescentes em `app/api/v1/`.
+- Validacao executada: `$env:DEBUG='false'; pytest backend/tests/test_fiscal_ai.py backend/tests/test_estoque.py -q` com `17 passed`.
+- Verificacao estrutural executada: busca por `Depends(get_db)` em `backend/app/api/v1` sem ocorrencias restantes.
+- Task geral segue `pendente` apenas porque ainda faltam as etapas globais de limpeza previstas na task (ex.: remocao do `get_db()` sync, convergencia final da infraestrutura e atualizacao da estrategia), mas a migracao incremental dos routers de `app/api/v1/` foi concluida.
