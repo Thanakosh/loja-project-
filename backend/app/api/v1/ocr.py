@@ -23,6 +23,7 @@ from ...core.database import get_db
 from ...core.security import get_current_active_user
 from ...models.user import User
 from ...schemas.ocr import OCRTaskResponse, OCRTaskStatus
+from ...services.configuracao_loja_service import obter_configuracao_loja
 from ...core.config import settings
 from ...core.limiter import limiter
 
@@ -190,6 +191,7 @@ async def upload_arquivo_nota_fiscal(
     request: Request,
     response: Response,
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     """
@@ -245,13 +247,14 @@ async def upload_arquivo_nota_fiscal(
         from ...ai.audit_service import auditar_nota_fiscal
         nota = parse_nfe_xml(content)
         nota_normalizada = normalizar_nota_fiscal(nota)
+        configuracao_loja = obter_configuracao_loja(db)
 
         # ── Auditoria fiscal automática ──────────────────────────────────
         try:
             audit_result = auditar_nota_fiscal(
                 nota_normalizada,
-                regime_tributario=None,
-                uf_emitente=None,
+                regime_tributario=configuracao_loja.regime_tributario,
+                uf_emitente=configuracao_loja.uf,
                 tipo_operacao="entrada",
             )
             cross_findings = validar_nota_cruzado(nota_normalizada)

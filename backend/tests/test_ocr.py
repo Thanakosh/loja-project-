@@ -159,3 +159,33 @@ def test_ocr_xml_retorna_payload_fiscal_normalizado(client: TestClient, auth_hea
     assert payload["versao_payload"] == "1.0.0"
     assert payload["fornecedor_nome"] == "Fornecedor Exemplo LTDA"
     assert len(payload["itens"]) == 1
+
+
+def test_ocr_xml_usa_regime_tributario_da_configuracao(client: TestClient, auth_headers: dict[str, str]):
+    update_response = client.put(
+        "/api/v1/configuracoes/loja",
+        json={
+            "regime_tributario": "simples_nacional",
+            "uf": "SP",
+            "margem_minima_percentual": 0.05,
+            "aliquota_impostos_default": 0.12,
+        },
+        headers=auth_headers,
+    )
+    assert update_response.status_code == 200
+
+    xml_content = _load_fixture_bytes("nfe_fiscal_completa.xml")
+    upload_response = client.post(
+        "/api/v1/ocr/upload-arquivo",
+        files={"file": ("nfe_fiscal_completa.xml", xml_content, "application/xml")},
+        headers=auth_headers,
+    )
+    assert upload_response.status_code == 200
+
+    task_id = upload_response.json()["task_id"]
+    status_response = client.get(f"/api/v1/ocr/status/{task_id}", headers=auth_headers)
+    assert status_response.status_code == 200
+
+    auditoria = status_response.json()["result"]["auditoria_fiscal"]
+    assert auditoria is not None
+    assert any(fator["regra"] == "cst_incompativel_regime" for fator in auditoria["fatores"])

@@ -113,6 +113,23 @@ class SupplierRankingResponse(BaseModel):
     criterio: str
 
 
+class FiscalRiskDashboardSupplier(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    nome: str
+    alertas: int
+
+
+class FiscalRiskDashboardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    total_notas: int
+    score_medio: float
+    notas_risco_alto: int
+    periodo_rotulo: str
+    top_fornecedores_alertas: List[FiscalRiskDashboardSupplier]
+
+
 class FiscalFeedbackRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

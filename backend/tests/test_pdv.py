@@ -381,6 +381,66 @@ class TestPDV:
         assert item["preco_unitario"] == 12.5
         assert item["preco_total"] == 125.0
 
+    def test_pdv_usa_margem_minima_da_configuracao_loja(
+        self, client: TestClient, auth_headers: dict
+    ):
+        self._garantir_caixa_aberto(client, auth_headers)
+        produto_resp = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Margem Configurada",
+                "fornecedor": "Fornecedor PDV",
+                "preco_unitario": 10.0,
+                "preco_liquido": 8.0,
+                "preco_custo": 8.0,
+                "unidade": "UN",
+                "unidade_medida": "UN",
+                "estoque_minimo": 1,
+            },
+            headers=auth_headers,
+        )
+        assert produto_resp.status_code == 200
+        produto_id = produto_resp.json()["id"]
+
+        estoque_resp = client.post(
+            "/api/v2/estoque/transacao",
+            json={"produto_id": produto_id, "tipo": "entrada", "quantidade": 10, "motivo": "Carga inicial"},
+            headers=auth_headers,
+        )
+        assert estoque_resp.status_code == 200
+
+        config_resp = client.put(
+            "/api/v1/configuracoes/loja",
+            json={
+                "regime_tributario": "simples_nacional",
+                "uf": "SP",
+                "margem_minima_percentual": 0.5,
+                "aliquota_impostos_default": 0.0,
+            },
+            headers=auth_headers,
+        )
+        assert config_resp.status_code == 200
+
+        payload = {
+            "forma_pagamento": 1,
+            "itens": [{"produto_id": produto_id, "quantidade": 1, "preco_unitario": 9.0, "desconto": 0}],
+        }
+        resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        item = resp.json()["itens"][0]
+        assert item["preco_unitario"] == 12.0
+        assert item["preco_total"] == 12.0
+
+        verificacao_resp = client.post(
+            "/api/v1/pdv/verificar-preco",
+            json={"itens": [{"produto_id": produto_id, "quantidade": 1, "preco_unitario": 9.0, "desconto": 0}]},
+            headers=auth_headers,
+        )
+        assert verificacao_resp.status_code == 200
+        verificacao = verificacao_resp.json()
+        assert verificacao["tem_alertas"] is True
+        assert verificacao["alertas"][0]["preco_minimo"] == 12.0
+
     def test_pdv_ignora_preco_errado_e_aplica_atacado(
         self, client: TestClient, auth_headers: dict
     ):

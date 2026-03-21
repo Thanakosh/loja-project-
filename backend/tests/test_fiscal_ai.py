@@ -1,9 +1,12 @@
+from datetime import date
+
 import pytest
 
 from app.fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price, enforce_minimum_price
 from app.models.fornecedor import Fornecedor
 from app.models.fiscal_feedback import FiscalFeedback
 from app.models.ncm import NCM
+from app.models.nota_fiscal import NotaFiscal, NotaFiscalItem
 from app.models.produto import Produto
 
 
@@ -295,3 +298,76 @@ def test_supplier_ranking_agrega_por_criterio_e_normaliza_score(client, auth_hea
     assert data["fornecedores"][0]["total_itens"] == 2
     assert data["fornecedores"][0]["score_confiabilidade"] == 1.0
     assert round(data["fornecedores"][1]["score_confiabilidade"], 4) == round(80.0 / 150.0, 4)
+
+
+def test_risk_dashboard_retorna_metricas_reais(client, auth_headers, db_session):
+    fornecedor = Fornecedor(
+        razao_social="Fornecedor Dashboard LTDA",
+        cnpj="12.345.678/0001-99",
+        ativo=True,
+    )
+    db_session.add(fornecedor)
+    db_session.flush()
+
+    produto = Produto(
+        nome="Produto Dashboard",
+        fornecedor="Fornecedor Dashboard LTDA",
+        fornecedor_id=fornecedor.id,
+        cnpj_fornecedor=fornecedor.cnpj,
+        preco_unitario=100.0,
+        preco_liquido=100.0,
+        unidade="UN",
+        unidade_medida="UN",
+        ativo=True,
+    )
+    db_session.add(produto)
+    db_session.flush()
+
+    nota = NotaFiscal(
+        numero_legado=1234,
+        data_emissao=date(2026, 3, 21),
+        valor_total=100.0,
+        base_icms=100.0,
+        valor_icms=18.0,
+    )
+    db_session.add(nota)
+    db_session.flush()
+
+    db_session.add(
+        NotaFiscalItem(
+            nota_fiscal_id=nota.id,
+            produto_id=produto.id,
+            nome_produto="Item Dashboard",
+            unidade="UN",
+            quantidade=1,
+            preco_unitario=100.0,
+            preco_total=100.0,
+            cfop="1102",
+            cst="00",
+            ncm="22030000",
+            icms=18.0,
+        )
+    )
+    db_session.commit()
+
+    config_response = client.put(
+        "/api/v1/configuracoes/loja",
+        json={
+            "regime_tributario": "simples_nacional",
+            "uf": "SP",
+            "margem_minima_percentual": 0.05,
+            "aliquota_impostos_default": 0.0,
+        },
+        headers=auth_headers,
+    )
+    assert config_response.status_code == 200
+
+    response = client.get("/api/v1/fiscal-ai/risk-dashboard", headers=auth_headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["total_notas"] == 1
+    assert data["score_medio"] > 0
+    assert len(data["top_fornecedores_alertas"]) == 1
+    assert data["top_fornecedores_alertas"][0]["nome"] == "Fornecedor Dashboard LTDA"
+    assert data["top_fornecedores_alertas"][0]["alertas"] > 0

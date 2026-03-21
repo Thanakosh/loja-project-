@@ -18,6 +18,7 @@ from ..models.politica_desconto import PoliticaDescontoProduto
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
+from .configuracao_loja_service import obter_configuracao_loja
 
 
 def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: float) -> float:
@@ -41,6 +42,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
     produto_ids = [item.produto_id for item in venda_in.itens]
 
     try:
+        configuracao_loja = obter_configuracao_loja(db)
         produtos = (
             db.query(Produto)
             .filter(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
@@ -52,6 +54,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
             if produto_id not in produtos_by_id:
                 raise ProdutoNaoEncontradoError(details={"produto_id": produto_id})
 
+        precos_por_item: list[float] = []
         totais_por_item: list[float] = []
         for item in venda_in.itens:
             produto = produtos_by_id[item.produto_id]
@@ -109,6 +112,14 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                         )
 
             preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
+            if produto.preco_custo is not None:
+                preco_minimo = round(
+                    produto.preco_custo * (1 + configuracao_loja.margem_minima_percentual),
+                    2,
+                )
+                if preco_efetivo < preco_minimo:
+                    preco_efetivo = preco_minimo
+            precos_por_item.append(preco_efetivo)
             preco_total = item.quantidade * preco_efetivo * (1 - (item.desconto / 100))
             totais_por_item.append(preco_total)
 
@@ -138,6 +149,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
         for idx, item in enumerate(venda_in.itens):
             produto = produtos_by_id[item.produto_id]
             preco_total = totais_por_item[idx]
+            preco_unitario = precos_por_item[idx]
 
             db.add(
                 VendaItem(
@@ -148,7 +160,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     codigo_barras=produto.codigo_barras,
                     unidade=produto.unidade,
                     quantidade=item.quantidade,
-                    preco_unitario=_calcular_preco_pdv(produto, item.quantidade, item.preco_unitario),
+                    preco_unitario=preco_unitario,
                     preco_total=preco_total,
                     desconto=item.desconto,
                     desconto_motivo=item.motivo_desconto,
@@ -212,6 +224,7 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
         .all()
     )
     produtos_by_id = {p.id: p for p in produtos}
+    configuracao_loja = obter_configuracao_loja(db)
 
     alertas = []
     for item in itens:
@@ -228,7 +241,7 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
 
         cost_input = CostCalculationInput(
             custo_base=produto.preco_custo,
-            margem_minima_percentual=0.05,  # 5% margem mínima default
+            margem_minima_percentual=configuracao_loja.margem_minima_percentual,
         )
         cost_result = calculate_minimum_price(cost_input)
 
@@ -242,4 +255,3 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
             })
 
     return alertas
-
