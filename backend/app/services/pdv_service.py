@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 
-from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from ..core.enums import FormaPagamento
 from ..core.exceptions import (
@@ -10,6 +11,8 @@ from ..core.exceptions import (
     EstoqueInsuficienteError,
     ProdutoNaoEncontradoError,
     QuantidadeInvalidaParaUnidadeError,
+    VendaJaCanceladaError,
+    VendaNaoEncontradaError,
 )
 from ..models.caixa_diario import CaixaDiario
 from ..models.conta_receber import ContaReceber
@@ -18,11 +21,10 @@ from ..models.politica_desconto import PoliticaDescontoProduto
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
-from .configuracao_loja_service import obter_configuracao_loja
+from .configuracao_loja_service import obter_configuracao_loja_async
 
 
 def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: float) -> float:
-    """Retorna o preço efetivo para o PDV aplicando preço atacado quando aplicável."""
     if (
         produto.preco_atacado is not None
         and produto.qtd_minima_atacado is not None
@@ -32,9 +34,12 @@ def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: floa
     return preco_enviado
 
 
-def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
-    # ── Verifica se há caixa aberto ──────────────────────────────────────────
-    caixa = db.query(CaixaDiario).filter(CaixaDiario.status == "aberto").first()
+async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
+    caixa = (
+        await db.execute(
+            select(CaixaDiario).where(CaixaDiario.status == "aberto")
+        )
+    ).scalars().first()
     if not caixa:
         raise CaixaNaoAbertoError()
 
@@ -42,12 +47,12 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
     produto_ids = [item.produto_id for item in venda_in.itens]
 
     try:
-        configuracao_loja = obter_configuracao_loja(db)
+        configuracao_loja = await obter_configuracao_loja_async(db)
         produtos = (
-            db.query(Produto)
-            .filter(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
-            .all()
-        )
+            await db.execute(
+                select(Produto).where(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
+            )
+        ).scalars().all()
         produtos_by_id = {produto.id: produto for produto in produtos}
 
         for produto_id in produto_ids:
@@ -70,11 +75,12 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                 )
 
             estoque_atual = (
-                db.query(func.coalesce(func.sum(TransacaoEstoque.quantidade), 0))
-                .filter(TransacaoEstoque.produto_id == item.produto_id)
-                .scalar()
-                or 0
-            )
+                await db.scalar(
+                    select(func.coalesce(func.sum(TransacaoEstoque.quantidade), 0)).where(
+                        TransacaoEstoque.produto_id == item.produto_id
+                    )
+                )
+            ) or 0
 
             if item.quantidade > estoque_atual:
                 raise EstoqueInsuficienteError(
@@ -86,14 +92,14 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     }
                 )
 
-            # ── Valida desconto contra política progressiva ──────────
             if item.desconto > 0:
                 faixas = (
-                    db.query(PoliticaDescontoProduto)
-                    .filter(PoliticaDescontoProduto.produto_id == item.produto_id)
-                    .order_by(PoliticaDescontoProduto.qtd_minima.desc())
-                    .all()
-                )
+                    await db.execute(
+                        select(PoliticaDescontoProduto)
+                        .where(PoliticaDescontoProduto.produto_id == item.produto_id)
+                        .order_by(PoliticaDescontoProduto.qtd_minima.desc())
+                    )
+                ).scalars().all()
                 if faixas:
                     desconto_max = 0.0
                     for faixa in faixas:
@@ -127,7 +133,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
         if total_venda < 0:
             total_venda = 0.0
 
-        numero_legado = (db.query(func.max(Venda.numero_legado)).scalar() or 0) + 1
+        numero_legado = (await db.scalar(select(func.max(Venda.numero_legado))) or 0) + 1
 
         venda = Venda(
             numero_legado=numero_legado,
@@ -144,7 +150,7 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
             cancelada=False,
         )
         db.add(venda)
-        db.flush()
+        await db.flush()
 
         for idx, item in enumerate(venda_in.itens):
             produto = produtos_by_id[item.produto_id]
@@ -196,35 +202,31 @@ def registrar_venda(db: Session, venda_in: VendaPDVCreate, usuario_id: int) -> V
                     )
                 )
 
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
 
     return (
-        db.query(Venda)
-        .options(joinedload(Venda.itens))
-        .filter(Venda.id == venda.id)
-        .first()
-    )
+        await db.execute(
+            select(Venda)
+            .options(joinedload(Venda.itens))
+            .where(Venda.id == venda.id)
+        )
+    ).unique().scalars().first()
 
 
-def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
-    """Verifica se os preços praticados estão acima do preço mínimo para cada item.
-
-    Retorna lista de alertas para itens com preço abaixo do custo mínimo.
-    Não bloqueia a venda — apenas informa.
-    """
+async def verificar_precos_minimos_async(db: AsyncSession, itens: list) -> list[dict]:
     from ..fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price
 
     produto_ids = [item.produto_id for item in itens]
     produtos = (
-        db.query(Produto)
-        .filter(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
-        .all()
-    )
+        await db.execute(
+            select(Produto).where(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
+        )
+    ).scalars().all()
     produtos_by_id = {p.id: p for p in produtos}
-    configuracao_loja = obter_configuracao_loja(db)
+    configuracao_loja = await obter_configuracao_loja_async(db)
 
     alertas = []
     for item in itens:
@@ -232,7 +234,6 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
         if not produto:
             continue
 
-        # Só verifica se o produto tem preço de custo informado
         if not produto.preco_custo or produto.preco_custo <= 0:
             continue
 
@@ -246,12 +247,66 @@ def verificar_precos_minimos(db: Session, itens: list) -> list[dict]:
         cost_result = calculate_minimum_price(cost_input)
 
         if preco_final < cost_result.preco_minimo_absoluto:
-            alertas.append({
-                "produto_id": produto.id,
-                "produto_nome": produto.nome,
-                "preco_praticado": round(preco_final, 2),
-                "preco_minimo": cost_result.preco_minimo_absoluto,
-                "prejuizo_estimado": round(cost_result.preco_minimo_absoluto - preco_final, 2),
-            })
+            alertas.append(
+                {
+                    "produto_id": produto.id,
+                    "produto_nome": produto.nome,
+                    "preco_praticado": round(preco_final, 2),
+                    "preco_minimo": cost_result.preco_minimo_absoluto,
+                    "prejuizo_estimado": round(cost_result.preco_minimo_absoluto - preco_final, 2),
+                }
+            )
 
     return alertas
+
+
+async def buscar_venda_por_id_async(db: AsyncSession, venda_id: int) -> Venda | None:
+    return (
+        await db.execute(
+            select(Venda)
+            .options(joinedload(Venda.itens))
+            .where(Venda.id == venda_id)
+        )
+    ).unique().scalars().first()
+
+
+async def buscar_venda_com_cliente_async(db: AsyncSession, venda_id: int) -> Venda | None:
+    return (
+        await db.execute(
+            select(Venda)
+            .options(joinedload(Venda.itens), joinedload(Venda.cliente))
+            .where(Venda.id == venda_id)
+        )
+    ).unique().scalars().first()
+
+
+async def cancelar_venda_async(db: AsyncSession, venda_id: int, usuario_id: int) -> Venda:
+    venda = await buscar_venda_por_id_async(db, venda_id)
+    if not venda:
+        raise VendaNaoEncontradaError()
+    if venda.cancelada:
+        raise VendaJaCanceladaError()
+
+    try:
+        venda.cancelada = True
+
+        for item in venda.itens:
+            db.add(
+                TransacaoEstoque(
+                    produto_id=item.produto_id,
+                    tipo=TipoTransacao.ENTRADA,
+                    quantidade=item.quantidade,
+                    motivo=f"Cancelamento - Venda #{venda.numero_legado}",
+                    usuario_id=usuario_id,
+                )
+            )
+
+        await db.execute(
+            delete(ContaReceber).where(ContaReceber.documento == venda.numero_legado)
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    return venda

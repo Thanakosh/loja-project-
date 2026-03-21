@@ -1,12 +1,13 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from ...ai.audit_service import auditar_nota_fiscal
-from ...core.database import get_db
-from ...core.security import get_current_active_user
+from ...core.database import get_async_db
+from ...core.security import get_current_active_user_async
 from ...fiscal.cost_calculator import CostCalculationInput, calculate_minimum_price, enforce_minimum_price
 from ...models.fiscal_feedback import FiscalFeedback
 from ...models.fornecedor import Fornecedor
@@ -14,16 +15,15 @@ from ...models.ncm import NCM
 from ...models.nota_fiscal import NotaFiscal, NotaFiscalItem
 from ...models.produto import Produto
 from ...models.user import User
-from ...services.configuracao_loja_service import obter_configuracao_loja
 from ...schemas.fiscal_ai import (
     FiscalAuditFactorResponse,
     FiscalAuditResponse,
     FiscalAuditValidateRequest,
-    FiscalRiskDashboardResponse,
-    FiscalRiskDashboardSupplier,
     FiscalPriceRange,
     FiscalPriceSuggestionRequest,
     FiscalPriceSuggestionResponse,
+    FiscalRiskDashboardResponse,
+    FiscalRiskDashboardSupplier,
     NCMCandidato,
     NCMClassifyRequest,
     NCMClassifyResponse,
@@ -32,7 +32,7 @@ from ...schemas.fiscal_ai import (
 )
 from ...schemas.fiscal_feedback import FeedbackCreate, FeedbackMetricasResponse, FeedbackResponse
 from ...schemas.fiscal_payload import FiscalItemPayload, NotaFiscalPayloadNormalizado
-
+from ...services.configuracao_loja_service import obter_configuracao_loja_async
 
 router = APIRouter(tags=["Fiscal AI"])
 
@@ -50,21 +50,23 @@ def _nome_fornecedor_nota(nota: NotaFiscal) -> str:
 
 
 @router.post("/suggest-price/{product_id}", response_model=FiscalPriceSuggestionResponse)
-def suggest_price(
+async def suggest_price(
     product_id: int,
     payload: FiscalPriceSuggestionRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     _ = current_user
 
-    produto = db.query(Produto).filter(Produto.id == product_id, Produto.ativo.is_(True)).first()
+    produto = (
+        await db.execute(select(Produto).where(Produto.id == product_id, Produto.ativo.is_(True)))
+    ).scalar_one_or_none()
     if not produto:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
+        raise HTTPException(status_code=404, detail="Produto nÃ£o encontrado")
 
     custo_base = produto.preco_custo or produto.preco_liquido or produto.preco_unitario
     if custo_base is None:
-        raise HTTPException(status_code=422, detail="Produto sem custo base para cálculo")
+        raise HTTPException(status_code=422, detail="Produto sem custo base para cÃ¡lculo")
 
     result = calculate_minimum_price(
         CostCalculationInput(
@@ -92,20 +94,20 @@ def suggest_price(
 
 
 @router.post("/validate-note", response_model=FiscalAuditResponse)
-def validate_note(
+async def validate_note(
     payload: FiscalAuditValidateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    """Auditoria fiscal híbrida com input via payload normalizado ou nota_fiscal_id."""
+    """Auditoria fiscal hibrida com input via payload normalizado ou nota_fiscal_id."""
     _ = current_user
 
     nota_normalizada = payload.payload_normalizado
 
     if nota_normalizada is None and payload.nota_fiscal_id is not None:
-        nota = db.query(NotaFiscal).filter(NotaFiscal.id == payload.nota_fiscal_id).first()
+        nota = await db.get(NotaFiscal, payload.nota_fiscal_id)
         if not nota:
-            raise HTTPException(status_code=404, detail="Nota fiscal não encontrada")
+            raise HTTPException(status_code=404, detail="Nota fiscal nÃ£o encontrada")
 
         itens_normalizados = [
             FiscalItemPayload(
@@ -136,7 +138,7 @@ def validate_note(
         )
 
     if nota_normalizada is None:
-        raise HTTPException(status_code=422, detail="Payload de nota fiscal inválido")
+        raise HTTPException(status_code=422, detail="Payload de nota fiscal invÃ¡lido")
 
     result = auditar_nota_fiscal(
         nota_normalizada,
@@ -163,22 +165,23 @@ def validate_note(
 
 
 @router.get("/risk-dashboard", response_model=FiscalRiskDashboardResponse)
-def risk_dashboard(
+async def risk_dashboard(
     limite_notas: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     _ = current_user
-    configuracao_loja = obter_configuracao_loja(db)
+    configuracao_loja = await obter_configuracao_loja_async(db)
     notas = (
-        db.query(NotaFiscal)
-        .options(
-            joinedload(NotaFiscal.itens).joinedload(NotaFiscalItem.produto).joinedload(Produto.fornecedor_rel),
+        await db.execute(
+            select(NotaFiscal)
+            .options(
+                joinedload(NotaFiscal.itens).joinedload(NotaFiscalItem.produto).joinedload(Produto.fornecedor_rel),
+            )
+            .order_by(NotaFiscal.data_emissao.desc(), NotaFiscal.id.desc())
+            .limit(limite_notas)
         )
-        .order_by(NotaFiscal.data_emissao.desc(), NotaFiscal.id.desc())
-        .limit(limite_notas)
-        .all()
-    )
+    ).unique().scalars().all()
 
     if not notas:
         return FiscalRiskDashboardResponse(
@@ -250,33 +253,26 @@ def risk_dashboard(
     )
 
 
-# ─── POST /classify-ncm ───
-
-
 @router.post("/classify-ncm", response_model=NCMClassifyResponse)
-def classify_ncm(
+async def classify_ncm(
     payload: NCMClassifyRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    """Sugere códigos NCM com base em descrição textual (busca full-text case-insensitive)."""
+    """Sugere codigos NCM com base em descricao textual (busca full-text case-insensitive)."""
     _ = current_user
 
     termos = [t.strip() for t in payload.descricao.split() if len(t.strip()) >= 3]
     if not termos:
-        raise HTTPException(status_code=422, detail="Descrição muito curta para busca NCM.")
+        raise HTTPException(status_code=422, detail="DescriÃ§Ã£o muito curta para busca NCM.")
 
-    # Busca por cada termo individualmente e consolida por score de hits
     candidatos_map: dict[str, dict] = {}
     total_termos = len(termos)
 
     for termo in termos:
         resultados = (
-            db.query(NCM)
-            .filter(NCM.descricao.ilike(f"%{termo}%"))
-            .limit(50)
-            .all()
-        )
+            await db.execute(select(NCM).where(NCM.descricao.ilike(f"%{termo}%")).limit(50))
+        ).scalars().all()
         for ncm in resultados:
             if ncm.codigo not in candidatos_map:
                 candidatos_map[ncm.codigo] = {"ncm": ncm, "hits": 0}
@@ -289,7 +285,6 @@ def classify_ncm(
             total_encontrado=0,
         )
 
-    # Ordenar por score (hits / total_termos), limitar
     ordenados = sorted(candidatos_map.values(), key=lambda x: x["hits"], reverse=True)
     candidatos = [
         NCMCandidato(
@@ -307,61 +302,57 @@ def classify_ncm(
     )
 
 
-# ─── GET /supplier-ranking ───
-
-
 @router.get("/supplier-ranking", response_model=SupplierRankingResponse)
-def supplier_ranking(
+async def supplier_ranking(
     limite: int = Query(default=10, ge=1, le=100),
     criterio: str = Query(default="valor_total", description="valor_total | total_notas | total_itens"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
     """Ranking de fornecedores por volume de notas fiscais importadas."""
     _ = current_user
 
     criterios_validos = {"valor_total", "total_notas", "total_itens"}
     if criterio not in criterios_validos:
-        raise HTTPException(status_code=422, detail=f"Critério inválido. Use: {criterios_validos}")
+        raise HTTPException(status_code=422, detail=f"CritÃ©rio invÃ¡lido. Use: {criterios_validos}")
 
-    # Agrega dados de notas fiscais por fornecedor (via produto.cnpj_fornecedor ou fornecedor.cnpj)
-    # Usamos Produto.cnpj_fornecedor como chave de ligação com Fornecedor
     subq = (
-        db.query(
-            Produto.cnpj_fornecedor.label("cnpj"),
-            func.count(func.distinct(Produto.numero_nota)).label("total_notas"),
-            func.count(Produto.id).label("total_itens"),
-            func.sum(Produto.preco_liquido).label("valor_total"),
+        await db.execute(
+            select(
+                Produto.cnpj_fornecedor.label("cnpj"),
+                func.count(func.distinct(Produto.numero_nota)).label("total_notas"),
+                func.count(Produto.id).label("total_itens"),
+                func.sum(Produto.preco_liquido).label("valor_total"),
+            )
+            .where(
+                Produto.cnpj_fornecedor.isnot(None),
+                Produto.ativo.is_(True),
+            )
+            .group_by(Produto.cnpj_fornecedor)
         )
-        .filter(
-            Produto.cnpj_fornecedor.isnot(None),
-            Produto.ativo.is_(True),
-        )
-        .group_by(Produto.cnpj_fornecedor)
-        .all()
-    )
+    ).all()
 
     if not subq:
         return SupplierRankingResponse(fornecedores=[], total=0, criterio=criterio)
 
-    # Enriquecer com dados do modelo Fornecedor
     cnpjs = [row.cnpj for row in subq]
     fornecedores_db = {
         f.cnpj: f
-        for f in db.query(Fornecedor).filter(Fornecedor.cnpj.in_(cnpjs)).all()
+        for f in (
+            await db.execute(select(Fornecedor).where(Fornecedor.cnpj.in_(cnpjs)))
+        ).scalars().all()
     }
 
     itens: list[SupplierRankingItem] = []
     for row in subq:
         forn = fornecedores_db.get(row.cnpj)
         if not forn:
-            continue  # fornecedor não importado ainda — ignorar
+            continue
 
         valor = float(row.valor_total or 0.0)
         notas = int(row.total_notas or 0)
         total_itens_val = int(row.total_itens or 0)
 
-        # Score simples: normalizado pelo maior valor da lista
         itens.append(
             SupplierRankingItem(
                 fornecedor_id=forn.id,
@@ -370,11 +361,10 @@ def supplier_ranking(
                 total_notas=notas,
                 total_itens=total_itens_val,
                 valor_total=round(valor, 2),
-                score_confiabilidade=0.0,  # calculado abaixo
+                score_confiabilidade=0.0,
             )
         )
 
-    # Ordenar
     key_map = {
         "valor_total": lambda x: x.valor_total,
         "total_notas": lambda x: x.total_notas,
@@ -382,7 +372,6 @@ def supplier_ranking(
     }
     itens.sort(key=key_map[criterio], reverse=True)
 
-    # Normalizar score_confiabilidade (0–1) pelo critério escolhido
     max_val = key_map[criterio](itens[0]) if itens else 1
     for item in itens:
         raw = key_map[criterio](item)
@@ -395,16 +384,13 @@ def supplier_ranking(
     )
 
 
-# ─── POST /feedback ───
-
-
 @router.post("/feedback", response_model=FeedbackResponse, status_code=201)
-def registrar_feedback(
+async def registrar_feedback(
     payload: FeedbackCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    """Registra feedback humano sobre sugestões fiscais para rastreabilidade e aprendizado contínuo."""
+    """Registra feedback humano sobre sugestoes fiscais para rastreabilidade e aprendizado continuo."""
     feedback = FiscalFeedback(
         origem_sugestao=payload.origem_sugestao,
         versao_motor=payload.versao_motor,
@@ -417,29 +403,29 @@ def registrar_feedback(
         user_id=current_user.id,
     )
     db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
+    await db.commit()
+    await db.refresh(feedback)
 
     return feedback
 
 
 @router.get("/feedback/metricas", response_model=FeedbackMetricasResponse)
-def metricas_feedback(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+async def metricas_feedback(
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
 ):
-    """Agrega métricas de aceitação/rejeição/modificação de sugestões fiscais."""
+    """Agrega metricas de aceitacao/rejeicao/modificacao de sugestoes fiscais."""
     _ = current_user
 
     rows = (
-        db.query(
-            FiscalFeedback.origem_sugestao,
-            FiscalFeedback.decisao,
-            func.count(FiscalFeedback.id).label("qty"),
+        await db.execute(
+            select(
+                FiscalFeedback.origem_sugestao,
+                FiscalFeedback.decisao,
+                func.count(FiscalFeedback.id).label("qty"),
+            ).group_by(FiscalFeedback.origem_sugestao, FiscalFeedback.decisao)
         )
-        .group_by(FiscalFeedback.origem_sugestao, FiscalFeedback.decisao)
-        .all()
-    )
+    ).all()
 
     total_feedbacks = 0
     por_decisao = {"aceito": 0, "rejeitado": 0, "modificado": 0}

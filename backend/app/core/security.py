@@ -10,10 +10,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import get_async_db, get_db
+from .database import get_async_db
 from ..models.refresh_token import RefreshToken
 from ..models.user import User
 
@@ -35,11 +34,13 @@ def len_b_str(s: str) -> int:
     return len(s)
 
 
-def authenticate_user(db: Session, identifier: str, password: str):
+async def authenticate_user_async(db: AsyncSession, identifier: str, password: str):
     """Autentica usuario por username ou email e senha."""
-    user = db.query(User).filter(User.username == identifier).first()
+    result = await db.execute(select(User).where(User.username == identifier))
+    user = result.scalar_one_or_none()
     if not user:
-        user = db.query(User).filter(User.email == identifier).first()
+        result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -62,8 +63,8 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_token_pair(
-    db: Session,
+async def create_token_pair_async(
+    db: AsyncSession,
     user: User,
 ) -> Tuple[str, str]:
     """
@@ -86,13 +87,13 @@ def create_token_pair(
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(db_refresh)
-    db.commit()
+    await db.commit()
 
     return access_token, refresh_token_raw
 
 
-def rotate_refresh_token(
-    db: Session,
+async def rotate_refresh_token_async(
+    db: AsyncSession,
     raw_token: str,
 ) -> Optional[Tuple[User, str, str]]:
     """
@@ -107,15 +108,15 @@ def rotate_refresh_token(
     """
     token_hash = _hash_token(raw_token)
 
-    db_token = db.query(RefreshToken).filter(
-        RefreshToken.token_hash == token_hash
-    ).first()
+    db_token = (
+        await db.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
+    ).scalar_one_or_none()
 
     if not db_token:
         return None
 
     if db_token.revoked:
-        _revoke_all_user_tokens(db, db_token.user_id)
+        await _revoke_all_user_tokens_async(db, db_token.user_id)
         return None
 
     expires_at = db_token.expires_at
@@ -125,99 +126,49 @@ def rotate_refresh_token(
     if expires_at < datetime.now(timezone.utc):
         db_token.revoked = True
         db_token.revoked_at = datetime.now(timezone.utc)
-        db.commit()
+        await db.commit()
         return None
 
     db_token.revoked = True
     db_token.revoked_at = datetime.now(timezone.utc)
 
-    user = db.query(User).filter(User.id == db_token.user_id).first()
+    user = await db.get(User, db_token.user_id)
     if not user or not user.is_active:
-        db.commit()
+        await db.commit()
         return None
 
-    access_token, new_refresh = create_token_pair(db, user)
+    access_token, new_refresh = await create_token_pair_async(db, user)
     db_token.replaced_by = _hash_token(new_refresh)
-    db.commit()
+    await db.commit()
 
     return user, access_token, new_refresh
 
 
-def revoke_user_tokens(db: Session, user_id: int) -> int:
+async def revoke_user_tokens_async(db: AsyncSession, user_id: int) -> int:
     """Revoga todos os refresh tokens ativos de um usuario (logout global)."""
-    return _revoke_all_user_tokens(db, user_id)
+    return await _revoke_all_user_tokens_async(db, user_id)
 
 
-def _revoke_all_user_tokens(db: Session, user_id: int) -> int:
+async def _revoke_all_user_tokens_async(db: AsyncSession, user_id: int) -> int:
     """Revoga todos os tokens nao-revogados de um usuario."""
-    count = (
-        db.query(RefreshToken)
-        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
-        .update(
-            {"revoked": True, "revoked_at": datetime.now(timezone.utc)},
-            synchronize_session="fetch",
-        )
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
     )
-    db.commit()
-    return count
+    tokens = result.scalars().all()
+    for token in tokens:
+        token.revoked = True
+        token.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    return len(tokens)
 
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar as credenciais",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def get_current_active_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
-    return current_user
-
-
-async def get_current_user_optional(
-    token: Optional[str] = Depends(oauth2_scheme_optional),
-    db: Session = Depends(get_db)
-) -> Optional[User]:
-    if token is None:
-        return None
-
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        email: Optional[str] = payload.get("sub")
-        if not email:
-            return None
-    except JWTError:
-        return None
-
-    return db.query(User).filter(User.email == email).first()
-
-
-async def get_current_user_async(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_db)
-) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar as credenciais",
+        detail="NÃ£o foi possÃ­vel validar as credenciais",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -235,9 +186,40 @@ async def get_current_user_async(
     return user
 
 
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="UsuÃ¡rio inativo")
+    return current_user
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_async_db),
+) -> Optional[User]:
+    if token is None:
+        return None
+
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: Optional[str] = payload.get("sub")
+        if not email:
+            return None
+    except JWTError:
+        return None
+
+    return (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+
+
+async def get_current_user_async(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db),
+) -> User:
+    return await get_current_user(token=token, db=db)
+
+
 async def get_current_active_user_async(
     current_user: User = Depends(get_current_user_async),
 ) -> User:
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
-    return current_user
+    return await get_current_active_user(current_user=current_user)

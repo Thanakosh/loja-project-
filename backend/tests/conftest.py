@@ -18,7 +18,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-from app.core.database import Base, get_async_db, get_db
+from app.core.database import Base, get_async_db
 from app.core.limiter import limiter
 from app.core.security import get_password_hash
 from app.main import app
@@ -51,6 +51,9 @@ class ScalarResultAdapter:
     def scalars(self):
         return self._result.scalars()
 
+    def unique(self):
+        return ScalarResultAdapter(self._result.unique())
+
 
 class AsyncSessionAdapter:
     def __init__(self, session: Session):
@@ -67,6 +70,12 @@ class AsyncSessionAdapter:
 
     def add(self, *args, **kwargs):
         return self._session.add(*args, **kwargs)
+
+    async def delete(self, *args, **kwargs):
+        self._session.delete(*args, **kwargs)
+
+    async def flush(self):
+        self._session.flush()
 
     async def commit(self):
         self._session.commit()
@@ -112,13 +121,9 @@ async def async_db(db_session: Session):
 
 @pytest.fixture(scope="function")
 def client(db_session: Session):
-    def override_get_db():
-        yield db_session
-
     async def override_get_async_db():
         yield AsyncSessionAdapter(db_session)
 
-    app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_async_db] = override_get_async_db
     with TestClient(app) as test_client:
         yield test_client

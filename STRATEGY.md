@@ -10,7 +10,7 @@ Este documento detalha o planejamento estrategico para a evolucao do sistema, fo
 
 ### Arquitetura de Dados
 - **Relacionamento Produto-Estoque:** Unificar as tabelas para que o estoque seja uma visao dinamica baseada em transacoes vinculadas ao ID do Produto.
-- **Async Database:** Migrar as chamadas de banco de dados para o padrao totalmente assincrono usando `SQLAlchemy` e `asyncpg`.
+- **Async Database (concluido):** A camada HTTP do backend e a infraestrutura principal de banco ja operam no padrao assincrono com `SQLAlchemy` async e `asyncpg`. Novos fluxos devem manter `AsyncSession`/`get_async_db` e evitar reintroduzir dependencias sync.
 
 ## 2. Expansao de Funcionalidades (Medio Prazo)
 ### Inteligencia Artificial & OCR - **Fase 2 (Planejada)**

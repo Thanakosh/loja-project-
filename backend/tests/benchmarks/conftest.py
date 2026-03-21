@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-with-minimum-length-ok")
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_async_db
 from app.core.limiter import limiter
 from app.core.security import get_password_hash
 from app.main import app
@@ -85,13 +85,63 @@ def db_session(_create_schema) -> Session:  # type: ignore[override]
 # ---------------------------------------------------------------------------
 @pytest.fixture(scope="module")
 def client(db_session: Session):  # type: ignore[override]
-    def _override_db():
-        yield db_session
+    class ScalarResultAdapter:
+        def __init__(self, result):
+            self._result = result
 
-    app.dependency_overrides[get_db] = _override_db
+        def all(self):
+            return self._result.all()
+
+        def one(self):
+            return self._result.one()
+
+        def scalar_one_or_none(self):
+            return self._result.scalar_one_or_none()
+
+        def scalars(self):
+            return self._result.scalars()
+
+        def unique(self):
+            return ScalarResultAdapter(self._result.unique())
+
+    class AsyncSessionAdapter:
+        def __init__(self, session: Session):
+            self._session = session
+
+        async def get(self, *args, **kwargs):
+            return self._session.get(*args, **kwargs)
+
+        async def scalar(self, *args, **kwargs):
+            return self._session.scalar(*args, **kwargs)
+
+        async def execute(self, *args, **kwargs):
+            return ScalarResultAdapter(self._session.execute(*args, **kwargs))
+
+        def add(self, *args, **kwargs):
+            return self._session.add(*args, **kwargs)
+
+        async def delete(self, *args, **kwargs):
+            self._session.delete(*args, **kwargs)
+
+        async def flush(self):
+            self._session.flush()
+
+        async def commit(self):
+            self._session.commit()
+
+        async def refresh(self, *args, **kwargs):
+            self._session.refresh(*args, **kwargs)
+
+        async def rollback(self):
+            self._session.rollback()
+
+    async def _override_async_db():
+        yield AsyncSessionAdapter(db_session)
+
+    app.dependency_overrides[get_async_db] = _override_async_db
     with TestClient(app) as tc:
         yield tc
-    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_async_db, None)
 
 
 # ---------------------------------------------------------------------------

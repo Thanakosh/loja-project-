@@ -1,14 +1,14 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_async_db
 from app.core.exceptions import ClienteNaoEncontradoError, CodigoLegadoJaCadastradoError
 from app.core.limiter import limiter
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user_async
 from app.models.cliente import Cliente
 from app.models.user import User
 from app.schemas.cliente import ClienteRead, ClienteCreate, ClienteUpdate
@@ -29,43 +29,44 @@ def _append_autorizacao(existing: Optional[str], observacao: str) -> str:
     return _prepend_historico(existing, observacao)
 
 
-def _next_codigo_legado(db: Session) -> int:
-    ultimo_codigo = db.query(func.max(Cliente.codigo_legado)).scalar()
+async def _next_codigo_legado(db: AsyncSession) -> int:
+    ultimo_codigo = await db.scalar(select(func.max(Cliente.codigo_legado)))
     return (ultimo_codigo or 0) + 1
 
 @router.get("/", response_model=List[ClienteRead])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def get_clientes(
+async def get_clientes(
     request: Request,
     response: Response,
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    _current_user: User = Depends(get_current_active_user_async),
 ):
-    query = db.query(Cliente)
+    query = select(Cliente)
     if search:
         search_filter = f"%{search}%"
-        query = query.filter(
+        query = query.where(
             or_(
                 Cliente.nome.ilike(search_filter),
                 Cliente.cpf_cnpj.ilike(search_filter),
                 Cliente.codigo_legado == (int(search) if search.isdigit() else -1)
             )
         )
-    return query.offset(skip).limit(limit).all()
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
 
 @router.get("/{cliente_id}", response_model=ClienteRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def get_cliente(
+async def get_cliente(
     request: Request,
     response: Response,
     cliente_id: int,
-    db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    _current_user: User = Depends(get_current_active_user_async),
 ):
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = await db.get(Cliente, cliente_id)
     if not cliente:
         raise ClienteNaoEncontradoError()
     return cliente
@@ -73,21 +74,23 @@ def get_cliente(
 
 @router.post("/", response_model=ClienteRead, status_code=201)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def create_cliente(
+async def create_cliente(
     request: Request,
     response: Response,
     cliente_in: ClienteCreate,
-    db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    _current_user: User = Depends(get_current_active_user_async),
 ):
     codigo_legado = cliente_in.codigo_legado
 
     if codigo_legado is not None:
-        codigo_existente = db.query(Cliente).filter(Cliente.codigo_legado == codigo_legado).first()
+        codigo_existente = (
+            await db.execute(select(Cliente).where(Cliente.codigo_legado == codigo_legado))
+        ).scalars().first()
         if codigo_existente:
             raise CodigoLegadoJaCadastradoError()
     else:
-        codigo_legado = _next_codigo_legado(db)
+        codigo_legado = await _next_codigo_legado(db)
 
     cliente = Cliente(
         codigo_legado=codigo_legado,
@@ -106,22 +109,22 @@ def create_cliente(
     )
 
     db.add(cliente)
-    db.commit()
-    db.refresh(cliente)
+    await db.commit()
+    await db.refresh(cliente)
     return cliente
 
 
 @router.put("/{cliente_id}", response_model=ClienteRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
-def update_cliente(
+async def update_cliente(
     request: Request,
     response: Response,
     cliente_id: int,
     cliente_in: ClienteUpdate,
-    db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+    _current_user: User = Depends(get_current_active_user_async),
 ):
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = await db.get(Cliente, cliente_id)
     if not cliente:
         raise ClienteNaoEncontradoError()
 
@@ -150,6 +153,6 @@ def update_cliente(
     if nova_autorizacao:
         cliente.historico_autorizacoes = _append_autorizacao(cliente.historico_autorizacoes, nova_autorizacao)
 
-    db.commit()
-    db.refresh(cliente)
+    await db.commit()
+    await db.refresh(cliente)
     return cliente

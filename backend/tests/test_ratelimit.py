@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.limiter import limiter
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user_async
 from app.main import app
 from app.models.user import User
 
@@ -34,7 +34,9 @@ def _first_429_call(path: str, *, max_calls: int, **request_kwargs) -> tuple[int
 
 
 def test_ocr_upload_retorna_erro_estruturado_para_xml_invalido():
-    app.dependency_overrides[get_current_active_user] = lambda: User(id=1, email="test@example.com", is_active=True)
+    app.dependency_overrides[get_current_active_user_async] = (
+        lambda: User(id=1, email="test@example.com", is_active=True)
+    )
 
     response = client.post(
         "/api/v1/ocr/upload-arquivo",
