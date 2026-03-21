@@ -10,24 +10,24 @@ depends_on: []
 ## Objetivo
 
 Garantir que todas as telas do frontend funcionem bem em diferentes tamanhos de
-tela (especialmente no app Electron em resoluções menores) e atendam padrões
-mínimos de acessibilidade.
+tela (especialmente no app Electron em resolucoes menores) e atendam padroes
+minimos de acessibilidade.
 
-### Ações
+### Acoes
 
 1. **Responsividade:**
-   - Auditar todas as 13 páginas para breakpoints menores (1024px, 768px).
+   - Auditar todas as 13 paginas para breakpoints menores (1024px, 768px).
    - Corrigir tabelas que quebram em telas menores (scroll horizontal ou layout
      alternativo em card).
    - Testar no Electron em janela redimensionada.
 
 2. **Acessibilidade (a11y):**
-   - Adicionar `aria-label` em botões de ícone.
-   - Garantir contraste mínimo WCAG AA em modo claro e escuro.
+   - Adicionar `aria-label` em botoes de icone.
+   - Garantir contraste minimo WCAG AA em modo claro e escuro.
    - Labels associados a todos os inputs (`htmlFor` / `id`).
-   - Navegação por teclado funcional nos modais.
+   - Navegacao por teclado funcional nos modais.
 
-### Critério de aceite
+### Criterio de aceite
 
-- Todas as tabelas são utilizáveis em 1024px de largura.
-- Lighthouse Accessibility score >= 85 na página principal.
+- Todas as tabelas sao utilizaveis em 1024px de largura.
+- Lighthouse Accessibility score >= 85 na pagina principal.

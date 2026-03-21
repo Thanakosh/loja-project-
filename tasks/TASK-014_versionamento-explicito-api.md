@@ -1,30 +1,30 @@
 ---
 task_id: TASK-014
-title: "Definir política explícita de versionamento da API"
-priority: 🟢 baixa
+title: "Definir politica explicita de versionamento da API"
+priority: baixa
 scope: README.md, docs/, backend/app/main.py
 branch: docs/politica-versionamento-api
-commit_message: "docs(api): define política de versionamento v1 legado e v2 ativo"
+commit_message: "docs(api): define politica de versionamento v1 legado e v2 ativo"
 estimated_effort: 30 minutos
 status: pendente
 depends_on: []
-recomendacao_ref: "#12 — Estratégia explícita de versionamento de API"
+recomendacao_ref: "#12 Estrategia explicita de versionamento de API"
 ---
 
-# TASK-014: Política de versionamento de API
+# TASK-014: Politica de versionamento de API
 
 ## Contexto
-Há coexistência de endpoints legados e ativos, mas sem política formal
-versionada para depreciação e adoção de novos endpoints.
+Ha coexistencia de endpoints legados e ativos, mas sem politica formal
+versionada para depreciacao e adocao de novos endpoints.
 
 ## Objetivo
-Documentar e aplicar política oficial:
-- v1 = legado (manutenção corretiva)
-- v2 = versão ativa para novas features
-- cronograma de depreciação para rotas legadas
+Documentar e aplicar politica oficial:
+- v1 = legado (manutencao corretiva)
+- v2 = versao ativa para novas features
+- cronograma de depreciacao para rotas legadas
 
-## Critérios de aceite
-- [ ] Documento de política publicado no repositório
-- [ ] README atualizado com status de versões
+## Criterios de aceite
+- [ ] Documento de politica publicado no repositorio
+- [ ] README atualizado com status de versoes
 - [ ] Endpoints novos marcados explicitamente como v2
-- [ ] Plano de depreciação de v1 descrito
+- [ ] Plano de depreciacao de v1 descrito

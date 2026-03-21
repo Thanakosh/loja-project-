@@ -1,28 +1,28 @@
 ---
 task_id: TASK-005
 title: "Otimizar query N+1 no endpoint de listagem de estoque"
-priority: 🟡 média
+priority: media
 scope: backend/app/api/v1/estoque_v2.py
 branch: perf/estoque-n1-query
 commit_message: "perf(estoque): elimina N+1 na listagem com query agregada"
 estimated_effort: 30 minutos
-status: concluída
+status: concluida
 ---
 
 # TASK-005: Otimizar query N+1 no endpoint de listagem de estoque
 
 ## Contexto
 O endpoint `GET /api/v2/estoque/` usa `selectinload(Produto.transacoes)` para carregar
-TODAS as transações de todos os produtos na memória, e depois calcula o estoque no Python
+TODAS as transacoes de todos os produtos na memoria, e depois calcula o estoque no Python
 via `produto.estoque_atual` (que faz `sum(t.quantidade for t in self.transacoes)`).
 
-**Problema:** Com 100 produtos e 10.000 transações, isso carrega 10.000 linhas na memória
-para calcular 100 somas. O correto é fazer isso no banco de dados com `SUM()` + `GROUP BY`.
+**Problema:** Com 100 produtos e 10.000 transacoes, isso carrega 10.000 linhas na memoria
+para calcular 100 somas. O correto e fazer isso no banco de dados com `SUM()` + `GROUP BY`.
 
 ## Arquivo afetado
-- `backend/app/api/v1/estoque_v2.py` — função `listar_estoque_completo` (linhas 86-136)
+- `backend/app/api/v1/estoque_v2.py` - funcao `listar_estoque_completo` (linhas 86-136)
 
-## Código atual (PROBLEMA — N+1 com selectinload)
+## Codigo atual (PROBLEMA - N+1 com selectinload)
 ```python
 @router.get("/", response_model=List[EstoqueAtual])
 def listar_estoque_completo(
@@ -43,7 +43,7 @@ def listar_estoque_completo(
     query = (
         db.query(Produto, sub_ultima_data.c.ultima_data)
         .outerjoin(sub_ultima_data, sub_ultima_data.c.produto_id == Produto.id)
-        .options(selectinload(Produto.transacoes))  # ← PROBLEMA: carrega TUDO
+        .options(selectinload(Produto.transacoes))  #  PROBLEMA: carrega TUDO
     )
 
     if apenas_ativos:
@@ -53,7 +53,7 @@ def listar_estoque_completo(
 
     resultado: List[EstoqueAtual] = []
     for produto, ultima_data in rows:
-        quantidade_atual = produto.estoque_atual  # ← Calcula em Python
+        quantidade_atual = produto.estoque_atual  #  Calcula em Python
         estoque = EstoqueAtual(
             produto_id=produto.id,
             nome_produto=produto.nome,
@@ -71,7 +71,7 @@ def listar_estoque_completo(
     return resultado
 ```
 
-## Código correto (SUBSTITUIR — query agregada no banco)
+## Codigo correto (SUBSTITUIR - query agregada no banco)
 ```python
 @router.get("/", response_model=List[EstoqueAtual])
 def listar_estoque_completo(
@@ -138,34 +138,34 @@ def listar_estoque_completo(
 
 ## Impacto esperado
 
-| Métrica | Antes | Depois |
+| Metrica | Antes | Depois |
 |---------|-------|--------|
 | Queries SQL | 1 (produtos) + 1 (selectin transacoes) | 1 (tudo agregado) |
-| Dados carregados | Todas as transações (~10k rows) | Apenas resultados agregados (~100 rows) |
-| Cálculo da soma | Python (loop) | PostgreSQL (SUM) |
+| Dados carregados | Todas as transacoes (~10k rows) | Apenas resultados agregados (~100 rows) |
+| Calculo da soma | Python (loop) | PostgreSQL (SUM) |
 | Performance estimada | O(n * m) | O(n) |
 
 ## Passos
 1. Criar branch `perf/estoque-n1-query`
 2. No arquivo `backend/app/api/v1/estoque_v2.py`:
-   - Substituir a função `listar_estoque_completo` pela versão otimizada
-   - Remover `selectinload` do import se não for mais usado em nenhum outro lugar
+   - Substituir a funcao `listar_estoque_completo` pela versao otimizada
+   - Remover `selectinload` do import se nao for mais usado em nenhum outro lugar
 3. Rodar testes: `cd backend && pytest tests/ -v`
 4. Verificar que o endpoint `GET /api/v2/estoque/` retorna os mesmos dados
 5. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [ ] Endpoint retorna os mesmos dados de antes (mesmo schema `EstoqueAtual`)
 - [ ] Nenhum uso de `selectinload(Produto.transacoes)` no endpoint de listagem
 - [ ] Testes existentes passam sem erros
 - [ ] Filtro `apenas_ativos` e `apenas_baixo` funcionam corretamente
 
 ## Notas
-- NÃO alterar `obter_estoque_produto` (endpoint individual) — ele já usa `func.sum` corretamente
-- NÃO alterar o model `Produto.estoque_atual` (property) — endpoints individuais podem usá-lo
+- NAO alterar `obter_estoque_produto` (endpoint individual) - ele ja usa `func.sum` corretamente
+- NAO alterar o model `Produto.estoque_atual` (property) - endpoints individuais podem usa-lo
 - O `selectinload` pode ser mantido no import se outros endpoints o usarem
-- Consultar `AGENTS.md` para padrões do projeto
+- Consultar `AGENTS.md` para padroes do projeto
 
-## Atualização de status
-- ✅ Endpoint de listagem com abordagem agregada em banco (`SUM`/`GROUP BY` + `JOIN`)
-- ✅ Benchmark detalhado permanece no escopo da `TASK-010`
+## Atualizacao de status
+-  Endpoint de listagem com abordagem agregada em banco (`SUM`/`GROUP BY` + `JOIN`)
+-  Benchmark detalhado permanece no escopo da `TASK-010`

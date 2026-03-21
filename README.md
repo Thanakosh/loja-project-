@@ -1,6 +1,6 @@
-# Loja Project 🚀
+# Loja Project
 
-Sistema de Gerenciamento Comercial para pequenos e médios negócios.
+Sistema de Gerenciamento Comercial para pequenos e medios negocios.
 
 [![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
@@ -9,101 +9,101 @@ Sistema de Gerenciamento Comercial para pequenos e médios negócios.
 
 ---
 
-## 🌟 Visão Geral
+##  Visao Geral
 
-O **Loja Project** é uma solução de backend desenvolvida com **FastAPI**, voltada para gestão comercial com controle de estoque, PDV, orçamentos, clientes, fornecedores e importação de notas fiscais via XML de NFe.
+O **Loja Project** e uma solucao de backend desenvolvida com **FastAPI**, voltada para gestao comercial com controle de estoque, PDV, orcamentos, clientes, fornecedores e importacao de notas fiscais via XML de NFe.
 
-### ✨ Status da v2.1.0
+###  Status da v2.1.0
 
-- **Importação de NFe via XML**: caminho oficial de entrada fiscal no sistema
-- **PDV com baixa automática de estoque**: operação de venda integrada ao estoque
-- **Orçamentos com conversão em venda**: fluxo comercial completo
+- **Importacao de NFe via XML**: caminho oficial de entrada fiscal no sistema
+- **PDV com baixa automatica de estoque**: operacao de venda integrada ao estoque
+- **Orcamentos com conversao em venda**: fluxo comercial completo
 - **Contas a receber com parcelamento**: suporte para vendas a prazo
-- **Relatórios operacionais**: vendas por período e estoque baixo
+- **Relatorios operacionais**: vendas por periodo e estoque baixo
 - **Dashboard com alertas de estoque**
-- **Autenticação JWT** em toda a API protegida
+- **Autenticacao JWT** em toda a API protegida
 
 ---
 
-## 🛠️ Tecnologias
+##  Tecnologias
 
 ### Backend
 - **Framework:** Python 3.12+ | FastAPI 0.109+ | Pydantic v2
-- **Servidor:** Uvicorn com suporte assíncrono
+- **Servidor:** Uvicorn com suporte assincrono
 
 ### Banco de Dados
 - **ORM:** SQLAlchemy 2.0
 - **SGBD:** PostgreSQL
-- **Migrações:** Alembic
+- **Migracoes:** Alembic
 
 ### Frontend
 - **UI:** React 18+ com TailwindCSS + TypeScript
 - **Desktop:** Electron
 - **Build Tool:** Vite
 
-### Segurança
-- **Autenticação:** JWT (python-jose)
+### Seguranca
+- **Autenticacao:** JWT (python-jose)
 - **Hash:** Bcrypt (passlib)
-- **Validação:** Pydantic v2
+- **Validacao:** Pydantic v2
 
 ---
 
-## 📋 Funcionalidades
+##  Funcionalidades
 
-### ✅ Implementadas
+###  Implementadas
 
-#### 1. Gestão de Estoque
-- Sistema baseado em transações (ENTRADA, SAIDA, AJUSTE, DEVOLUCAO)
-- Cálculo dinâmico de estoque
-- Histórico completo de movimentações
+#### 1. Gestao de Estoque
+- Sistema baseado em transacoes (ENTRADA, SAIDA, AJUSTE, DEVOLUCAO)
+- Calculo dinamico de estoque
+- Historico completo de movimentacoes
 - Alertas de estoque baixo
 
-#### 2. Importação de Notas Fiscais (XML)
-- Upload de XML de NFe com extração automática de produtos
+#### 2. Importacao de Notas Fiscais (XML)
+- Upload de XML de NFe com extracao automatica de produtos
 - Auto-cadastro de fornecedor pelo CNPJ
-- Revisão e edição dos itens antes de importar
-- Cadastro automático de produtos com estoque inicial
+- Revisao e edicao dos itens antes de importar
+- Cadastro automatico de produtos com estoque inicial
 
-#### 3. Módulo de Produtos
+#### 3. Modulo de Produtos
 - CRUD completo com soft delete
 - Estoque calculado dinamicamente
 - Rastreamento de fornecedores e NCM
 
 #### 4. PDV e Vendas
-- Frente de caixa com baixa automática de estoque
-- Orçamentos com conversão em venda
+- Frente de caixa com baixa automatica de estoque
+- Orcamentos com conversao em venda
 - Contas a receber para pagamentos a prazo
 
 #### 5. Cadastros
-- Clientes e Fornecedores com validação de CPF/CNPJ
-- Notas Fiscais com histórico e filtros por período
+- Clientes e Fornecedores com validacao de CPF/CNPJ
+- Notas Fiscais com historico e filtros por periodo
 
-#### 6. Autenticação e Segurança
-- JWT com expiração configurável
-- Proteção de todos os endpoints
+#### 6. Autenticacao e Seguranca
+- JWT com expiracao configuravel
+- Protecao de todos os endpoints
 - Rate limiting por endpoint
 - Logging estruturado em JSON
 
 ---
 
-## 🔮 Em desenvolvimento (roadmap)
+##  Em desenvolvimento (roadmap)
 
-- **OCR de imagens e PDFs via IA (Gemini)** — **Fase 2 (TASK-011 adiada)**
-- **Controle de caixa diário** (abertura/fechamento)
-- **Categorias hierárquicas de produtos**
-- **Precificação atacado/varejo**
-- **Camada de Inteligência Fiscal com IA (proposta avaliada)** — ver `docs/PROPOSTA_CAMADA_INTELIGENCIA_FISCAL.md`
+- **OCR de imagens e PDFs via IA (Gemini)** - **Fase 2 (TASK-011 adiada)**
+- **Controle de caixa diario** (abertura/fechamento)
+- **Categorias hierarquicas de produtos**
+- **Precificacao atacado/varejo**
+- **Camada de Inteligencia Fiscal com IA (proposta avaliada)** - ver `docs/PROPOSTA_CAMADA_INTELIGENCIA_FISCAL.md`
 
 ---
 
-## 🚀 Instalação
+##  Instalacao
 
-### Pré-requisitos
+### Pre-requisitos
 
 - Python 3.12+
 - PostgreSQL 14+
 
-### 1. Clonar o repositório
+### 1. Clonar o repositorio
 
 ```bash
 git clone https://github.com/Thanakosh/loja-project-.git
@@ -118,7 +118,7 @@ source venv/bin/activate  # Linux/Mac
 .\venv\Scripts\activate   # Windows
 ```
 
-### 3. Instalar dependências
+### 3. Instalar dependencias
 
 ```bash
 cd backend
@@ -127,16 +127,16 @@ pip install -r requirements.txt
 
 #### Perfil opcional OCR/ML
 
-Para habilitar dependências pesadas de OCR/IA em ambientes que precisem desses recursos:
+Para habilitar dependencias pesadas de OCR/IA em ambientes que precisem desses recursos:
 
 ```bash
 cd backend
 pip install -r requirements-ocr.txt
 ```
 
-> O perfil `requirements-ocr.txt` é opcional e separado do core para manter o setup base mais leve.
+> O perfil `requirements-ocr.txt` e opcional e separado do core para manter o setup base mais leve.
 
-### 4. Configurar variáveis de ambiente
+### 4. Configurar variaveis de ambiente
 
 Copie o exemplo e ajuste:
 
@@ -156,14 +156,14 @@ CORS_ORIGINS=["http://localhost:5173"]
 
 > Gere uma chave segura com: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
 
-### 5. Criar banco e executar migrações
+### 5. Criar banco e executar migracoes
 
 ```bash
 createdb loja_db
 alembic upgrade head
 ```
 
-### 6. Criar usuário administrador
+### 6. Criar usuario administrador
 
 ```bash
 python create_user.py
@@ -182,20 +182,20 @@ Acesse:
 
 ---
 
-## 🔢 Versionamento da API
+##  Versionamento da API
 
-| Versão | Status | Uso |
+| Versao | Status | Uso |
 |--------|--------|-----|
-| `v1` | **Legado** (manutenção corretiva) | Endpoints existentes sem novas features |
-| `v2` | **Ativo** (versão oficial) | Todas as novas funcionalidades |
+| `v1` | **Legado** (manutencao corretiva) | Endpoints existentes sem novas features |
+| `v2` | **Ativo** (versao oficial) | Todas as novas funcionalidades |
 
-> ⚠️ `/api/v1/estoque` está **depreciado** — use `/api/v2/estoque`. Consulte [docs/POLITICA_VERSIONAMENTO_API.md](docs/POLITICA_VERSIONAMENTO_API.md) para o cronograma completo.
+>  `/api/v1/estoque` esta **depreciado** - use `/api/v2/estoque`. Consulte [docs/POLITICA_VERSIONAMENTO_API.md](docs/POLITICA_VERSIONAMENTO_API.md) para o cronograma completo.
 
 ---
 
-## 📖 Exemplos de uso da API
+##  Exemplos de uso da API
 
-### Autenticação
+### Autenticacao
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/users/token" \
@@ -210,7 +210,7 @@ GET /api/v1/produtos
 Authorization: Bearer <token>
 ```
 
-### Registrar entrada de estoque (v2 — ativo)
+### Registrar entrada de estoque (v2 - ativo)
 
 ```bash
 POST /api/v2/estoque/transacao
@@ -235,31 +235,31 @@ Content-Type: multipart/form-data
 file: nota_fiscal.xml
 ```
 
-> Observação: na versão 2.1.0, o upload aceita apenas XML de NFe como fluxo oficial.
+> Observacao: na versao 2.1.0, o upload aceita apenas XML de NFe como fluxo oficial.
 
 ---
 
-## 📊 Modelo de dados principal
+##  Modelo de dados principal
 
 ```
-┌─────────────┐         ┌──────────────────┐         ┌──────────┐
-│   Produto   │◄────────│ TransacaoEstoque │────────►│   User   │
-├─────────────┤         ├──────────────────┤         ├──────────┤
-│ id          │         │ produto_id (FK)  │         │ id       │
-│ nome        │         │ tipo (enum)      │         │ email    │
-│ fornecedor  │         │ quantidade       │         │ password │
-│ preco_*     │         │ motivo           │         └──────────┘
-│ ativo       │         │ usuario_id (FK)  │
-│ estoque_min │         │ data_transacao   │
-└─────────────┘         └──────────────────┘
-       │
-       ▼
+
+   Produto    TransacaoEstoque    User
+
+ id                    produto_id (FK)            id
+ nome                  tipo (enum)                email
+ fornecedor            quantidade                 password
+ preco_*               motivo
+ ativo                 usuario_id (FK)
+ estoque_min           data_transacao
+
+
+
   estoque_atual (calculado dinamicamente)
 ```
 
 ---
 
-## 🧪 Testes
+##  Testes
 
 ```bash
 cd backend
@@ -271,22 +271,22 @@ pytest tests/ --cov=app --cov-report=html
 
 ---
 
-## 📝 Changelog
+##  Changelog
 
-Veja [CHANGELOG.md](CHANGELOG.md) para histórico detalhado de mudanças.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Veja [CHANGELOG.md](CHANGELOG.md) para historico detalhado de mudancas.
 
 ---
 
-## 👥 Autores
+##  Licenca
+
+Este projeto esta sob a licenca MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+##  Autores
 
 - **Thanakosh** - [@Thanakosh](https://github.com/Thanakosh)
 
 ---
 
-**Desenvolvido com ❤️ e ☕**
+**Desenvolvido com  e **

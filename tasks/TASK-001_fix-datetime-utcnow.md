@@ -1,21 +1,21 @@
 ---
 task_id: TASK-001
 title: "Corrigir uso depreciado de datetime.utcnow()"
-priority: 🟡 média
-scope: backend/ (3 arquivos, 5 ocorrências)
+priority: media
+scope: backend/ (3 arquivos, 5 ocorrencias)
 branch: fix/datetime-utcnow
 commit_message: "fix(backend): substitui datetime.utcnow() por datetime.now(timezone.utc)"
 estimated_effort: 10 minutos
-status: concluída
+status: concluida
 ---
 
 # TASK-001: Corrigir `datetime.utcnow()` depreciado
 
 ## Contexto
-`datetime.utcnow()` está **depreciado desde Python 3.12** (DeprecationWarning).
-O método correto é `datetime.now(timezone.utc)`, que retorna um datetime **timezone-aware**.
+`datetime.utcnow()` esta **depreciado desde Python 3.12** (DeprecationWarning).
+O metodo correto e `datetime.now(timezone.utc)`, que retorna um datetime **timezone-aware**.
 
-## Arquivos afetados (5 ocorrências em 3 arquivos)
+## Arquivos afetados (5 ocorrencias em 3 arquivos)
 
 | Arquivo | Linha | Uso |
 |---------|-------|-----|
@@ -25,7 +25,7 @@ O método correto é `datetime.now(timezone.utc)`, que retorna um datetime **tim
 | `backend/app/api/v1/ocr.py` | 147 | `datetime.utcnow().isoformat()` |
 | `backend/tests/test_recommendations_impl.py` | 28 | `datetime.utcnow() - timedelta(...)` |
 
-## Correções
+## Correcoes
 
 ### 1. `backend/app/models/transacao_estoque.py` (linha 28)
 ```python
@@ -61,24 +61,24 @@ return (datetime.now(timezone.utc) + timedelta(...)).isoformat()  # linha 42
 # DEPOIS
 "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
 ```
-> Verificar se `timezone` já está importado neste arquivo; se não, adicionar ao import.
+> Verificar se `timezone` ja esta importado neste arquivo; se nao, adicionar ao import.
 
 ## Passos
 1. Criar branch `fix/datetime-utcnow`
-2. Aplicar as 5 correções nos 3 arquivos listados acima
-3. Verificar que não restam usos: `grep -r "utcnow" backend/`
+2. Aplicar as 5 correcoes nos 3 arquivos listados acima
+3. Verificar que nao restam usos: `grep -r "utcnow" backend/`
 4. Rodar testes: `cd backend && pytest tests/ -v`
 5. Commit seguindo Conventional Commits
 
-## Critérios de aceite
+## Criterios de aceite
 - [ ] `grep -r "utcnow" backend/` retorna zero resultados
 - [ ] Testes passam sem erros
 - [ ] Nenhum DeprecationWarning relacionado a datetime
 
-## Referências
+## Referencias
 - [Python 3.12 changelog](https://docs.python.org/3.12/whatsnew/3.12.html)
-- `AGENTS.md` — padrões do projeto
+- `AGENTS.md` - padroes do projeto
 
-## Atualização de status
-- ✅ Implementação presente no código atual (`datetime.now(timezone.utc)` nos pontos mapeados)
-- ✅ Busca por `utcnow` no diretório `backend/` sem ocorrências
+## Atualizacao de status
+-  Implementacao presente no codigo atual (`datetime.now(timezone.utc)` nos pontos mapeados)
+-  Busca por `utcnow` no diretorio `backend/` sem ocorrencias

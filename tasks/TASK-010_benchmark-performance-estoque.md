@@ -1,34 +1,34 @@
 ---
 task_id: TASK-010
 title: "Benchmark de performance no endpoint de estoque"
-priority: 🟡 média
+priority: media
 scope: backend/tests/benchmarks/
 branch: perf/estoque-benchmark
 commit_message: "perf(estoque): adiciona benchmark automatizado para endpoint de estoque"
 estimated_effort: 45 minutos
 status: pendente
 depends_on: ["TASK-005"]
-recomendacao_ref: "#5 — Otimização de performance no estoque (N+1) — fase benchmark"
+recomendacao_ref: "#5 Otimizacao de performance no estoque (N+1) fase benchmark"
 ---
 
-# TASK-010: Benchmark de performance — endpoint de estoque
+# TASK-010: Benchmark de performance - endpoint de estoque
 
 ## Contexto
-A TASK-005 corrigiu o problema N+1 no endpoint `GET /api/v2/estoque/` substituindo `selectinload` + cálculo Python por uma query agregada com `SUM()` + `GROUP BY`. A correção foi concluída, mas **ainda faltam métricas concretas** que comprovem a melhoria.
+A TASK-005 corrigiu o problema N+1 no endpoint `GET /api/v2/estoque/` substituindo `selectinload` + calculo Python por uma query agregada com `SUM()` + `GROUP BY`. A correcao foi concluida, mas **ainda faltam metricas concretas** que comprovem a melhoria.
 
 **Objetivo:** Criar um benchmark automatizado que:
-1. Popule o banco com dados realistas (100+ produtos, 10.000+ transações)
-2. Meça tempo de resposta e número de queries SQL executadas
-3. Gere relatório comparável em runs futuros (baseline documentado)
-4. Sirva como teste de regressão de performance
+1. Popule o banco com dados realistas (100+ produtos, 10.000+ transacoes)
+2. Meca tempo de resposta e numero de queries SQL executadas
+3. Gere relatorio comparavel em runs futuros (baseline documentado)
+4. Sirva como teste de regressao de performance
 
 ## Arquivos afetados
-- `backend/tests/benchmarks/` — **NOVO** — diretório de benchmarks
-- `backend/tests/benchmarks/__init__.py` — **NOVO**
-- `backend/tests/benchmarks/test_estoque_performance.py` — **NOVO**
-- `backend/tests/benchmarks/conftest.py` — **NOVO** — fixtures com dados em massa
+- `backend/tests/benchmarks/` - **NOVO** - diretorio de benchmarks
+- `backend/tests/benchmarks/__init__.py` - **NOVO**
+- `backend/tests/benchmarks/test_estoque_performance.py` - **NOVO**
+- `backend/tests/benchmarks/conftest.py` - **NOVO** - fixtures com dados em massa
 
-## Alteração 1: Criar `backend/tests/benchmarks/conftest.py`
+## Alteracao 1: Criar `backend/tests/benchmarks/conftest.py`
 
 ```python
 import random
@@ -44,12 +44,12 @@ from app.core.security import get_password_hash
 
 
 NUM_PRODUTOS = 150
-NUM_TRANSACOES_POR_PRODUTO = 100  # Total: ~15.000 transações
+NUM_TRANSACOES_POR_PRODUTO = 100  # Total: ~15.000 transacoes
 
 
 @pytest.fixture(scope="module")
 def benchmark_user(db_session: Session) -> User:
-    """Cria usuário dedicado para benchmarks."""
+    """Cria usuario dedicado para benchmarks."""
     user = User(
         email="benchmark@test.com",
         hashed_password=get_password_hash("benchmarkpass123"),
@@ -68,7 +68,7 @@ def populated_db(db_session: Session, benchmark_user: User) -> dict:
     """
     Popula o banco com dados realistas para benchmark.
 
-    Retorna estatísticas da população.
+    Retorna estatisticas da populacao.
     """
     produtos = []
     for i in range(NUM_PRODUTOS):
@@ -118,7 +118,7 @@ def populated_db(db_session: Session, benchmark_user: User) -> dict:
     }
 ```
 
-## Alteração 2: Criar `backend/tests/benchmarks/test_estoque_performance.py`
+## Alteracao 2: Criar `backend/tests/benchmarks/test_estoque_performance.py`
 
 ```python
 """
@@ -128,7 +128,7 @@ Executa com:
     cd backend
     pytest tests/benchmarks/ -v -s --tb=short
 
-O flag -s permite ver os prints com as métricas.
+O flag -s permite ver os prints com as metricas.
 """
 import logging
 import time
@@ -171,19 +171,19 @@ class TestEstoquePerformance:
         """
         Benchmark: tempo de resposta do endpoint de listagem.
 
-        Baseline esperado após TASK-005:
-        - < 500ms para 150 produtos com ~15k transações (SQLite in-memory)
+        Baseline esperado apos TASK-005:
+        - < 500ms para 150 produtos com ~15k transacoes (SQLite in-memory)
         - < 2s em PostgreSQL com dados similares
         """
         # Warmup
-        client.get("/api/v2/estoque/?page=1&page_size=10", headers=auth_headers)
+        client.get("/api/v2/estoque/page=1&page_size=10", headers=auth_headers)
 
         # Benchmark: 5 runs
         tempos = []
         for _ in range(5):
             start = time.perf_counter()
             response = client.get(
-                "/api/v2/estoque/?page=1&page_size=50",
+                "/api/v2/estoque/page=1&page_size=50",
                 headers=auth_headers,
             )
             elapsed = time.perf_counter() - start
@@ -198,38 +198,38 @@ class TestEstoquePerformance:
         print(f"\n{'='*60}")
         print(f"BENCHMARK: GET /api/v2/estoque/")
         print(f"Dados: {populated_db['num_produtos']} produtos, "
-              f"{populated_db['num_transacoes']} transações")
+              f"{populated_db['num_transacoes']} transacoes")
         print(f"{'='*60}")
-        print(f"  Média:  {media*1000:.1f}ms")
+        print(f"  Media:  {media*1000:.1f}ms")
         print(f"  Min:    {minimo*1000:.1f}ms")
         print(f"  Max:    {maximo*1000:.1f}ms")
         print(f"  P95:    {p95*1000:.1f}ms")
         print(f"{'='*60}")
 
-        # Assertion: deve completar em tempo razoável
+        # Assertion: deve completar em tempo razoavel
         assert media < 2.0, (
-            f"Tempo médio de {media*1000:.0f}ms excede o limite de 2000ms. "
-            f"Possível regressão de performance (N+1?)."
+            f"Tempo medio de {media*1000:.0f}ms excede o limite de 2000ms. "
+            f"Possivel regressao de performance (N+1)."
         )
 
     def test_contagem_queries_sql(
         self, client: TestClient, auth_headers: dict, populated_db: dict, db_session: Session
     ):
         """
-        Verifica que o endpoint usa número constante de queries.
+        Verifica que o endpoint usa numero constante de queries.
 
-        Após TASK-005, a listagem deve usar NO MÁXIMO 2 queries:
-        1. Query principal com JOIN + agregação
-        2. Possível COUNT para paginação
+        Apos TASK-005, a listagem deve usar NO MAXIMO 2 queries:
+        1. Query principal com JOIN + agregacao
+        2. Possivel COUNT para paginacao
 
-        Se o número de queries crescer proporcionalmente aos produtos,
-        indica regressão N+1.
+        Se o numero de queries crescer proporcionalmente aos produtos,
+        indica regressao N+1.
         """
         from tests.conftest import sync_engine
 
         with QueryCounter(sync_engine) as counter:
             response = client.get(
-                "/api/v2/estoque/?page=1&page_size=50",
+                "/api/v2/estoque/page=1&page_size=50",
                 headers=auth_headers,
             )
 
@@ -242,29 +242,29 @@ class TestEstoquePerformance:
             print(f"  Query {i}: {q[:100]}...")
         print(f"{'='*60}")
 
-        # Máximo aceitável: 3 queries (auth + dados + possível count)
+        # Maximo aceitavel: 3 queries (auth + dados + possivel count)
         assert counter.count <= 5, (
-            f"Número de queries ({counter.count}) excede o limite de 5. "
-            f"Possível regressão N+1. "
+            f"Numero de queries ({counter.count}) excede o limite de 5. "
+            f"Possivel regressao N+1. "
             f"Com {populated_db['num_produtos']} produtos, "
-            f"esperamos no máximo 3-5 queries."
+            f"esperamos no maximo 3-5 queries."
         )
 
     def test_filtro_apenas_baixo_performance(
         self, client: TestClient, auth_headers: dict, populated_db: dict
     ):
-        """Benchmark: filtro apenas_baixo não deve degradar performance."""
+        """Benchmark: filtro apenas_baixo nao deve degradar performance."""
         tempos_sem_filtro = []
         tempos_com_filtro = []
 
         for _ in range(3):
             start = time.perf_counter()
-            client.get("/api/v2/estoque/?page=1&page_size=50", headers=auth_headers)
+            client.get("/api/v2/estoque/page=1&page_size=50", headers=auth_headers)
             tempos_sem_filtro.append(time.perf_counter() - start)
 
             start = time.perf_counter()
             client.get(
-                "/api/v2/estoque/?page=1&page_size=50&apenas_baixo=true",
+                "/api/v2/estoque/page=1&page_size=50&apenas_baixo=true",
                 headers=auth_headers,
             )
             tempos_com_filtro.append(time.perf_counter() - start)
@@ -276,24 +276,24 @@ class TestEstoquePerformance:
         print(f"BENCHMARK: Filtro apenas_baixo")
         print(f"  Sem filtro:  {media_sem*1000:.1f}ms")
         print(f"  Com filtro:  {media_com*1000:.1f}ms")
-        print(f"  Diferença:   {(media_com - media_sem)*1000:.1f}ms")
+        print(f"  Diferenca:   {(media_com - media_sem)*1000:.1f}ms")
         print(f"{'='*60}")
 
-        # O filtro não deve ser significativamente mais lento
+        # O filtro nao deve ser significativamente mais lento
         assert media_com < media_sem * 3, (
-            "Filtro apenas_baixo está significativamente mais lento que sem filtro"
+            "Filtro apenas_baixo esta significativamente mais lento que sem filtro"
         )
 
     def test_paginacao_performance(
         self, client: TestClient, auth_headers: dict, populated_db: dict
     ):
-        """Benchmark: páginas diferentes devem ter performance similar."""
+        """Benchmark: paginas diferentes devem ter performance similar."""
         tempos_pagina_1 = []
         tempos_pagina_ultima = []
 
-        # Descobrir última página
+        # Descobrir ultima pagina
         resp = client.get(
-            "/api/v2/estoque/?page=1&page_size=10",
+            "/api/v2/estoque/page=1&page_size=10",
             headers=auth_headers,
         )
         data = resp.json()
@@ -301,12 +301,12 @@ class TestEstoquePerformance:
 
         for _ in range(3):
             start = time.perf_counter()
-            client.get("/api/v2/estoque/?page=1&page_size=10", headers=auth_headers)
+            client.get("/api/v2/estoque/page=1&page_size=10", headers=auth_headers)
             tempos_pagina_1.append(time.perf_counter() - start)
 
             start = time.perf_counter()
             client.get(
-                f"/api/v2/estoque/?page={ultima_pagina}&page_size=10",
+                f"/api/v2/estoque/page={ultima_pagina}&page_size=10",
                 headers=auth_headers,
             )
             tempos_pagina_ultima.append(time.perf_counter() - start)
@@ -315,15 +315,15 @@ class TestEstoquePerformance:
         media_pn = sum(tempos_pagina_ultima) / len(tempos_pagina_ultima)
 
         print(f"\n{'='*60}")
-        print(f"BENCHMARK: Paginação (page_size=10)")
-        print(f"  Página 1:       {media_p1*1000:.1f}ms")
-        print(f"  Página {ultima_pagina}:  {media_pn*1000:.1f}ms")
+        print(f"BENCHMARK: Paginacao (page_size=10)")
+        print(f"  Pagina 1:       {media_p1*1000:.1f}ms")
+        print(f"  Pagina {ultima_pagina}:  {media_pn*1000:.1f}ms")
         print(f"{'='*60}")
 ```
 
 ## Passos
 1. Criar branch `perf/estoque-benchmark`
-2. Criar diretório `backend/tests/benchmarks/`
+2. Criar diretorio `backend/tests/benchmarks/`
 3. Criar `backend/tests/benchmarks/__init__.py` (vazio)
 4. Criar `backend/tests/benchmarks/conftest.py` com dados em massa
 5. Criar `backend/tests/benchmarks/test_estoque_performance.py`
@@ -331,17 +331,17 @@ class TestEstoquePerformance:
 7. Documentar resultados do benchmark no PR (copiar output do terminal)
 8. Commit seguindo Conventional Commits
 
-## Critérios de aceite
-- [ ] Benchmark popula banco com 150+ produtos e 15.000+ transações
-- [ ] Tempo médio de resposta documentado em ms
-- [ ] Contagem de queries SQL verificada (≤ 5 para listagem completa)
-- [ ] Benchmark pode ser re-executado para detectar regressões futuras
-- [ ] Resultados do benchmark incluídos na descrição do PR
+## Criterios de aceite
+- [ ] Benchmark popula banco com 150+ produtos e 15.000+ transacoes
+- [ ] Tempo medio de resposta documentado em ms
+- [ ] Contagem de queries SQL verificada ( 5 para listagem completa)
+- [ ] Benchmark pode ser re-executado para detectar regressoes futuras
+- [ ] Resultados do benchmark incluidos na descricao do PR
 - [ ] Testes regulares (`pytest tests/ -v`) continuam passando (benchmarks isolados)
 
 ## Notas
-- Os benchmarks ficam em diretório separado (`tests/benchmarks/`) para não rodar no CI padrão
-- Os thresholds são conservadores (2s) pois rodamos em SQLite in-memory nos testes
-- Em PostgreSQL real, adicionar benchmarks com `pytest-benchmark` se necessário
-- NÃO alterar código de produção nesta task — apenas testes
-- Consultar `AGENTS.md` para padrões do projeto
+- Os benchmarks ficam em diretorio separado (`tests/benchmarks/`) para nao rodar no CI padrao
+- Os thresholds sao conservadores (2s) pois rodamos em SQLite in-memory nos testes
+- Em PostgreSQL real, adicionar benchmarks com `pytest-benchmark` se necessario
+- NAO alterar codigo de producao nesta task - apenas testes
+- Consultar `AGENTS.md` para padroes do projeto
