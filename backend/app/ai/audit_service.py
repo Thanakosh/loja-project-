@@ -8,7 +8,7 @@ from typing import Literal
 from ..fiscal.engine import VERSAO_ENGINE_REGRAS, executar_auditoria_regras
 from ..schemas.fiscal_payload import NotaFiscalPayloadNormalizado
 
-VERSAO_AUDIT_SERVICE = "2.0.0"
+VERSAO_AUDIT_SERVICE = "2.2.0"
 
 
 @dataclass(frozen=True)
@@ -48,12 +48,20 @@ def auditar_nota_fiscal(
     regime_tributario: Literal["simples_nacional", "regime_normal"] | None = None,
     uf_emitente: str | None = None,
     tipo_operacao: Literal["entrada", "saida"] | None = None,
+    loja_cnpj: str | None = None,
+    loja_inscricao_estadual: str | None = None,
+    loja_cnae: str | None = None,
+    loja_porte: Literal["ME", "EPP", "MEI"] | None = None,
 ) -> AuditClassification:
     resultado = executar_auditoria_regras(
         nota,
         regime_tributario=regime_tributario,
         uf_emitente=uf_emitente,
         tipo_operacao=tipo_operacao,
+        loja_cnpj=loja_cnpj,
+        loja_inscricao_estadual=loja_inscricao_estadual,
+        loja_cnae=loja_cnae,
+        loja_porte=loja_porte,
     )
 
     falhas = resultado.falhas

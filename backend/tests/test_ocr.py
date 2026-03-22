@@ -167,8 +167,6 @@ def test_ocr_xml_usa_regime_tributario_da_configuracao(client: TestClient, auth_
         json={
             "regime_tributario": "simples_nacional",
             "uf": "SP",
-            "margem_minima_percentual": 0.05,
-            "aliquota_impostos_default": 0.12,
         },
         headers=auth_headers,
     )

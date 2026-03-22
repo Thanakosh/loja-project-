@@ -249,6 +249,10 @@ async def upload_arquivo_nota_fiscal(
                 regime_tributario=configuracao_loja.regime_tributario,
                 uf_emitente=configuracao_loja.uf,
                 tipo_operacao="entrada",
+                loja_cnpj=configuracao_loja.cnpj,
+                loja_inscricao_estadual=configuracao_loja.inscricao_estadual,
+                loja_cnae=configuracao_loja.cnae,
+                loja_porte=configuracao_loja.porte,
             )
             cross_findings = validar_nota_cruzado(nota_normalizada)
 
