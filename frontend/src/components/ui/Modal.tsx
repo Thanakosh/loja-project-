@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useId } from 'react'
 import type { ReactNode, MouseEvent } from 'react'
 
 import { useAccessibleModal } from '../../hooks/useAccessibleModal'
@@ -36,7 +36,7 @@ const Modal = ({
   closeLabel = 'Fechar modal',
 }: ModalProps) => {
   const modalRef = useAccessibleModal(open, onClose)
-  const titleId = useMemo(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`, [])
+  const titleId = useId()
 
   if (!open) {
     return null

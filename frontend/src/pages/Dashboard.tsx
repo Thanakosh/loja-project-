@@ -147,7 +147,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">🛒 Vendas Hoje</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Vendas Hoje</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasHojeQuery.isLoading ? (
               <CardSkeleton />
@@ -160,7 +160,7 @@ const Dashboard = () => {
         </article>
 
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">📅 Vendas do Mês</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Vendas do Mes</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {vendasMesQuery.isLoading ? (
               <CardSkeleton />
@@ -173,7 +173,7 @@ const Dashboard = () => {
         </article>
 
         <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">💰 Orçamentos Abertos</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Orcamentos Abertos</p>
           <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
             {orcamentosAbertosQuery.isLoading ? (
               <CardSkeleton />
@@ -190,7 +190,7 @@ const Dashboard = () => {
             }`}
         >
           <p className={`text-sm ${estoqueAlertas.length > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-            ⚠️ Alertas de Estoque
+            Alertas de Estoque
           </p>
           <div className={`mt-2 text-2xl font-semibold ${estoqueAlertas.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-100'}`}>
             {estoqueAlertasQuery.isLoading ? (
@@ -210,7 +210,7 @@ const Dashboard = () => {
       <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Saúde Fiscal</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Saude Fiscal</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {fiscalDashboard?.periodo_rotulo ?? 'ultimas notas importadas'}
             </p>
@@ -231,13 +231,13 @@ const Dashboard = () => {
           <p className="text-sm text-red-600 dark:text-red-400">Erro ao carregar indicadores fiscais.</p>
         ) : !fiscalDashboard || fiscalDashboard.total_notas === 0 ? (
           <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-            Nenhuma nota importada ainda para calcular a saúde fiscal.
+            Nenhuma nota importada ainda para calcular a saude fiscal.
           </div>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr]">
               <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/30">
-                <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Score médio</p>
+                <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Score medio</p>
                 <p className="mt-2 text-3xl font-semibold text-emerald-900 dark:text-emerald-100">{fiscalScore.toFixed(1)}</p>
               </div>
               <div>
@@ -309,7 +309,7 @@ const Dashboard = () => {
                 >
                   <span className="font-medium text-gray-800 dark:text-gray-100">{nomeProduto}</span>
                   <span className="ml-2 text-gray-600 dark:text-gray-400">
-                    Estoque: {estoqueAtual} / Mínimo: {estoqueMinimo}
+                    Estoque: {estoqueAtual} / Minimo: {estoqueMinimo}
                   </span>
                 </li>
               )
