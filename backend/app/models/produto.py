@@ -41,7 +41,12 @@ class Produto(Base):
     embedding = Column(Text, nullable=True)
     
     # Relacionamentos
-    transacoes = relationship("TransacaoEstoque", back_populates="produto", cascade="all, delete-orphan")
+    transacoes = relationship(
+        "TransacaoEstoque",
+        back_populates="produto",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     fornecedor_rel = relationship("Fornecedor", back_populates="produtos")
     categoria = relationship("Categoria", back_populates="produtos")
     politicas_desconto = relationship("PoliticaDescontoProduto", back_populates="produto", cascade="all, delete-orphan")
@@ -59,7 +64,7 @@ class Produto(Base):
         return self.estoque_atual <= self.estoque_minimo
     
     def __repr__(self):
-        return f"<Produto(id={self.id}, nome='{self.nome}', estoque={self.estoque_atual})>"
+        return f"<Produto(id={self.id}, nome='{self.nome}')>"
 
     @property
     def permite_fracionado(self) -> bool:
