@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import {
@@ -144,17 +144,35 @@ interface ModalExclusaoProps {
 
 const ModalExclusao = ({ produto, onConfirmar, onCancelar, isPending }: ModalExclusaoProps) => {
   const [confirmacaoTexto, setConfirmacaoTexto] = useState('')
+  const modalRef = useAccessibleModal(true, onCancelar)
+  const titleId = useId()
+  const inputId = useId()
   const nomeEsperado = produto.nome.trim()
   const confirmacaoCorreta = confirmacaoTexto.trim() === nomeEsperado
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onMouseDown={() => {
+        if (!isPending) {
+          onCancelar()
+        }
+      }}
+    >
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        onMouseDown={(event) => event.stopPropagation()}
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
+      >
         {/* Cabeçalho vermelho */}
         <div className="bg-red-600 px-6 py-4 flex items-center gap-3">
           <span className="text-2xl">🗑️</span>
           <div>
-            <h2 className="text-base font-semibold text-white">Excluir produto permanentemente</h2>
+            <h2 id={titleId} className="text-base font-semibold text-white">Excluir produto permanentemente</h2>
             <p className="text-xs text-red-200 mt-0.5">Esta ação não pode ser desfeita</p>
           </div>
         </div>
@@ -186,11 +204,12 @@ const ModalExclusao = ({ produto, onConfirmar, onCancelar, isPending }: ModalExc
 
           {/* Campo de confirmação digitando o nome */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <label htmlFor={inputId} className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
               Para confirmar, digite o nome do produto:
               <span className="ml-1 font-semibold text-gray-900 dark:text-gray-100">"{nomeEsperado}"</span>
             </label>
             <input
+              id={inputId}
               type="text"
               value={confirmacaoTexto}
               onChange={(e) => setConfirmacaoTexto(e.target.value)}
@@ -509,7 +528,7 @@ const Produtos = () => {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Produtos</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
+          <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2">
             <input
               type="text"
               placeholder="Buscar por nome"
@@ -592,6 +611,7 @@ const Produtos = () => {
                       <button
                         type="button"
                         onClick={() => setProdutoParaExcluir(produto)}
+                        aria-label={`Excluir permanentemente ${produto.nome}`}
                         title="Excluir permanentemente"
                         className="rounded border border-red-200 dark:border-red-800 px-3 py-1 text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-900/30"
                       >
@@ -606,7 +626,7 @@ const Produtos = () => {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {produtosQuery.data?.page ?? page} de {totalPages} — mostrando {produtos.length} registros
         </span>

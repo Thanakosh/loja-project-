@@ -262,7 +262,7 @@ const Fornecedores = () => {
       </div>
 
       <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Razão Social</th>
@@ -309,7 +309,7 @@ const Fornecedores = () => {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {page + 1} de {totalPages} — mostrando {fornecedores.length} registros
         </span>

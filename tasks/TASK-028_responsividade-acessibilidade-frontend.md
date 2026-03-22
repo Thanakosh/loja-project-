@@ -1,7 +1,7 @@
 ---
 task_id: TASK-028
 title: "Responsividade e acessibilidade do frontend"
-status: pendente
+status: concluida
 priority: baixa
 agent_chat_executable: "sim"
 depends_on: []
@@ -31,3 +31,20 @@ minimos de acessibilidade.
 
 - Todas as tabelas sao utilizaveis em 1024px de largura.
 - Lighthouse Accessibility score >= 85 na pagina principal.
+
+## Entregue
+
+- Ajustes de responsividade em tabelas e paginacao das telas de produtos,
+  orcamentos, estoque, notas fiscais e fornecedores.
+- `aria-label` adicionados em botoes de icone e acoes sem texto suficiente.
+- Navegacao por teclado e fechamento por `Escape` nos modais principais via
+  `useAccessibleModal`.
+- Associacao de `label` e `id` nos formularios/modais tocados nesta etapa.
+
+## Validacao
+
+- Auditoria real em viewport de `1024px` nas telas principais sem overflow
+  horizontal global.
+- `npm run test:e2e`: 5 testes aprovados.
+- `node .\\node_modules\\vite\\bin\\vite.js build`: ok.
+- Lighthouse Accessibility: `97` no build local da pagina principal.

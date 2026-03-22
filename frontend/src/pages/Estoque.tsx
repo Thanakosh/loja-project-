@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 import { API_BASE_URL } from '../config/api'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
@@ -57,6 +58,19 @@ const Estoque = () => {
   const [novaMov, setNovaMov] = useState<NovaMovimentacao>({ produto_id: 0, tipo: 'entrada', quantidade: 0, motivo: '' })
   const [submittingMov, setSubmittingMov] = useState(false)
 
+  const handleCloseNovaMov = () => {
+    setIsNovaMovOpen(false)
+    setSelectedProduto(null)
+  }
+
+  const closeKardex = () => {
+    setKardexProduto(null)
+    setMovimentacoes([])
+  }
+
+  const kardexModalRef = useAccessibleModal(Boolean(kardexProduto), closeKardex)
+  const novaMovModalRef = useAccessibleModal(isNovaMovOpen, handleCloseNovaMov)
+
   const fetchProdutos = useCallback(async (newPage = 1, search = searchTerm) => {
     setLoading(true)
     try {
@@ -112,11 +126,6 @@ const Estoque = () => {
     setSelectedProduto(produto); setIsNovaMovOpen(true)
   }
 
-  const handleCloseNovaMov = () => {
-    setIsNovaMovOpen(false)
-    setSelectedProduto(null)
-  }
-
   const handleSubmitMov = async (e: React.FormEvent) => {
     e.preventDefault()
     if (novaMov.quantidade <= 0) {
@@ -165,8 +174,8 @@ const Estoque = () => {
       </div>
 
       {/* Tabela */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
+        <table className="min-w-[760px] divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               {['Produto', 'Código', 'Unidade', 'Saldo Atual', 'Ações'].map(h => (
@@ -188,11 +197,11 @@ const Estoque = () => {
                   <td className="px-6 py-4 text-sm font-bold text-blue-600 dark:text-blue-400">{produto.estoque_atual ?? 'N/A'}</td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex gap-3">
-                      <button onClick={() => handleOpenNovaMov(produto)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-medium">
+                      <button onClick={() => handleOpenNovaMov(produto)} aria-label={`Ajustar estoque de ${produto.nome}`} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-medium">
                         Ajustar
                       </button>
                       <span className="text-gray-300 dark:text-gray-600">|</span>
-                      <button onClick={() => handleOpenKardex(produto)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                      <button onClick={() => handleOpenKardex(produto)} aria-label={`Ver kardex de ${produto.nome}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
                         Ver Kardex
                       </button>
                     </div>
@@ -205,7 +214,7 @@ const Estoque = () => {
       </div>
 
       {/* Paginação */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Página {page} de {totalPages} — mostrando {produtos.length} registros
         </span>
@@ -223,16 +232,28 @@ const Estoque = () => {
 
       {/* Modal Kardex */}
       {kardexProduto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="estoque-kardex-title"
+          onMouseDown={closeKardex}
+        >
+          <div
+            ref={kardexModalRef}
+            tabIndex={-1}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl dark:bg-gray-800"
+          >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Kardex: {kardexProduto.nome}</h2>
+              <h2 id="estoque-kardex-title" className="text-xl font-bold text-gray-800 dark:text-gray-100">Kardex: {kardexProduto.nome}</h2>
               <div className="flex gap-2">
                 <button onClick={() => handleOpenNovaMov(kardexProduto)}
                   className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition font-medium mr-2">
                   + Novo Lançamento
                 </button>
-                <button onClick={() => { setKardexProduto(null); setMovimentacoes([]) }}
+                <button onClick={closeKardex}
+                  aria-label="Fechar modal de kardex"
                   className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl leading-none">
                   ×
                 </button>
@@ -245,7 +266,8 @@ const Estoque = () => {
               ) : movimentacoes.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400">Nenhuma movimentação encontrada.</p>
               ) : (
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Data</th>
@@ -284,12 +306,13 @@ const Estoque = () => {
                       )
                     })}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               )}
             </div>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-right">
-              <button onClick={() => setKardexProduto(null)}
+              <button onClick={closeKardex}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">
                 Fechar
               </button>
@@ -300,8 +323,19 @@ const Estoque = () => {
 
       {/* Modal Nova Movimentação */}
       {isNovaMovOpen && selectedProduto && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lancar movimentacao de estoque"
+          onMouseDown={handleCloseNovaMov}
+        >
+          <div
+            ref={novaMovModalRef}
+            tabIndex={-1}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="w-full max-w-md rounded-lg bg-white shadow-2xl dark:bg-gray-800"
+          >
             <div className="p-5 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Lançar Movimentação</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedProduto.nome}</p>
