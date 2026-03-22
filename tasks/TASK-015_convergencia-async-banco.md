@@ -6,7 +6,7 @@ scope: backend/app/core/database.py, backend/app/api/v1/, backend/tests/
 branch: refactor/plano-migracao-async-db
 commit_message: "refactor(db): define plano incremental de migracao para AsyncSession"
 estimated_effort: 60 minutos
-status: pendente
+status: concluida
 depends_on: ["TASK-003"]
 recomendacao_ref: "#13 Convergencia para arquitetura async no banco"
 ---

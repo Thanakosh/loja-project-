@@ -36,6 +36,37 @@ npm run dev
 
 Aplicação disponível em `http://localhost:5173` (padrão Vite).
 
+## Testes E2E
+
+Os smoke tests Playwright ficam em `frontend/e2e/` e usam mocks de API para
+validar os fluxos principais sem depender de backend real.
+
+Comandos:
+
+```bash
+cd frontend
+npm run test:e2e
+npm run test:ui
+npm run test:report
+```
+
+Cobertura smoke atual:
+
+- login
+- dashboard
+- PDV
+- vendas
+- produtos
+- orcamentos
+- importacao de nota XML
+
+Notas de execucao:
+
+- `test:e2e` sobe o Vite automaticamente via `webServer` do Playwright
+- em CI a suite roda com `workers=1` para reduzir intermitencia; localmente o paralelismo segue livre
+- use `npm run test:report` para abrir o HTML report apos uma execucao
+- `npm run test:ui` ajuda a depurar retries, trace e screenshots
+
 ## Como buildar e instalar (produção)
 
 ### 1. Build

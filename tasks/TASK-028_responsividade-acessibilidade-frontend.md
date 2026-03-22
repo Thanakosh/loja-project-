@@ -16,7 +16,7 @@ minimos de acessibilidade.
 ### Acoes
 
 1. **Responsividade:**
-   - Auditar todas as 13 paginas para breakpoints menores (1024px, 768px).
+   - Auditar todas as paginas para breakpoints menores (1024px, 768px).
    - Corrigir tabelas que quebram em telas menores (scroll horizontal ou layout
      alternativo em card).
    - Testar no Electron em janela redimensionada.

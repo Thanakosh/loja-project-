@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
-import { mockAuthenticatedSession } from './helpers'
+import { fulfillJson } from './helpers'
 
 const vendasPage1 = {
   items: [
@@ -34,34 +34,32 @@ const vendasPage2 = {
   page: 2,
 }
 
-test('Vendas carrega listagem, pagina e abre/fecha modal de detalhes', async ({ page }) => {
-  await mockAuthenticatedSession(page)
-
+test('Vendas carrega listagem, pagina e abre/fecha modal de detalhes', async ({ authenticatedPage: page }) => {
   await page.route('**/api/v1/vendas/?*', (route) => {
     const url = new URL(route.request().url())
     const requestedPage = url.searchParams.get('page')
     if (requestedPage === '2') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(vendasPage2) })
+      return fulfillJson(route, vendasPage2)
     }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(vendasPage1) })
+    return fulfillJson(route, vendasPage1)
   })
 
   await page.route('**/api/v1/vendas/1', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(vendasPage1.items[0]) }),
+    fulfillJson(route, vendasPage1.items[0]),
   )
 
   await page.goto('/#/vendas')
 
   await expect(page.getByText('1001')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Próxima' }).click()
+  await page.getByRole('button', { name: /pr.xima/i }).click()
   await expect(page.getByText('1002')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Anterior' }).click()
+  await page.getByRole('button', { name: /anterior/i }).click()
   await expect(page.getByText('1001')).toBeVisible()
 
   await page.getByText('Ver Detalhes').first().click()
-  await expect(page.getByRole('heading', { name: /Detalhes da Venda/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /detalhes da venda/i })).toBeVisible()
   await page.getByRole('button', { name: 'Fechar' }).click()
-  await expect(page.getByRole('heading', { name: /Detalhes da Venda/ })).not.toBeVisible()
+  await expect(page.getByRole('heading', { name: /detalhes da venda/i })).not.toBeVisible()
 })
