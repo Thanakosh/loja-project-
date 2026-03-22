@@ -6,6 +6,7 @@ import { useOrcamentosTotal } from '../hooks/useOrcamentos'
 import { useProdutosTotal } from '../hooks/useProdutos'
 import { useEstoqueAlertas } from '../hooks/useEstoque'
 import { useFiscalRiskDashboard } from '../hooks/useDashboard'
+import type { FiscalRiskDashboardResumo } from '../types/dashboard'
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -16,6 +17,74 @@ const formatCurrency = (value: number) =>
 const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
+
+const FiscalResumoCard = ({
+  titulo,
+  resumo,
+}: {
+  titulo: string
+  resumo: FiscalRiskDashboardResumo
+}) => {
+  const score = clampPercent(resumo.score_medio)
+
+  return (
+    <article className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{titulo}</h3>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{resumo.periodo_rotulo}</p>
+        </div>
+        <span className="rounded-full bg-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+          {resumo.notas_risco_alto} alto
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-[120px_1fr]">
+        <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Score</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{score.toFixed(1)}</p>
+        </div>
+        <div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div
+              className={`h-full rounded-full transition-all ${score >= 61 ? 'bg-red-500' : score >= 31 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${score}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
+              <p className="text-gray-500 dark:text-gray-400">Notas</p>
+              <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{resumo.total_notas}</p>
+            </div>
+            <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
+              <p className="text-gray-500 dark:text-gray-400">Risco alto</p>
+              <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{resumo.notas_risco_alto}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Top alertas</h4>
+        {resumo.top_fornecedores_alertas.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhuma nota deste tipo ainda.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {resumo.top_fornecedores_alertas.map((fornecedor, index) => (
+              <li
+                key={`${titulo}-${fornecedor.nome}-${index}`}
+                className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm dark:bg-gray-800"
+              >
+                <span className="font-medium text-gray-800 dark:text-gray-100">{fornecedor.nome}</span>
+                <span className="text-gray-500 dark:text-gray-300">{fornecedor.alertas} alertas</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </article>
+  )
+}
 
 const Dashboard = () => {
   const queryClient = useQueryClient()
@@ -204,6 +273,11 @@ const Dashboard = () => {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <FiscalResumoCard titulo="Notas de Entrada" resumo={fiscalDashboard.entradas} />
+              <FiscalResumoCard titulo="Notas de Saida" resumo={fiscalDashboard.saidas} />
             </div>
           </div>
         )}

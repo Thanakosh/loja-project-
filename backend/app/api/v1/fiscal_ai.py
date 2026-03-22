@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -23,6 +24,7 @@ from ...schemas.fiscal_ai import (
     FiscalPriceSuggestionRequest,
     FiscalPriceSuggestionResponse,
     FiscalRiskDashboardResponse,
+    FiscalRiskDashboardResumo,
     FiscalRiskDashboardSupplier,
     NCMCandidato,
     NCMClassifyRequest,
@@ -47,6 +49,20 @@ def _nome_fornecedor_nota(nota: NotaFiscal) -> str:
         if produto.fornecedor:
             return produto.fornecedor
     return f"Nota {nota.numero_legado}"
+
+
+def _tipo_operacao_nota(nota: NotaFiscal) -> Literal["entrada", "saida"]:
+    return "saida" if (nota.entrada_saida or "").upper() == "S" else "entrada"
+
+
+def _resumo_dashboard_vazio(periodo_rotulo: str) -> FiscalRiskDashboardResumo:
+    return FiscalRiskDashboardResumo(
+        total_notas=0,
+        score_medio=0.0,
+        notas_risco_alto=0,
+        periodo_rotulo=periodo_rotulo,
+        top_fornecedores_alertas=[],
+    )
 
 
 @router.post("/suggest-price/{product_id}", response_model=FiscalPriceSuggestionResponse)
@@ -101,6 +117,7 @@ async def validate_note(
 ):
     """Auditoria fiscal hibrida com input via payload normalizado ou nota_fiscal_id."""
     _ = current_user
+    configuracao_loja = await obter_configuracao_loja_async(db)
 
     nota_normalizada = payload.payload_normalizado
 
@@ -142,9 +159,13 @@ async def validate_note(
 
     result = auditar_nota_fiscal(
         nota_normalizada,
-        regime_tributario=payload.regime_tributario,
-        uf_emitente=payload.uf_emitente,
+        regime_tributario=payload.regime_tributario or configuracao_loja.regime_tributario,
+        uf_emitente=payload.uf_emitente or configuracao_loja.uf,
         tipo_operacao=payload.tipo_operacao,
+        loja_cnpj=configuracao_loja.cnpj,
+        loja_inscricao_estadual=configuracao_loja.inscricao_estadual,
+        loja_cnae=configuracao_loja.cnae,
+        loja_porte=configuracao_loja.porte,
     )
 
     return FiscalAuditResponse(
@@ -184,19 +205,39 @@ async def risk_dashboard(
     ).unique().scalars().all()
 
     if not notas:
+        periodo = f"ultimas {limite_notas} notas"
+        resumo_vazio = _resumo_dashboard_vazio(periodo)
         return FiscalRiskDashboardResponse(
             total_notas=0,
             score_medio=0.0,
             notas_risco_alto=0,
-            periodo_rotulo=f"ultimas {limite_notas} notas",
+            periodo_rotulo=periodo,
             top_fornecedores_alertas=[],
+            entradas=resumo_vazio,
+            saidas=resumo_vazio,
         )
 
-    fornecedores_alertas: dict[str, int] = {}
+    agregados: dict[str, dict[str, object]] = {
+        "entrada": {
+            "notas": [],
+            "fornecedores_alertas": {},
+            "score_total": 0.0,
+            "notas_risco_alto": 0,
+        },
+        "saida": {
+            "notas": [],
+            "fornecedores_alertas": {},
+            "score_total": 0.0,
+            "notas_risco_alto": 0,
+        },
+    }
+
+    fornecedores_alertas_geral: dict[str, int] = {}
     score_total = 0.0
     notas_risco_alto = 0
 
     for nota in notas:
+        tipo_operacao = _tipo_operacao_nota(nota)
         itens_normalizados = [
             FiscalItemPayload(
                 sequencia=index,
@@ -227,22 +268,63 @@ async def risk_dashboard(
             nota_normalizada,
             regime_tributario=configuracao_loja.regime_tributario,
             uf_emitente=configuracao_loja.uf,
-            tipo_operacao="entrada",
+            tipo_operacao=tipo_operacao,
+            loja_cnpj=configuracao_loja.cnpj,
+            loja_inscricao_estadual=configuracao_loja.inscricao_estadual,
+            loja_cnae=configuracao_loja.cnae,
+            loja_porte=configuracao_loja.porte,
         )
         score_total += audit.score
         if audit.classificacao == "alto":
             notas_risco_alto += 1
-        fornecedores_alertas[nota_normalizada.fornecedor_nome] = (
-            fornecedores_alertas.get(nota_normalizada.fornecedor_nome, 0) + len(audit.fatores)
+        fornecedores_alertas_geral[nota_normalizada.fornecedor_nome] = (
+            fornecedores_alertas_geral.get(nota_normalizada.fornecedor_nome, 0) + len(audit.fatores)
+        )
+
+        agregado = agregados[tipo_operacao]
+        agregado["notas"].append(nota)
+        agregado["score_total"] = float(agregado["score_total"]) + audit.score
+        if audit.classificacao == "alto":
+            agregado["notas_risco_alto"] = int(agregado["notas_risco_alto"]) + 1
+        fornecedores_tipo = agregado["fornecedores_alertas"]
+        assert isinstance(fornecedores_tipo, dict)
+        fornecedores_tipo[nota_normalizada.fornecedor_nome] = (
+            fornecedores_tipo.get(nota_normalizada.fornecedor_nome, 0) + len(audit.fatores)
         )
 
     top_fornecedores = [
         FiscalRiskDashboardSupplier(nome=nome, alertas=alertas)
         for nome, alertas in sorted(
-            fornecedores_alertas.items(),
+            fornecedores_alertas_geral.items(),
             key=lambda item: (-item[1], item[0]),
         )[:3]
     ]
+
+    def montar_resumo(tipo: Literal["entrada", "saida"]) -> FiscalRiskDashboardResumo:
+        agregado = agregados[tipo]
+        notas_tipo = agregado["notas"]
+        assert isinstance(notas_tipo, list)
+        periodo = f"ultimas {len(notas_tipo)} notas de {'entrada' if tipo == 'entrada' else 'saida'}"
+        if not notas_tipo:
+            return _resumo_dashboard_vazio(periodo)
+
+        fornecedores_tipo = agregado["fornecedores_alertas"]
+        assert isinstance(fornecedores_tipo, dict)
+        top_fornecedores_tipo = [
+            FiscalRiskDashboardSupplier(nome=nome, alertas=alertas)
+            for nome, alertas in sorted(
+                fornecedores_tipo.items(),
+                key=lambda item: (-item[1], item[0]),
+            )[:3]
+        ]
+        score_tipo = float(agregado["score_total"]) / len(notas_tipo)
+        return FiscalRiskDashboardResumo(
+            total_notas=len(notas_tipo),
+            score_medio=round(score_tipo, 2),
+            notas_risco_alto=int(agregado["notas_risco_alto"]),
+            periodo_rotulo=periodo,
+            top_fornecedores_alertas=top_fornecedores_tipo,
+        )
 
     return FiscalRiskDashboardResponse(
         total_notas=len(notas),
@@ -250,6 +332,8 @@ async def risk_dashboard(
         notas_risco_alto=notas_risco_alto,
         periodo_rotulo=f"ultimas {len(notas)} notas",
         top_fornecedores_alertas=top_fornecedores,
+        entradas=montar_resumo("entrada"),
+        saidas=montar_resumo("saida"),
     )
 
 

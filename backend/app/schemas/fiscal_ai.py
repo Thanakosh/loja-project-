@@ -120,6 +120,16 @@ class FiscalRiskDashboardSupplier(BaseModel):
     alertas: int
 
 
+class FiscalRiskDashboardResumo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    total_notas: int
+    score_medio: float
+    notas_risco_alto: int
+    periodo_rotulo: str
+    top_fornecedores_alertas: List[FiscalRiskDashboardSupplier]
+
+
 class FiscalRiskDashboardResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,6 +138,8 @@ class FiscalRiskDashboardResponse(BaseModel):
     notas_risco_alto: int
     periodo_rotulo: str
     top_fornecedores_alertas: List[FiscalRiskDashboardSupplier]
+    entradas: FiscalRiskDashboardResumo
+    saidas: FiscalRiskDashboardResumo
 
 
 class FiscalFeedbackRequest(BaseModel):
