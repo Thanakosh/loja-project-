@@ -85,5 +85,7 @@ test_pipeline.ps1
 frontend/out/
 frontend/out-local/
 frontend/dist/
+frontend/.playwright-cli/
+backend/server*.log
 temp-*.txt
 temp-*.ps1

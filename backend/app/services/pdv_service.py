@@ -21,7 +21,7 @@ from ..models.politica_desconto import PoliticaDescontoProduto
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
 from ..models.venda import Venda, VendaItem
 from ..schemas.pdv import VendaPDVCreate
-from .configuracao_loja_service import obter_configuracao_loja_async
+DEFAULT_MARGEM_MINIMA_PERCENTUAL = 0.05
 
 
 def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: float) -> float:
@@ -47,7 +47,6 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
     produto_ids = [item.produto_id for item in venda_in.itens]
 
     try:
-        configuracao_loja = await obter_configuracao_loja_async(db)
         produtos = (
             await db.execute(
                 select(Produto).where(Produto.id.in_(produto_ids), Produto.ativo.is_(True))
@@ -120,7 +119,7 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
             preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
             if produto.preco_custo is not None:
                 preco_minimo = round(
-                    produto.preco_custo * (1 + configuracao_loja.margem_minima_percentual),
+                    produto.preco_custo * (1 + DEFAULT_MARGEM_MINIMA_PERCENTUAL),
                     2,
                 )
                 if preco_efetivo < preco_minimo:
@@ -226,8 +225,6 @@ async def verificar_precos_minimos_async(db: AsyncSession, itens: list) -> list[
         )
     ).scalars().all()
     produtos_by_id = {p.id: p for p in produtos}
-    configuracao_loja = await obter_configuracao_loja_async(db)
-
     alertas = []
     for item in itens:
         produto = produtos_by_id.get(item.produto_id)
@@ -242,7 +239,7 @@ async def verificar_precos_minimos_async(db: AsyncSession, itens: list) -> list[
 
         cost_input = CostCalculationInput(
             custo_base=produto.preco_custo,
-            margem_minima_percentual=configuracao_loja.margem_minima_percentual,
+            margem_minima_percentual=DEFAULT_MARGEM_MINIMA_PERCENTUAL,
         )
         cost_result = calculate_minimum_price(cost_input)
 

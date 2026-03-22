@@ -1,7 +1,7 @@
 ---
 task_id: TASK-038
 title: "Refatorar paginas grandes do frontend em componentes reutilizaveis"
-status: pendente
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-034"]
@@ -91,6 +91,18 @@ frontend/src/components/
 - `ImportarNota.tsx` reduzido para < 20KB.
 - Todos os testes E2E existentes (se houver) continuam passando.
 - Build (`npm run build`) sem erros.
+
+### Validacao executada
+
+- criados componentes genericos em `frontend/src/components/ui/`:
+  `DataTable`, `Modal`, `SearchFilter`, `ConfirmDialog`, `StatusBadge` e
+  `PageHeader`
+- pages reduzidas para wrappers finos:
+  `frontend/src/pages/PDV.tsx` e `frontend/src/pages/ImportarNota.tsx`
+- extraidos componentes de dominio em `frontend/src/components/pdv/` e
+  `frontend/src/components/importar-nota/`
+- `npm run test:e2e` executado com sucesso: 13 testes aprovados
+- build validado com sucesso via Vite
 
 ### Branch sugerida
 

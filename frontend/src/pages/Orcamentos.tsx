@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
+import { useAccessibleModal } from '../hooks/useAccessibleModal'
 import api from '../services/api'
 
 type StatusOrcamento = 'aberto' | 'aprovado' | 'cancelado' | 'convertido'
@@ -228,6 +229,26 @@ const Orcamentos = () => {
     parcelas: 1
   })
 
+  const closeConvertModal = () => {
+    if (convertMutation.isPending) {
+      return
+    }
+
+    setConvertModal(null)
+    setConvertError('')
+  }
+
+  const closeCreateModal = () => {
+    if (createMutation.isPending) {
+      return
+    }
+
+    setIsCreateModalOpen(false)
+  }
+
+  const convertModalRef = useAccessibleModal(Boolean(convertModal), closeConvertModal)
+  const createModalRef = useAccessibleModal(isCreateModalOpen, closeCreateModal)
+
   const convertMutation = useMutation({
     mutationFn: async ({ orcamentoId, forma_pagamento, parcelas }: { orcamentoId: number; forma_pagamento: FormaPagamentoValue; parcelas: number }) => {
       await api.post(`/orcamentos/${orcamentoId}/converter`, {
@@ -439,7 +460,7 @@ const Orcamentos = () => {
       </div>
 
       <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">ID</th>
@@ -506,6 +527,7 @@ const Orcamentos = () => {
                         type="button"
                         onClick={() => handleExportarPdf(orcamento)}
                         disabled={downloadingPdfId === orcamento.id}
+                        aria-label={`Exportar orcamento ${orcamento.id} em PDF`}
                         className="rounded border border-emerald-200 dark:border-emerald-700 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-50 dark:hover:bg-emerald-900/40 disabled:cursor-not-allowed disabled:opacity-50"
                         title="Exportar PDF"
                       >
@@ -520,7 +542,7 @@ const Orcamentos = () => {
         </table>
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <button
           onClick={() => setPage((previous) => Math.max(1, previous - 1))}
           disabled={page === 1}
@@ -541,16 +563,28 @@ const Orcamentos = () => {
       </div>
 
       {convertModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="orcamento-conversao-title"
+          onMouseDown={closeConvertModal}
+        >
+          <div
+            ref={convertModalRef}
+            tabIndex={-1}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+          >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Converter em Venda</h2>
+              <h2 id="orcamento-conversao-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100">Converter em Venda</h2>
               <button onClick={() => setConvertModal(null)} aria-label="Fechar modal de conversão" className="text-2xl text-gray-400 hover:text-gray-600">×</button>
             </div>
             <div className="space-y-4 px-6 py-5">
-              <label className="block space-y-1 text-sm">
+              <label className="block space-y-1 text-sm" htmlFor="orcamento-conversao-forma-pagamento">
                 <span className="font-medium text-gray-700 dark:text-gray-300">Forma de Pagamento</span>
                 <select
+                  id="orcamento-conversao-forma-pagamento"
                   value={convertForm.forma_pagamento}
                   onChange={(e) => setConvertForm(prev => ({ ...prev, forma_pagamento: Number(e.target.value) as FormaPagamentoValue }))}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -561,9 +595,10 @@ const Orcamentos = () => {
                 </select>
               </label>
               {convertForm.forma_pagamento === FormaPagamento.PRAZO && (
-                <label className="block space-y-1 text-sm">
+                <label className="block space-y-1 text-sm" htmlFor="orcamento-conversao-parcelas">
                   <span className="font-medium text-gray-700 dark:text-gray-300">Número de Parcelas</span>
                   <input
+                    id="orcamento-conversao-parcelas"
                     type="number"
                     min={1}
                     max={48}
@@ -602,8 +637,19 @@ const Orcamentos = () => {
       )}
 
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Novo orcamento"
+          onMouseDown={closeCreateModal}
+        >
+          <div
+            ref={createModalRef}
+            tabIndex={-1}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+          >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Novo orçamento</h2>
               <button
@@ -618,9 +664,10 @@ const Orcamentos = () => {
             <form onSubmit={handleCreateSubmit} className="space-y-5 px-6 py-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1 text-sm" ref={clienteRef}>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Cliente</span>
+                  <label htmlFor="orcamento-cliente" className="block font-medium text-gray-700 dark:text-gray-300">Cliente</label>
                   <div className="relative">
                     <input
+                      id="orcamento-cliente"
                       value={clienteSearch}
                       onChange={(e) => {
                         const v = e.target.value
@@ -653,9 +700,10 @@ const Orcamentos = () => {
                   )}
                 </div>
 
-                <label className="space-y-1 text-sm">
+                <label className="space-y-1 text-sm" htmlFor="orcamento-validade">
                   <span className="font-medium text-gray-700 dark:text-gray-300">Validade</span>
                   <input
+                    id="orcamento-validade"
                     type="date"
                     value={formState.data_validade}
                     onChange={(event) =>
@@ -668,9 +716,10 @@ const Orcamentos = () => {
                   />
                 </label>
 
-                <label className="space-y-1 text-sm">
+                <label className="space-y-1 text-sm" htmlFor="orcamento-desconto-geral">
                   <span className="font-medium text-gray-700 dark:text-gray-300">Desconto geral (R$)</span>
                   <input
+                    id="orcamento-desconto-geral"
                     type="number"
                     min="0"
                     step="0.01"
@@ -686,9 +735,10 @@ const Orcamentos = () => {
                 </label>
               </div>
 
-              <label className="block space-y-1 text-sm">
+              <label className="block space-y-1 text-sm" htmlFor="orcamento-observacao">
                 <span className="font-medium text-gray-700 dark:text-gray-300">Observação</span>
                 <textarea
+                  id="orcamento-observacao"
                   value={formState.observacao}
                   onChange={(event) =>
                     setFormState((previous) => ({
@@ -719,7 +769,11 @@ const Orcamentos = () => {
                     {/* Linha 1: busca de produto + botão remover */}
                     <div className="flex gap-2">
                       <div className="relative flex-1">
+                        <label htmlFor={`orcamento-item-descricao-${index}`} className="sr-only">
+                          Produto ou descriÃ§Ã£o do item {index + 1}
+                        </label>
                         <input
+                          id={`orcamento-item-descricao-${index}`}
                           value={produtoSearches[index] ?? ''}
                           onChange={(e) => {
                             const v = e.target.value
@@ -766,6 +820,7 @@ const Orcamentos = () => {
                         type="button"
                         onClick={() => removeItem(index)}
                         disabled={formState.itens.length === 1}
+                        aria-label={`Remover item ${index + 1} do orcamento`}
                         className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
                       >
                         −
@@ -775,10 +830,11 @@ const Orcamentos = () => {
                       <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ Produto vinculado</p>
                     )}
                     {/* Linha 2: qtd, preço, desconto */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-quantidade-${index}`}>
                         <span>Quantidade</span>
                         <input
+                          id={`orcamento-item-quantidade-${index}`}
                           type="number"
                           min="0"
                           step="0.01"
@@ -788,9 +844,10 @@ const Orcamentos = () => {
                           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </label>
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-preco-${index}`}>
                         <span>Preço Unitário (R$)</span>
                         <input
+                          id={`orcamento-item-preco-${index}`}
                           type="number"
                           min="0"
                           step="0.01"
@@ -800,9 +857,10 @@ const Orcamentos = () => {
                           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </label>
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-desconto-${index}`}>
                         <span>Desconto (%)</span>
                         <input
+                          id={`orcamento-item-desconto-${index}`}
                           type="number"
                           min="0"
                           max="100"

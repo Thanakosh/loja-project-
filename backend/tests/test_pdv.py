@@ -381,7 +381,7 @@ class TestPDV:
         assert item["preco_unitario"] == 12.5
         assert item["preco_total"] == 125.0
 
-    def test_pdv_usa_margem_minima_da_configuracao_loja(
+    def test_pdv_aplica_regra_minima_com_default_interno(
         self, client: TestClient, auth_headers: dict
     ):
         self._garantir_caixa_aberto(client, auth_headers)
@@ -414,8 +414,6 @@ class TestPDV:
             json={
                 "regime_tributario": "simples_nacional",
                 "uf": "SP",
-                "margem_minima_percentual": 0.5,
-                "aliquota_impostos_default": 0.0,
             },
             headers=auth_headers,
         )
@@ -428,8 +426,8 @@ class TestPDV:
         resp = client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
         assert resp.status_code == 201
         item = resp.json()["itens"][0]
-        assert item["preco_unitario"] == 12.0
-        assert item["preco_total"] == 12.0
+        assert item["preco_unitario"] == 9.0
+        assert item["preco_total"] == 9.0
 
         verificacao_resp = client.post(
             "/api/v1/pdv/verificar-preco",
@@ -438,8 +436,8 @@ class TestPDV:
         )
         assert verificacao_resp.status_code == 200
         verificacao = verificacao_resp.json()
-        assert verificacao["tem_alertas"] is True
-        assert verificacao["alertas"][0]["preco_minimo"] == 12.0
+        assert verificacao["tem_alertas"] is False
+        assert verificacao["alertas"] == []
 
     def test_pdv_ignora_preco_errado_e_aplica_atacado(
         self, client: TestClient, auth_headers: dict

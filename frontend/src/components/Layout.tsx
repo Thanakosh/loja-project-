@@ -1,132 +1,249 @@
 import { useState } from 'react'
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import type { ReactNode, SVGProps } from 'react'
 
 import { useTheme } from '../contexts/ThemeContext'
 import { removeToken } from '../utils/auth'
 
+type IconProps = SVGProps<SVGSVGElement>
+
+const StrokeIcon = ({ children, ...props }: IconProps & { children: ReactNode }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    {children}
+  </svg>
+)
+
+const DashboardIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M4 13h6V4H4z" />
+    <path d="M14 20h6v-9h-6z" />
+    <path d="M14 10h6V4h-6z" />
+    <path d="M4 20h6v-3H4z" />
+  </StrokeIcon>
+)
+
+const CashIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <path d="M12 10v4" />
+    <path d="M10 12h4" />
+  </StrokeIcon>
+)
+
+const CartIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <circle cx="9" cy="19" r="1.5" />
+    <circle cx="17" cy="19" r="1.5" />
+    <path d="M4 5h2l2.2 9h9.8l2-7H7.2" />
+  </StrokeIcon>
+)
+
+const BoxIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" />
+    <path d="M12 12l8-4.5" />
+    <path d="M12 12L4 7.5" />
+    <path d="M12 12v9" />
+  </StrokeIcon>
+)
+
+const PeopleIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <circle cx="9" cy="8" r="3" />
+    <path d="M4 19a5 5 0 0 1 10 0" />
+    <circle cx="17" cy="9" r="2.5" />
+    <path d="M15 19a4 4 0 0 1 5 0" />
+  </StrokeIcon>
+)
+
+const ReceiptIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M7 3h10v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5V3z" />
+    <path d="M9 8h6" />
+    <path d="M9 12h6" />
+    <path d="M9 16h4" />
+  </StrokeIcon>
+)
+
+const ImportIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M12 3v11" />
+    <path d="m8 10 4 4 4-4" />
+    <path d="M4 19h16" />
+  </StrokeIcon>
+)
+
+const ReportIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M4 19h16" />
+    <path d="M7 16V9" />
+    <path d="M12 16V5" />
+    <path d="M17 16v-4" />
+  </StrokeIcon>
+)
+
+const SettingsIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z" />
+  </StrokeIcon>
+)
+
+const SunIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2.5" />
+    <path d="M12 19.5V22" />
+    <path d="M4.9 4.9 6.7 6.7" />
+    <path d="M17.3 17.3l1.8 1.8" />
+    <path d="M2 12h2.5" />
+    <path d="M19.5 12H22" />
+    <path d="M4.9 19.1 6.7 17.3" />
+    <path d="M17.3 6.7l1.8-1.8" />
+  </StrokeIcon>
+)
+
+const MoonIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M20 15.5A7.5 7.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z" />
+  </StrokeIcon>
+)
+
+const MenuIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M4 7h16" />
+    <path d="M4 12h16" />
+    <path d="M4 17h16" />
+  </StrokeIcon>
+)
+
+const CloseIcon = (props: IconProps) => (
+  <StrokeIcon {...props}>
+    <path d="M6 6l12 12" />
+    <path d="M18 6 6 18" />
+  </StrokeIcon>
+)
+
+const menuItems = [
+  { name: 'Dashboard', path: '/dashboard', icon: DashboardIcon },
+  { name: 'Caixa', path: '/caixa', icon: CashIcon },
+  { name: 'PDV', path: '/pdv', icon: CartIcon },
+  { name: 'Vendas', path: '/vendas', icon: ReceiptIcon },
+  { name: 'Produtos', path: '/produtos', icon: BoxIcon },
+  { name: 'Estoque', path: '/estoque', icon: BoxIcon },
+  { name: 'Orcamentos', path: '/orcamentos', icon: ReceiptIcon },
+  { name: 'Fornecedores', path: '/fornecedores', icon: PeopleIcon },
+  { name: 'Notas Fiscais', path: '/notas-fiscais', icon: ReceiptIcon },
+  { name: 'Importar Nota', path: '/importar-nota', icon: ImportIcon },
+  { name: 'Clientes', path: '/clientes', icon: PeopleIcon },
+  { name: 'Contas a Receber', path: '/contas-receber', icon: CashIcon },
+  { name: 'Relatorios', path: '/relatorios', icon: ReportIcon },
+  { name: 'Usuarios', path: '/usuarios', icon: PeopleIcon },
+  { name: 'Configuracoes', path: '/configuracoes/loja', icon: SettingsIcon },
+]
+
 const Layout = () => {
-    const [sidebarOpen, setSidebarOpen] = useState(false)
-    const location = useLocation()
-    const navigate = useNavigate()
-    const { isDark, toggleTheme } = useTheme()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { isDark, toggleTheme } = useTheme()
 
-    const handleLogout = () => {
-        removeToken()
-        navigate('/login')
-    }
+  const handleLogout = () => {
+    removeToken()
+    navigate('/login')
+  }
 
-    const menuItems = [
-        { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-        { name: 'Caixa', path: '/caixa', icon: '💵' },
-        { name: 'PDV', path: '/pdv', icon: '🛒' },
-        { name: 'Vendas', path: '/vendas', icon: '🧾' },
-        { name: 'Produtos', path: '/produtos', icon: '📦' },
-        { name: 'Estoque', path: '/estoque', icon: '🏭' },
-        { name: 'Orçamentos', path: '/orcamentos', icon: '💰' },
-        { name: 'Fornecedores', path: '/fornecedores', icon: '🚚' },
-        { name: 'Notas Fiscais', path: '/notas-fiscais', icon: '🧾' },
-        { name: 'Importar Nota', path: '/importar-nota', icon: '📷' },
-        { name: 'Clientes', path: '/clientes', icon: '👥' },
-        { name: 'Contas a Receber', path: '/contas-receber', icon: '💳' },
-        { name: 'Relatórios', path: '/relatorios', icon: '📈' },
-        { name: 'Usuários', path: '/usuarios', icon: '👤' },
-    ]
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
 
-    return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-            {/* Mobile Sidebar Overlay */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <aside className={`
-                fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-                lg:relative lg:translate-x-0
-            `}>
-                <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">Loja Elétrica</span>
-                    <button
-                        onClick={() => setSidebarOpen(false)}
-                        aria-label="Fechar menu lateral"
-                        className="lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none text-2xl"
-                    >
-                        ✕
-                    </button>
-                </div>
-                <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-4rem)]">
-                    {menuItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            onClick={() => setSidebarOpen(false)}
-                            className={`
-                                flex items-center px-4 py-3 rounded-lg transition-colors duration-200
-                                ${location.pathname === item.path
-                                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'}
-                            `}
-                        >
-                            <span className="mr-3 text-xl">{item.icon}</span>
-                            <span>{item.name}</span>
-                        </Link>
-                    ))}
-                </nav>
-            </aside>
-
-            {/* Main Content Wrapper */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Header */}
-                <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-4 lg:px-6 z-10">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Abrir menu lateral"
-                        className="lg:hidden text-gray-500 dark:text-gray-400 focus:outline-none text-2xl mr-4"
-                    >
-                        ☰
-                    </button>
-
-                    <div className="flex-1 lg:hidden">
-                        <span className="text-lg font-semibold text-gray-800 dark:text-white">Loja Elétrica</span>
-                    </div>
-
-                    <div className="ml-auto flex items-center gap-3">
-                        {/* Theme Toggle */}
-                        <button
-                            onClick={toggleTheme}
-                            aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-                            title={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-                            className="relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-                            style={{ backgroundColor: isDark ? '#3b82f6' : '#d1d5db' }}
-                        >
-                            <span
-                                className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 flex items-center justify-center text-xs"
-                                style={{ transform: isDark ? 'translateX(24px)' : 'translateX(0)' }}
-                            >
-                                {isDark ? '🌙' : '☀️'}
-                            </span>
-                        </button>
-
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors focus:outline-none"
-                        >
-                            Sair
-                        </button>
-                    </div>
-                </header>
-
-                {/* Page Content */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
-                    <Outlet />
-                </main>
-            </div>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out dark:bg-gray-800 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:relative lg:translate-x-0`}
+      >
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 px-6 dark:border-gray-700">
+          <span className="text-xl font-bold text-gray-800 dark:text-white">Loja Eletrica</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Fechar menu lateral"
+            className="text-gray-500 focus:outline-none dark:text-gray-400 lg:hidden"
+          >
+            <CloseIcon className="h-6 w-6" />
+          </button>
         </div>
-    )
+
+        <nav className="h-[calc(100vh-4rem)] space-y-2 overflow-y-auto p-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center rounded-lg px-4 py-3 transition-colors duration-200 ${
+                  location.pathname === item.path
+                    ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                }`}
+              >
+                <span className="mr-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                  <Icon className="h-4.5 w-4.5" />
+                </span>
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="z-10 flex h-16 items-center justify-between bg-white px-4 shadow-sm dark:bg-gray-800 lg:px-6">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu lateral"
+            className="mr-4 text-gray-500 focus:outline-none dark:text-gray-400 lg:hidden"
+          >
+            <MenuIcon className="h-7 w-7" />
+          </button>
+
+          <div className="flex-1 lg:hidden">
+            <span className="text-lg font-semibold text-gray-800 dark:text-white">Loja Eletrica</span>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+              title={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+              className="relative h-6 w-12 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              style={{ backgroundColor: isDark ? '#3b82f6' : '#d1d5db' }}
+            >
+              <span
+                className="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-gray-600 shadow transition-transform duration-300"
+                style={{ transform: isDark ? 'translateX(24px)' : 'translateX(0)' }}
+              >
+                {isDark ? <MoonIcon className="h-3.5 w-3.5" /> : <SunIcon className="h-3.5 w-3.5" />}
+              </span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 focus:outline-none dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+            >
+              Sair
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 dark:bg-gray-900 lg:p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
 }
 
 export default Layout

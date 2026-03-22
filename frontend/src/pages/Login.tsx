@@ -43,7 +43,7 @@ const Login = () => {
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               className="w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100 outline-none ring-emerald-500 transition focus:ring placeholder:text-gray-400"
-              placeholder="seu.usuario ou voce@empresa.com"
+              placeholder="Digite seu usuario ou e-mail"
               required
             />
           </div>

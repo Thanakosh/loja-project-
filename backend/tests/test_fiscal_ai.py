@@ -323,30 +323,54 @@ def test_risk_dashboard_retorna_metricas_reais(client, auth_headers, db_session)
     db_session.add(produto)
     db_session.flush()
 
-    nota = NotaFiscal(
+    nota_entrada = NotaFiscal(
         numero_legado=1234,
         data_emissao=date(2026, 3, 21),
         valor_total=100.0,
         base_icms=100.0,
         valor_icms=18.0,
+        entrada_saida="E",
     )
-    db_session.add(nota)
+    nota_saida = NotaFiscal(
+        numero_legado=1235,
+        data_emissao=date(2026, 3, 22),
+        valor_total=120.0,
+        base_icms=120.0,
+        valor_icms=0.0,
+        entrada_saida="S",
+    )
+    db_session.add_all([nota_entrada, nota_saida])
     db_session.flush()
 
-    db_session.add(
-        NotaFiscalItem(
-            nota_fiscal_id=nota.id,
-            produto_id=produto.id,
-            nome_produto="Item Dashboard",
-            unidade="UN",
-            quantidade=1,
-            preco_unitario=100.0,
-            preco_total=100.0,
-            cfop="1102",
-            cst="00",
-            ncm="22030000",
-            icms=18.0,
-        )
+    db_session.add_all(
+        [
+            NotaFiscalItem(
+                nota_fiscal_id=nota_entrada.id,
+                produto_id=produto.id,
+                nome_produto="Item Dashboard Entrada",
+                unidade="UN",
+                quantidade=1,
+                preco_unitario=100.0,
+                preco_total=100.0,
+                cfop="1102",
+                cst="00",
+                ncm="22030000",
+                icms=18.0,
+            ),
+            NotaFiscalItem(
+                nota_fiscal_id=nota_saida.id,
+                produto_id=produto.id,
+                nome_produto="Item Dashboard Saida",
+                unidade="UN",
+                quantidade=1,
+                preco_unitario=120.0,
+                preco_total=120.0,
+                cfop="5102",
+                cst=None,
+                ncm="22030000",
+                icms=0.0,
+            ),
+        ]
     )
     db_session.commit()
 
@@ -355,8 +379,6 @@ def test_risk_dashboard_retorna_metricas_reais(client, auth_headers, db_session)
         json={
             "regime_tributario": "simples_nacional",
             "uf": "SP",
-            "margem_minima_percentual": 0.05,
-            "aliquota_impostos_default": 0.0,
         },
         headers=auth_headers,
     )
@@ -366,8 +388,12 @@ def test_risk_dashboard_retorna_metricas_reais(client, auth_headers, db_session)
     assert response.status_code == 200
 
     data = response.json()
-    assert data["total_notas"] == 1
+    assert data["total_notas"] == 2
     assert data["score_medio"] > 0
     assert len(data["top_fornecedores_alertas"]) == 1
     assert data["top_fornecedores_alertas"][0]["nome"] == "Fornecedor Dashboard LTDA"
     assert data["top_fornecedores_alertas"][0]["alertas"] > 0
+    assert data["entradas"]["total_notas"] == 1
+    assert data["saidas"]["total_notas"] == 1
+    assert data["entradas"]["periodo_rotulo"] == "ultimas 1 notas de entrada"
+    assert data["saidas"]["periodo_rotulo"] == "ultimas 1 notas de saida"

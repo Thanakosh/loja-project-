@@ -17,6 +17,7 @@ import Vendas from './pages/Vendas'
 import ContasReceber from './pages/ContasReceber'
 import ImportarNota from './pages/ImportarNota'
 import Usuarios from './pages/Usuarios'
+import ConfiguracoesLoja from './pages/ConfiguracoesLoja'
 import { Toaster } from 'react-hot-toast'
 
 const App = () => {
@@ -43,6 +44,7 @@ const App = () => {
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/importar-nota" element={<ImportarNota />} />
             <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="/configuracoes/loja" element={<ConfiguracoesLoja />} />
           </Route>
         </Route>
 
