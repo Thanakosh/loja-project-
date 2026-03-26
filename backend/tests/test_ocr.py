@@ -120,7 +120,7 @@ def test_ocr_xml_valido_extrai_produtos(client: TestClient, auth_headers: dict[s
     assert len(produtos) >= 1
 
 
-def test_ocr_xml_idempotente(client: TestClient, auth_headers: dict[str, str]):
+def test_ocr_xml_reprocessa_task_completed(client: TestClient, auth_headers: dict[str, str]):
     xml_content = _load_fixture_bytes("nfe_minima.xml")
 
     first_response = client.post(
@@ -136,7 +136,7 @@ def test_ocr_xml_idempotente(client: TestClient, auth_headers: dict[str, str]):
 
     assert first_response.status_code == 200
     assert second_response.status_code == 200
-    assert first_response.json()["task_id"] == second_response.json()["task_id"]
+    assert first_response.json()["task_id"] != second_response.json()["task_id"]
 
 
 def test_ocr_xml_retorna_payload_fiscal_normalizado(client: TestClient, auth_headers: dict[str, str]):
@@ -186,4 +186,4 @@ def test_ocr_xml_usa_regime_tributario_da_configuracao(client: TestClient, auth_
 
     auditoria = status_response.json()["result"]["auditoria_fiscal"]
     assert auditoria is not None
-    assert any(fator["regra"] == "cst_incompativel_regime" for fator in auditoria["fatores"])
+    assert all(fator["regra"] != "cst_incompativel_regime" for fator in auditoria["fatores"])

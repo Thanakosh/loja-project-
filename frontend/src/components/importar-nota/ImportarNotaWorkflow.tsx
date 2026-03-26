@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
@@ -93,6 +94,12 @@ const nextKey = () => `item-${++keyCounter}`
 const POLLING_INTERVAL = 2000
 const ACCEPT_STRING = '.xml,text/xml,application/xml'
 const normalizeProductName = (value: string) => value.trim().toLowerCase()
+const normalizeForAutoMerge = (value: string) =>
+    value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w]/g, '')
+        .toLowerCase()
 type FileKind = 'xml' | 'unknown'
 function detectFileKind(file: File): FileKind {
     const name = file.name.toLowerCase()
@@ -420,9 +427,14 @@ const TabImportar = () => {
                     atualizados[i] = { ...item, aiStatus: 'ok' }
                 } else {
                     const top = data.candidatos[0]
-                    // Duplicata exata (similaridade >= 0.98 ou nome idêntico)
-                    const nomeIgual = top.produto_nome.trim().toLowerCase() === item.nome.trim().toLowerCase()
-                    if (nomeIgual || top.similaridade >= 0.98) {
+                    const nomeEquivalente =
+                        normalizeForAutoMerge(top.produto_nome) === normalizeForAutoMerge(item.nome)
+                    const mergeAutomatico =
+                        data.metodo === 'barcode_exato' ||
+                        data.metodo === 'nome_exato' ||
+                        nomeEquivalente
+
+                    if (mergeAutomatico) {
                         atualizados[i] = {
                             ...item,
                             aiStatus: 'duplicata_exata',
@@ -863,15 +875,15 @@ const TabImportar = () => {
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">✅ Novo</span>
                                                 )}
                                                 {item.aiStatus === 'duplicata_exata' && (
-                                                    <div>
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 dark:bg-sky-900/40 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">🔄 Soma estoque</span>
-                                                        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate max-w-[120px]" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
+                                                    <div className="max-w-[220px]">
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 dark:bg-sky-900/40 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">Soma estoque</span>
+                                                        <p className="mt-1 text-xs leading-4 text-gray-400 dark:text-gray-500 whitespace-normal break-words" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
                                                     </div>
                                                 )}
                                                 {item.aiStatus === 'similar' && (
-                                                    <div>
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">⚠️ Parecido</span>
-                                                        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate max-w-[120px]" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
+                                                    <div className="max-w-[220px]">
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">Parecido</span>
+                                                        <p className="mt-1 text-xs leading-4 text-gray-400 dark:text-gray-500 whitespace-normal break-words" title={item.aiNomeExistente}>{item.aiNomeExistente}</p>
                                                     </div>
                                                 )}
                                                 {!item.aiStatus && (
@@ -927,7 +939,7 @@ const TabImportar = () => {
                     </div>
                     <div className="flex gap-3">
                         <button type="button" onClick={handleReset} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700">📤 Importar Outra Nota</button>
-                        <a href="/produtos" className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50">📦 Ver Produtos</a>
+                        <Link to="/produtos" className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50">Ver Produtos</Link>
                     </div>
                 </div>
             )}
@@ -936,3 +948,4 @@ const TabImportar = () => {
 }
 
 export default ImportarNota
+

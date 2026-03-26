@@ -296,6 +296,33 @@ class TestCheckDuplicateEndpoint:
         assert data["candidatos"][0]["produto_id"] == produto.id
         assert data["candidatos"][0]["similaridade"] == 1.0
 
+    def test_check_duplicate_nome_exato(self, client, auth_headers, db_session):
+        """Nome identico deve retornar duplicata exata sem depender do motor fuzzy."""
+        from app.models.produto import Produto
+
+        produto = Produto(
+            nome="POSTE BALIZADOR QDR 30CM C/ VIDRO PT - JRC",
+            fornecedor="Fornecedor Teste",
+            preco_unitario=120.0,
+            preco_liquido=120.0,
+            unidade_medida="UN",
+        )
+        db_session.add(produto)
+        db_session.commit()
+        db_session.refresh(produto)
+
+        resp = client.post(
+            "/api/v1/ai/check-duplicate",
+            json={"descricao": "  poste balizador qdr 30cm c/ vidro pt - jrc  "},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["tem_duplicata"] is True
+        assert data["metodo"] == "nome_exato"
+        assert data["candidatos"][0]["produto_id"] == produto.id
+        assert data["candidatos"][0]["similaridade"] == 1.0
+
     def test_check_duplicate_sem_produtos(self, client, auth_headers):
         """Sem produtos no banco, retorna lista vazia sem erro."""
         resp = client.post(
