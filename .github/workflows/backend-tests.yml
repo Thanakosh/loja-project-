@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - 'backend/**'
+      - 'migrations/**'
+      - 'alembic.ini'
       - '.github/workflows/backend-tests.yml'
   pull_request:
     paths:
       - 'backend/**'
+      - 'migrations/**'
+      - 'alembic.ini'
       - '.github/workflows/backend-tests.yml'
 
 jobs:
@@ -41,3 +45,48 @@ jobs:
             tests/test_ocr.py::test_ocr_status_task_inexistente_retorna_404 \
             tests/test_ocr.py::test_ocr_xml_invalido_retorna_400 \
             -v
+
+  postgresql-validation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: loja_user
+          POSTGRES_PASSWORD: loja_pass
+          POSTGRES_DB: loja_ci
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U loja_user -d loja_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://loja_user:loja_pass@127.0.0.1:5432/loja_ci
+      JWT_SECRET: ci-test-secret-key-with-minimum-length-ok
+      DEBUG: "false"
+      ENVIRONMENT: development
+      PYTHONPATH: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Alembic bootstrap on empty PostgreSQL
+        run: |
+          alembic -c alembic.ini upgrade head
+
+      - name: Run PostgreSQL async validation flow
+        run: |
+          python backend/scripts/validate_async_postgresql.py
