@@ -117,7 +117,16 @@ def _regra_contexto_fiscal_loja(
 def _regra_cst_incompativel_regime(
     itens: list[FiscalItemPayload],
     regime_tributario: Literal["simples_nacional", "regime_normal"] | None,
+    perspectiva_do_emitente: bool = False,
 ) -> RuleEvaluation:
+    if perspectiva_do_emitente:
+        return RuleEvaluation(
+            nome_regra="cst_incompativel_regime",
+            passou=True,
+            peso=_PESO_REGRA_CST,
+            explicacao="Validacao de CST contra o regime da loja desabilitada para XMLs recebidos na perspectiva do emitente.",
+        )
+
     if regime_tributario != "simples_nacional":
         return RuleEvaluation(
             nome_regra="cst_incompativel_regime",
@@ -242,7 +251,16 @@ def _regra_outlier_preco_ncm(
 def _regra_cfop_tipo_operacao(
     itens: list[FiscalItemPayload],
     tipo_operacao: Literal["entrada", "saida"] | None,
+    perspectiva_do_emitente: bool = False,
 ) -> RuleEvaluation:
+    if perspectiva_do_emitente:
+        return RuleEvaluation(
+            nome_regra="cfop_incompativel_tipo_operacao",
+            passou=True,
+            peso=_PESO_REGRA_CFOP_OPERACAO,
+            explicacao="Validacao de CFOP pela perspectiva da loja desabilitada para XMLs recebidos na perspectiva do emitente.",
+        )
+
     if not tipo_operacao:
         return RuleEvaluation(
             nome_regra="cfop_incompativel_tipo_operacao",
@@ -364,14 +382,15 @@ def executar_auditoria_regras(
     loja_inscricao_estadual: str | None = None,
     loja_cnae: str | None = None,
     loja_porte: Literal["ME", "EPP", "MEI"] | None = None,
+    perspectiva_do_emitente: bool = False,
 ) -> AuditResult:
     return AuditResult(
         avaliacoes=[
             _regra_contexto_fiscal_loja(tipo_operacao, loja_inscricao_estadual, loja_porte),
-            _regra_cst_incompativel_regime(nota.itens, regime_tributario),
+            _regra_cst_incompativel_regime(nota.itens, regime_tributario, perspectiva_do_emitente),
             _regra_aliquota_icms_por_uf(nota.itens, uf_emitente),
             _regra_outlier_preco_ncm(nota.itens, tipo_operacao),
-            _regra_cfop_tipo_operacao(nota.itens, tipo_operacao),
+            _regra_cfop_tipo_operacao(nota.itens, tipo_operacao, perspectiva_do_emitente),
             _regra_fornecedor_mesmo_cnpj_loja(nota, tipo_operacao, loja_cnpj),
             _regra_cfop_compativel_cnae_loja(nota.itens, tipo_operacao, loja_cnae),
         ]

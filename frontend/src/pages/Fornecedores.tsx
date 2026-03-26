@@ -4,23 +4,7 @@ import toast from 'react-hot-toast'
 
 import api from '../services/api'
 import { useAccessibleModal } from '../hooks/useAccessibleModal'
-
-interface Fornecedor {
-  id: number
-  razao_social: string
-  nome_fantasia?: string | null
-  cnpj: string
-  email?: string | null
-  telefone?: string | null
-}
-
-interface FornecedorPayload {
-  razao_social: string
-  nome_fantasia?: string
-  cnpj: string
-  email?: string
-  telefone?: string
-}
+import type { Fornecedor, FornecedorPayload } from '../types/fornecedores'
 
 const PAGE_SIZE = 20
 
@@ -45,6 +29,10 @@ const normalizePayload = (formData: FormState): FornecedorPayload => {
   const email = formData.email.trim()
   const telefone = formData.telefone.trim()
   const nomeFantasia = formData.contato.trim()
+  const endereco = formData.endereco.trim()
+  const cidade = formData.cidade.trim()
+  const uf = formData.uf.trim().toUpperCase()
+  const cep = formData.cep.trim()
 
   if (email) {
     payload.email = email
@@ -58,6 +46,22 @@ const normalizePayload = (formData: FormState): FornecedorPayload => {
     payload.nome_fantasia = nomeFantasia
   }
 
+  if (endereco) {
+    payload.endereco = endereco
+  }
+
+  if (cidade) {
+    payload.cidade = cidade
+  }
+
+  if (uf) {
+    payload.uf = uf
+  }
+
+  if (cep) {
+    payload.cep = cep
+  }
+
   return payload
 }
 
@@ -69,6 +73,10 @@ interface FormState {
   email: string
   telefone: string
   contato: string
+  endereco: string
+  cidade: string
+  uf: string
+  cep: string
 }
 
 const emptyFormState: FormState = {
@@ -76,7 +84,11 @@ const emptyFormState: FormState = {
   cnpj: '',
   email: '',
   telefone: '',
-  contato: ''
+  contato: '',
+  endereco: '',
+  cidade: '',
+  uf: '',
+  cep: ''
 }
 
 const Fornecedores = () => {
@@ -166,7 +178,11 @@ const Fornecedores = () => {
       cnpj: formatCnpj(fornecedor.cnpj ?? ''),
       email: fornecedor.email ?? '',
       telefone: fornecedor.telefone ?? '',
-      contato: fornecedor.nome_fantasia ?? ''
+      contato: fornecedor.nome_fantasia ?? '',
+      endereco: fornecedor.endereco ?? '',
+      cidade: fornecedor.cidade ?? '',
+      uf: fornecedor.uf ?? '',
+      cep: fornecedor.cep ?? ''
     })
     setFormError('')
     setIsModalOpen(true)
@@ -411,6 +427,53 @@ const Fornecedores = () => {
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="contato@fornecedor.com.br"
                 />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Endereço</label>
+                <input
+                  type="text"
+                  value={formState.endereco}
+                  onChange={(event) => handleInputChange('endereco', event.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Rua, número"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_100px_140px]">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Cidade</label>
+                  <input
+                    type="text"
+                    value={formState.cidade}
+                    onChange={(event) => handleInputChange('cidade', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Cidade"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">UF</label>
+                  <input
+                    type="text"
+                    value={formState.uf}
+                    onChange={(event) => handleInputChange('uf', event.target.value.slice(0, 2).toUpperCase())}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="UF"
+                    maxLength={2}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">CEP</label>
+                  <input
+                    type="text"
+                    value={formState.cep}
+                    onChange={(event) => handleInputChange('cep', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="00000000"
+                  />
+                </div>
               </div>
 
               {formError ? <p className="text-sm font-medium text-red-600 dark:text-red-400">{formError}</p> : null}

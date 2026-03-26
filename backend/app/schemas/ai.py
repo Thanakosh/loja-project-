@@ -50,7 +50,7 @@ class DuplicateCheckResponse(BaseModel):
     descricao_consultada: str
     tem_duplicata: bool
     tem_alerta: bool
-    metodo: str = Field(..., description="embedding | tfidf")
+    metodo: str = Field(..., description="barcode_exato | nome_exato | embedding | tfidf")
     candidatos: List[DuplicateCandidateResponse]
 
 

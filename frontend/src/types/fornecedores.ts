@@ -5,6 +5,10 @@ export interface Fornecedor {
   cnpj: string
   email?: string | null
   telefone?: string | null
+  endereco?: string | null
+  cidade?: string | null
+  uf?: string | null
+  cep?: string | null
 }
 
 export interface FornecedorPayload {
@@ -13,4 +17,8 @@ export interface FornecedorPayload {
   cnpj: string
   email?: string
   telefone?: string
+  endereco?: string
+  cidade?: string
+  uf?: string
+  cep?: string
 }

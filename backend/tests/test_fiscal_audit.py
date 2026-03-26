@@ -54,6 +54,20 @@ def test_nota_simples_com_csosn_valido_em_saida_nao_dispara_regra_cst():
     assert all(fator.regra != "cst_incompativel_regime" for fator in resultado.fatores)
 
 
+def test_xml_recebido_na_perspectiva_do_emitente_nao_pune_cfop_5102_nem_cst_00():
+    nota = _nota([_item(cst="00", cfop="5102")])
+    resultado = auditar_nota_fiscal(
+        nota,
+        regime_tributario="simples_nacional",
+        uf_emitente="GO",
+        tipo_operacao="entrada",
+        perspectiva_do_emitente=True,
+    )
+    assert resultado.classificacao == "baixo"
+    assert all(fator.regra != "cst_incompativel_regime" for fator in resultado.fatores)
+    assert all(fator.regra != "cfop_incompativel_tipo_operacao" for fator in resultado.fatores)
+
+
 def test_nota_saida_nao_pune_outlier_preco_por_ncm():
     itens = [
         _item(sequencia=1, cst="102", cfop="5102", valor_unitario=Decimal("10"), valor_total_item=Decimal("10")),

@@ -57,3 +57,54 @@ def test_parse_nfe_xml_fallback_seguro_em_numericos_invalidos():
     assert produto.icms_base_calculo is None
     assert produto.frete_rateado is None
     assert nota.valor_total == 60.0
+
+
+def test_parse_nfe_xml_extrai_dados_cadastrais_do_fornecedor():
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe123" versao="4.00">
+      <ide>
+        <nNF>1</nNF>
+        <dhEmi>2026-03-18T12:58:56-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>47854913000139</CNPJ>
+        <xNome>SOLAR LED MATERIAIS ELETRICOS LTDA</xNome>
+        <xFant>SOLAR LED</xFant>
+        <email>contato@solarled.com.br</email>
+        <enderEmit>
+          <xLgr>AVENIDA INDEPENDENCIA</xLgr>
+          <nro>6080</nro>
+          <xMun>GOIANIA</xMun>
+          <UF>GO</UF>
+          <CEP>74070010</CEP>
+          <fone>6239246034</fone>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>1</cProd>
+          <xProd>Produto Teste</xProd>
+          <uCom>UN</uCom>
+          <qCom>1.00</qCom>
+          <vUnCom>10.00</vUnCom>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vNF>10.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>"""
+
+    nota = parse_nfe_xml(xml)
+
+    assert nota.telefone_fornecedor == "6239246034"
+    assert nota.email_fornecedor == "contato@solarled.com.br"
+    assert nota.endereco_fornecedor == "AVENIDA INDEPENDENCIA, 6080"
+    assert nota.cidade_fornecedor == "GOIANIA"
+    assert nota.uf_fornecedor == "GO"
+    assert nota.cep_fornecedor == "74070010"

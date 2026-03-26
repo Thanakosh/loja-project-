@@ -52,6 +52,7 @@ def auditar_nota_fiscal(
     loja_inscricao_estadual: str | None = None,
     loja_cnae: str | None = None,
     loja_porte: Literal["ME", "EPP", "MEI"] | None = None,
+    perspectiva_do_emitente: bool = False,
 ) -> AuditClassification:
     resultado = executar_auditoria_regras(
         nota,
@@ -62,6 +63,7 @@ def auditar_nota_fiscal(
         loja_inscricao_estadual=loja_inscricao_estadual,
         loja_cnae=loja_cnae,
         loja_porte=loja_porte,
+        perspectiva_do_emitente=perspectiva_do_emitente,
     )
 
     falhas = resultado.falhas

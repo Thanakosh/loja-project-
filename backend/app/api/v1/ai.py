@@ -4,7 +4,7 @@ import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
@@ -20,6 +20,10 @@ from app.schemas.ai import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _normalizar_nome(nome: str) -> str:
+    return nome.strip().lower()
 
 
 def _get_duplicate_detector_module():
@@ -84,6 +88,31 @@ async def check_duplicate(
                     )
                 ],
             )
+
+    nome_normalizado = _normalizar_nome(payload.descricao)
+    existente_por_nome = (
+        await db.execute(
+            select(Produto).where(
+                func.lower(func.trim(Produto.nome)) == nome_normalizado,
+                Produto.ativo.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if existente_por_nome:
+        return DuplicateCheckResponse(
+            descricao_consultada=payload.descricao,
+            tem_duplicata=True,
+            tem_alerta=True,
+            metodo="nome_exato",
+            candidatos=[
+                DuplicateCandidateResponse(
+                    produto_id=existente_por_nome.id,
+                    produto_nome=existente_por_nome.nome,
+                    similaridade=1.0,
+                    nivel="duplicata",
+                )
+            ],
+        )
 
     duplicate_detector = _get_duplicate_detector_module()
 

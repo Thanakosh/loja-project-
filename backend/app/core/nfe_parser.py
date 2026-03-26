@@ -89,6 +89,19 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
     fornecedor = _ft(emit, "nfe:xNome") or _ft(emit, "xNome") or "Não identificado"
     nome_fantasia = _ft(emit, "nfe:xFant") or _ft(emit, "xFant")
     cnpj = _ft(emit, "nfe:CNPJ") or _ft(emit, "CNPJ") or ""
+    telefone = _ft(emit, "nfe:enderEmit/nfe:fone") or _ft(emit, "enderEmit/fone")
+    email = _ft(emit, "nfe:email") or _ft(emit, "email")
+    endereco_logradouro = _ft(emit, "nfe:enderEmit/nfe:xLgr") or _ft(emit, "enderEmit/xLgr")
+    endereco_numero = _ft(emit, "nfe:enderEmit/nfe:nro") or _ft(emit, "enderEmit/nro")
+    cidade = _ft(emit, "nfe:enderEmit/nfe:xMun") or _ft(emit, "enderEmit/xMun")
+    uf = _ft(emit, "nfe:enderEmit/nfe:UF") or _ft(emit, "enderEmit/UF")
+    cep = _ft(emit, "nfe:enderEmit/nfe:CEP") or _ft(emit, "enderEmit/CEP")
+
+    endereco = None
+    if endereco_logradouro and endereco_numero:
+        endereco = f"{endereco_logradouro}, {endereco_numero}"
+    elif endereco_logradouro:
+        endereco = endereco_logradouro
 
     # Formatar CNPJ
     if cnpj and len(cnpj) == 14:
@@ -229,6 +242,12 @@ def parse_nfe_xml(xml_content: bytes) -> NotaFiscalExtraida:
         fornecedor=fornecedor,
         nome_fantasia_fornecedor=nome_fantasia if nome_fantasia else None,
         cnpj_fornecedor=cnpj if cnpj else None,
+        telefone_fornecedor=telefone if telefone else None,
+        email_fornecedor=email if email else None,
+        endereco_fornecedor=endereco if endereco else None,
+        cidade_fornecedor=cidade if cidade else None,
+        uf_fornecedor=uf if uf else None,
+        cep_fornecedor=cep if cep else None,
         numero_nota=numero_nota if numero_nota else None,
         data_emissao=data_emissao if data_emissao else None,
         produtos=produtos,

@@ -270,6 +270,10 @@ class TestNcm:
     def test_search_vazio(self):
         assert search_ncm("") == []
 
+    def test_ncms_eletricos_e_hidraulicos_relevantes_estao_na_base(self):
+        assert get_ncm_descricao("73089010") is not None
+        assert get_ncm_descricao("94054090") is not None
+
 
 # ═══════════════════════════════════════
 #  CEST

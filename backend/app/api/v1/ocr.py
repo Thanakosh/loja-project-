@@ -63,7 +63,16 @@ def _build_file_hash(content: bytes) -> str:
 
 
 async def _auto_cadastrar_fornecedor_async(
-    db: AsyncSession, razao_social: str, cnpj_raw: str, nome_fantasia: str | None = None
+    db: AsyncSession,
+    razao_social: str,
+    cnpj_raw: str,
+    nome_fantasia: str | None = None,
+    telefone: str | None = None,
+    email: str | None = None,
+    endereco: str | None = None,
+    cidade: str | None = None,
+    uf: str | None = None,
+    cep: str | None = None,
 ):
     """
     Verifica se o fornecedor ja existe pelo CNPJ.
@@ -87,6 +96,24 @@ async def _auto_cadastrar_fornecedor_async(
             if nome_fantasia and existente.nome_fantasia != nome_fantasia[:80]:
                 existente.nome_fantasia = nome_fantasia[:80]
                 houve_atualizacao = True
+            if telefone and existente.telefone != telefone[:20]:
+                existente.telefone = telefone[:20]
+                houve_atualizacao = True
+            if email and existente.email != email[:120]:
+                existente.email = email[:120]
+                houve_atualizacao = True
+            if endereco and existente.endereco != endereco[:120]:
+                existente.endereco = endereco[:120]
+                houve_atualizacao = True
+            if cidade and existente.cidade != cidade[:60]:
+                existente.cidade = cidade[:60]
+                houve_atualizacao = True
+            if uf and existente.uf != uf[:2]:
+                existente.uf = uf[:2]
+                houve_atualizacao = True
+            if cep and existente.cep != cep[:10]:
+                existente.cep = cep[:10]
+                houve_atualizacao = True
             if houve_atualizacao:
                 await db.commit()
             return "existente", existente.id
@@ -95,6 +122,12 @@ async def _auto_cadastrar_fornecedor_async(
             razao_social=razao_social[:120],
             nome_fantasia=nome_fantasia[:80] if nome_fantasia else None,
             cnpj=cnpj_fmt,
+            telefone=telefone[:20] if telefone else None,
+            email=email[:120] if email else None,
+            endereco=endereco[:120] if endereco else None,
+            cidade=cidade[:60] if cidade else None,
+            uf=uf[:2] if uf else None,
+            cep=cep[:10] if cep else None,
             ativo=True,
         )
         db.add(novo)
@@ -221,9 +254,9 @@ async def upload_arquivo_nota_fiscal(
     existing_task_id = ocr_task_index_by_hash.get(file_hash)
     if existing_task_id and existing_task_id in ocr_tasks:
         existing_task = ocr_tasks[existing_task_id]
-        if existing_task.get("status") in {"pending", "processing", "completed"}:
+        if existing_task.get("status") in {"pending", "processing"}:
             logger.info(
-                f"[OCR] Cache hit - reutilizando task existente | task={existing_task_id} | status={existing_task['status']}"
+                f"[OCR] Cache hit - reutilizando task em andamento | task={existing_task_id} | status={existing_task['status']}"
             )
             return OCRTaskResponse(
                 task_id=existing_task_id,
@@ -253,6 +286,7 @@ async def upload_arquivo_nota_fiscal(
                 loja_inscricao_estadual=configuracao_loja.inscricao_estadual,
                 loja_cnae=configuracao_loja.cnae,
                 loja_porte=configuracao_loja.porte,
+                perspectiva_do_emitente=True,
             )
             cross_findings = validar_nota_cruzado(nota_normalizada)
 
@@ -286,7 +320,16 @@ async def upload_arquivo_nota_fiscal(
         fornecedor_status, fornecedor_id = None, None
         if nota.fornecedor and nota.cnpj_fornecedor:
             fornecedor_status, fornecedor_id = await _auto_cadastrar_fornecedor_async(
-                db, nota.fornecedor, nota.cnpj_fornecedor, nota.nome_fantasia_fornecedor
+                db,
+                nota.fornecedor,
+                nota.cnpj_fornecedor,
+                nota.nome_fantasia_fornecedor,
+                nota.telefone_fornecedor,
+                nota.email_fornecedor,
+                nota.endereco_fornecedor,
+                nota.cidade_fornecedor,
+                nota.uf_fornecedor,
+                nota.cep_fornecedor,
             )
 
         ocr_tasks[task_id] = {
