@@ -1,0 +1,117 @@
+import { expect, type APIRequestContext } from '@playwright/test'
+
+const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL ?? process.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+
+interface SeededUser {
+  email: string
+  password: string
+  token: string
+}
+
+interface SeededProduct {
+  id: number
+  nome: string
+}
+
+const buildUrl = (path: string) => `${BACKEND_BASE_URL}${path}`
+
+export const createSeededUser = async (request: APIRequestContext, suffix: string): Promise<SeededUser> => {
+  const email = `e2e-integrado-${suffix}@teste.com.br`
+  const password = 'SenhaForte123!'
+
+  const registerResponse = await request.post(buildUrl('/api/v1/users/register'), {
+    data: {
+      email,
+      password,
+      full_name: `E2E Integrado ${suffix}`,
+    },
+  })
+  expect(registerResponse.ok()).toBeTruthy()
+
+  const tokenResponse = await request.post(buildUrl('/api/v1/users/token'), {
+    form: {
+      username: email,
+      password,
+    },
+  })
+  expect(tokenResponse.ok()).toBeTruthy()
+
+  const tokenData = await tokenResponse.json()
+  return {
+    email,
+    password,
+    token: tokenData.access_token as string,
+  }
+}
+
+export const createSeededProduct = async (
+  request: APIRequestContext,
+  token: string,
+  suffix: string,
+): Promise<SeededProduct> => {
+  const nome = `Produto E2E ${suffix}`
+  const productResponse = await request.post(buildUrl('/api/v1/produtos/'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    data: {
+      nome,
+      descricao: 'Produto criado para fluxo E2E integrado',
+      fornecedor: 'Fornecedor E2E',
+      preco_unitario: 25.0,
+      preco_liquido: 20.0,
+      preco_custo: 10.0,
+      preco_varejo: 25.0,
+      unidade: 'UN',
+      unidade_medida: 'UN',
+      estoque_minimo: 1,
+      quantidade_inicial: 5,
+    },
+  })
+  expect(productResponse.ok()).toBeTruthy()
+
+  const product = await productResponse.json()
+  return {
+    id: product.id as number,
+    nome,
+  }
+}
+
+export const ensureOpenCash = async (request: APIRequestContext, token: string): Promise<void> => {
+  const currentCashResponse = await request.get(buildUrl('/api/v1/caixa/atual'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (currentCashResponse.ok()) {
+    return
+  }
+
+  const openCashResponse = await request.post(buildUrl('/api/v1/caixa/abrir'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    data: {
+      valor_abertura: 100,
+      observacao: 'Caixa aberto pelo E2E integrado',
+    },
+  })
+  expect(openCashResponse.ok()).toBeTruthy()
+}
+
+export const fetchProductStock = async (
+  request: APIRequestContext,
+  token: string,
+  productId: number,
+): Promise<number> => {
+  const stockResponse = await request.get(buildUrl(`/api/v2/estoque/produto/${productId}`), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  expect(stockResponse.ok()).toBeTruthy()
+
+  const stock = await stockResponse.json()
+  return Number(stock.quantidade_atual)
+}

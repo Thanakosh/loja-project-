@@ -1,16 +1,25 @@
-name: Frontend E2E (Optional)
+name: Frontend E2E
 
 on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'migrations/**'
+      - 'alembic.ini'
+      - '.github/workflows/frontend-e2e.yml'
   workflow_dispatch:
   pull_request:
     paths:
       - 'frontend/**'
+      - 'backend/**'
+      - 'migrations/**'
+      - 'alembic.ini'
       - '.github/workflows/frontend-e2e.yml'
 
 jobs:
   e2e-smoke:
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
     defaults:
@@ -36,3 +45,81 @@ jobs:
 
       - name: Run E2E smoke tests
         run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+
+  e2e-integrated:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: loja_user
+          POSTGRES_PASSWORD: loja_pass
+          POSTGRES_DB: loja_frontend_e2e
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U loja_user -d loja_frontend_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://loja_user:loja_pass@127.0.0.1:5432/loja_frontend_e2e
+      JWT_SECRET: ci-test-secret-key-with-minimum-length-ok
+      DEBUG: "false"
+      ENVIRONMENT: development
+      CORS_ORIGINS: '["http://127.0.0.1:5173","http://localhost:5173"]'
+      PYTHONPATH: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Alembic migrations
+        run: alembic -c alembic.ini upgrade head
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run integrated E2E tests
+        working-directory: frontend
+        run: npm run test:e2e:integrated
+
+      - name: Upload integrated Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-integration
+          path: frontend/playwright-report-integration
+          if-no-files-found: ignore

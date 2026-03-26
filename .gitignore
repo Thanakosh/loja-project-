@@ -85,7 +85,14 @@ test_pipeline.ps1
 frontend/out/
 frontend/out-local/
 frontend/dist/
+frontend/playwright-report/
+frontend/playwright-report-integration/
 frontend/.playwright-cli/
 backend/server*.log
+backend/backend_start.out
+backend/backend_start.err
 temp-*.txt
 temp-*.ps1
+vite_test.out.log
+vite_test.err.log
+tmp/
