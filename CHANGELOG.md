@@ -39,8 +39,13 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 ###  Alterado
 - Backend (OCR/XML): endpoint de upload agora inclui `payload_fiscal_normalizado` versionado (`versao_payload`) para consumo interno por auditoria, precificacao e risco.
 - Backend (OCR/XML): parser de NFe evoluido para extrair por item os campos fiscais `CFOP`, `CST/CSOSN`, `vBC/pICMS/vICMS` e rateio de frete por item, mantendo compatibilidade com o payload atual.
+- Backend: `TransacaoEstoque` e `caixa_service` agora gravam `datetime` UTC ingenuo compativel com o schema atual, corrigindo falha do `asyncpg` em PostgreSQL real.
+- Backend/Alembic: bootstrap PostgreSQL em banco vazio agora funciona com normalizacao da URL sincrona para `psycopg`, `alembic_version` ampliada para revision IDs longos e correcoes idempotentes nas migracoes legadas de estoque, orcamento e `fiscal_feedback`.
+- CI: workflow `backend-tests` agora inclui um job dedicado de validacao PostgreSQL real com `alembic upgrade head` em banco vazio e runner async ponta a ponta contra PostgreSQL 16.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatorio de validacao de instalacao limpa (TASK-019): o build falha automaticamente se o checklist de evidencias (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
+- CI: workflow `frontend-e2e` agora roda em `push` e `pull_request` sem `continue-on-error`, falhando o check em regressao de smoke tests e publicando `playwright-report` como artifact.
+- CI: workflow `frontend-e2e` agora tambem executa um job integrado com PostgreSQL 16, `alembic upgrade head` e fluxo real de frontend+backend para o PDV.
 - Docs: adicionados release notes desktop, checklist de entrega ao cliente e arquivo de evidencias do gate de instalacao limpa.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orcamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
 
@@ -48,6 +53,8 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Backend: engine deterministico de custo e preco minimo (`app/fiscal/cost_calculator.py`) com regra explicita de bloqueio para sugestoes abaixo do preco minimo absoluto e auditoria por `versao_motor`.
 - Backend: novo endpoint autenticado `POST /api/v1/fiscal-ai/suggest-price/{product_id}` para sugestao de faixa de preco com minimo garantido por regra deterministica.
 - Backend: novo normalizador fiscal canonico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
+- Backend: runner `backend/scripts/validate_async_postgresql.py` para validar o fluxo async real em PostgreSQL fora do `conftest` baseado em SQLite.
+- Frontend: configuracao dedicada `playwright.integration.config.ts`, helper de seed via API real e spec integrada do PDV cobrindo login, venda e baixa de estoque sem mocks.
 - Backend: suporte a categorias hierarquicas de produtos com CRUD em `/api/v1/categorias`, endpoint de arvore (`/api/v1/categorias/arvore`) e vinculo opcional `categoria_id` em produtos.
 - Frontend: tela de Produtos com selecao em arvore de categoria no cadastro/edicao e filtro por categoria (incluindo subcategorias) na listagem.
 
@@ -65,6 +72,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Adicionados testes unitarios para o parser XML cobrindo tributacao completa por item, ausencia de blocos fiscais opcionais e fallback seguro em valores fiscais invalidos (`backend/tests/test_nfe_parser.py`).
 - Adicionados testes para o normalizador de payload fiscal interno e para retorno do payload normalizado no fluxo de OCR XML (`backend/tests/test_fiscal_normalizer.py`, `backend/tests/test_ocr.py`).
 - Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
+- Adicionado teste E2E integrado de Playwright para o fluxo real de PDV (`frontend/e2e/pdv.integration.spec.ts`), incluindo login, venda concluida e verificacao da baixa de estoque no backend.
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validacao de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), alem de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criacao e atualizacao de clientes na API (`backend/tests/test_clientes.py`).
 
