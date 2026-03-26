@@ -1,5 +1,13 @@
 # Relatorio de verificacao - PRs #61 e #62
 
+> Atualizacao posterior (2026-03-26)
+>
+> Este relatorio permanece correto como fotografia do momento em que as PRs #61
+> e #62 foram revisadas. Depois daquela analise, as tasks desktop
+> `TASK-017`, `TASK-018` e `TASK-019` foram efetivamente concluidas, com setup
+> de Electron Forge, pipeline Windows e gate de instalacao limpa documentados no
+> repositorio.
+
 ## Escopo analisado
 - PR #61: `finalize-pipeline-tasks`
 - PR #62: `check-last-task-implementation`

@@ -6,7 +6,7 @@ scope: README.md, docs/, backend/app/main.py
 branch: docs/politica-versionamento-api
 commit_message: "docs(api): define politica de versionamento v1 legado e v2 ativo"
 estimated_effort: 30 minutos
-status: pendente
+status: concluida
 depends_on: []
 recomendacao_ref: "#12 Estrategia explicita de versionamento de API"
 ---
@@ -23,8 +23,18 @@ Documentar e aplicar politica oficial:
 - v2 = versao ativa para novas features
 - cronograma de depreciacao para rotas legadas
 
+## Atualizacao 2026-03-22
+
+Task concluida.
+
+Evidencias no repositorio:
+- politica publicada em `docs/POLITICA_VERSIONAMENTO_API.md`
+- README atualizado com status de versoes e orientacao de uso
+- headers de depreciacao aplicados em `backend/app/main.py` para
+  `/api/v1/estoque`
+
 ## Criterios de aceite
-- [ ] Documento de politica publicado no repositorio
-- [ ] README atualizado com status de versoes
-- [ ] Endpoints novos marcados explicitamente como v2
-- [ ] Plano de depreciacao de v1 descrito
+- [x] Documento de politica publicado no repositorio
+- [x] README atualizado com status de versoes
+- [x] Endpoints novos marcados explicitamente como v2
+- [x] Plano de depreciacao de v1 descrito
