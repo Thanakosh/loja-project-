@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,10 @@ from ..core.exceptions import (
 )
 from ..models.caixa_diario import CaixaDiario
 from ..schemas.caixa import CaixaAbrir, CaixaFechar
+
+
+def _utc_now_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 async def get_caixa_aberto_async(db: AsyncSession) -> CaixaDiario | None:
@@ -28,7 +32,7 @@ async def abrir_caixa_async(db: AsyncSession, dados: CaixaAbrir, usuario_id: int
         )
 
     caixa = CaixaDiario(
-        data_abertura=datetime.now(timezone.utc),
+        data_abertura=_utc_now_naive(),
         valor_abertura=dados.valor_abertura,
         status="aberto",
         observacao=dados.observacao,
@@ -49,7 +53,7 @@ async def fechar_caixa_async(
     if caixa.status == "fechado":
         raise CaixaJaFechadoError(details={"caixa_id": caixa_id})
 
-    caixa.data_fechamento = datetime.now(timezone.utc)
+    caixa.data_fechamento = _utc_now_naive()
     caixa.valor_fechamento = dados.valor_fechamento
     caixa.status = "fechado"
     if dados.observacao:
