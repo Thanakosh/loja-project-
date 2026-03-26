@@ -1,6 +1,20 @@
 # Validacao para apresentacao ao cliente
 
-Data: 2026-03-01
+Data da validacao inicial: 2026-03-01
+
+> Atualizacao de status (2026-03-26)
+>
+> Este documento registrou a avaliacao inicial da frente desktop. Desde entao,
+> o estado do projeto mudou de forma relevante:
+>
+> - o frontend passou a ter empacotamento ativo com Electron Forge
+> - o pipeline `windows-desktop-build` foi implementado
+> - o gate de validacao em instalacao limpa foi documentado e concluido
+> - a suite Playwright deixou de ser apenas expectativa e hoje cobre smoke tests
+>   de frontend, alem de um fluxo integrado real de PDV
+>
+> O conteudo abaixo foi preservado como contexto da recomendacao inicial, mas as
+> secoes 3, 4, 6 e 8 devem ser lidas considerando essa atualizacao.
 
 ## 1) Suite de testes
 
@@ -37,15 +51,19 @@ Conclusao: o roteiro de navegacao principal esta tecnicamente funcional no backe
 ## 3) UX e usabilidade
 
 - Foi possivel validar build do frontend com sucesso.
-- A validacao visual automatizada (Playwright) nao foi concluida por falha do browser no ambiente de execucao (crash/SIGSEGV), impedindo captura de screenshot.
+- A dificuldade inicial com Playwright nao representa mais o estado atual do
+  projeto: o frontend ja possui smoke tests e um fluxo integrado real de PDV.
 - `eslint` apontou pendencias de qualidade de frontend (tipagem `any` e hooks com dependencias incompletas), que nao bloqueiam build, mas impactam robustez e manutencao.
 
 ## 4) Executavel para maquina do cliente
 
 ### 4.1 Situacao atual
 
-- O frontend e React + Vite e **nao ha configuracao ativa de Electron/empacotamento** no `frontend/package.json` (sem scripts de build desktop).
-- Portanto, **nao esta pronto hoje para entregar instalador `.exe`**.
+- O frontend continua em React + Vite, mas agora **ha configuracao ativa de
+  Electron Forge** no `frontend/package.json`, com scripts de empacotamento
+  desktop.
+- O projeto **ja consegue gerar instalador `.exe` em Windows** e publicar o
+  checksum SHA256 no pipeline de release.
 
 ### 4.2 Electron Builder vs Electron Forge (diferencas)
 
@@ -130,14 +148,16 @@ Escopo solicitado: **somente Windows**.
 
 ### 6.1 Pipeline recomendado (GitHub Actions)
 
-1. Trigger em tag/release (ex.: `v2.2.0-desktop.1`)
+Este pipeline deixou de ser apenas recomendacao e passou a existir no projeto:
+
+1. Trigger em tag/release desktop
 2. Runner `windows-latest`
-3. Passos:
+3. Passos principais:
    - `npm ci`
-   - `npm run build` (frontend)
-   - `npm run make` ou `npm run package` (Electron Forge) **ou** `electron-builder`
-4. Publicar artefato `.exe` (instalador)
-5. (Opcional) assinatura de codigo quando ja houver certificado
+   - `npm run build`
+   - `npm run make`
+4. Publicacao de instalador `.exe`
+5. Publicacao de checksum SHA256
 
 ### 6.2 Entregaveis minimos do pipeline
 
@@ -172,5 +192,9 @@ Voce pediu explicitamente esse teste; recomendacao: tratar como **gate obrigator
 ## 8) Feedback final para apresentacao comercial
 
 - **Pronto para demo guiada** com dados de teste.
-- **Ainda nao pronto para distribuicao como executavel desktop** sem a sprint de desktop + pipeline + validacao em instalacao limpa.
-- Prioridade sugerida: Electron Forge + API remota + pipeline Windows + teste em VM limpa como gate de release.
+- **A trilha desktop minima ja foi estruturada**, incluindo empacotamento,
+  pipeline Windows e validacao em instalacao limpa.
+- O foco deixa de ser "viabilizar empacotamento" e passa a ser "amadurecer
+  release e cobertura integrada real".
+- Continua recomendada a estrategia de **API remota** para apresentacao
+  comercial e operacao inicial com menor risco de suporte.

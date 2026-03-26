@@ -1,55 +1,116 @@
 # Estrategia de Desenvolvimento - Loja Project
 
-Este documento detalha o planejamento estrategico para a evolucao do sistema, focando em escalabilidade, modernizacao tecnica e valor de negocio.
+Este documento consolida a direcao tecnica e de produto do sistema com base no
+estado real do repositorio.
 
-## 1. Modernizacao Tecnica (Curto Prazo)
-### Refatoracao de Dependencias
-- **Pydantic v2:** Migrar todos os schemas para a versao 2 para melhorar a performance de validacao e serializacao.
-- **FastAPI:** Atualizar para a versao mais recente para suporte a novos recursos assincronos.
-- **Limpeza de Dependencias:** Remover pacotes legados como `python-magic` e `Mako` que nao sao essenciais ao nucleo.
+## 1. Estado tecnico consolidado
 
-### Arquitetura de Dados
-- **Relacionamento Produto-Estoque:** Unificar as tabelas para que o estoque seja uma visao dinamica baseada em transacoes vinculadas ao ID do Produto.
-- **Async Database (concluido):** A camada HTTP do backend e a infraestrutura principal de banco ja operam no padrao assincrono com `SQLAlchemy` async e `asyncpg`. Novos fluxos devem manter `AsyncSession`/`get_async_db` e evitar reintroduzir dependencias sync.
+### Backend
 
-## 2. Expansao de Funcionalidades (Medio Prazo)
-### Inteligencia Artificial & OCR - **Fase 2 (Planejada)**
-- **Status atual (v2.1.0):** OCR/IA de imagens e PDFs esta desativado; o fluxo oficial ativo e importacao de NFe via XML.
-- **Retomada futura:** OCR com processamento em segundo plano e filas persistentes quando a Fase 2 for iniciada.
-- **Analise de tendencias (planejada):** uso de LLM apenas apos estabilizacao dos modulos core.
+- **Pydantic v2, FastAPI atual e SQLAlchemy 2.0** ja fazem parte da base
+  principal do projeto.
+- **Camada HTTP e acesso a banco em async** foram convergidos para
+  `AsyncSession` / `get_async_db`, com validacao complementar em PostgreSQL
+  real.
+- **Cadeia Alembic** foi reforcada para bootstrap em banco PostgreSQL vazio,
+  sem depender de `Base.metadata.create_all()`.
+- **Seguranca e observabilidade** contam com validacoes de startup, CORS por
+  ambiente, rate limiting, logging estruturado e `trace_id`.
 
-### Comunicacao & Vendas
-- **Integracao WhatsApp:** Implementar servico de mensageria para envio de PDFs de orcamentos e notificacoes de estoque baixo.
-- **Geracao de PDF:** Automatizar a criacao de documentos profissionais de orcamento.
+### Frontend e desktop
 
-## 3. Infraestrutura & DevOps
-- **Docker Optimization:** Refinar o `Dockerfile` para builds multi-estagio, reduzindo o tamanho da imagem final.
-- **Scripts de Automacao:** Substituir scripts `.ps1` por um `Makefile` unificado para facilitar o setup em qualquer sistema operacional.
+- **Frontend React + Vite + TailwindCSS** esta operacional para os principais
+  fluxos de negocio.
+- **React Query** centraliza cache e mutacoes por dominio.
+- **Electron Forge** esta configurado para empacotamento desktop Windows.
+- **Playwright** cobre smoke tests de UI e um fluxo integrado real de PDV com
+  backend e PostgreSQL.
 
-## 4. Roadmap de Produto (ERP)
-1. **Fase 1: Fundacao do Frontend (Desktop/Web)**
-   - Desenvolvimento do app React + Electron + Vite
-   - Configuracao do TailwindCSS e Design System
-   - Integracao basica com backend FastAPI existente (login/dashboard)
+## 2. Direcao de produto
 
-2. **Fase 2: Core Business (Gestao Comercial)**
-   - Cadastro completo de Fornecedores e Clientes
-   - Gestao de Produtos avancada:
-     - Categorias hierarquicas
-     - Multiplos precos (custo, atacado, varejo)
-     - Unidades de medida (metro, unidade, kg)
+### Core comercial (entregue)
 
-3. **Fase 3: Operacao de Loja (PDV)**
-   - Frente de Caixa (PDV) com baixa automatica
-   - Controle de Caixa (abertura/fechamento)
-   - Orcamentos com conversao para venda
+O nucleo operacional do ERP ja esta implementado e deve ser tratado como base
+estavel de evolucao:
 
-4. **Fase 4: Expansao e Fiscal**
-   - Emissao de NF-e / NFC-e
-   - Contas a Pagar e Receber
-   - Integracao WhatsApp para orcamentos e notificacoes
+- produtos, clientes, fornecedores e usuarios
+- categorias hierarquicas
+- unidades de medida
+- precificacao avancada (custo, varejo, atacado)
+- estoque v2 transacional
+- PDV com baixa automatica
+- orcamentos com conversao em venda
+- contas a receber
+- caixa diario
+- relatorios operacionais e dashboard
 
-## 5. Status do Roadmap (v2.1.0)
-- **Ativo hoje:** XML de NFe, PDV com baixa automatica, orcamentos com conversao em venda, contas a receber com parcelamento, relatorios operacionais e dashboard com alertas.
-- **Fase 2 - Planejada (sem prazo):** OCR/IA de imagens e PDFs (TASK-011 adiada).
-- **Itens planejados (sem prazo):** controle de caixa diario, categorias hierarquicas, precificacao atacado/varejo.
+### Fiscal e inteligencia operacional (entregue parcialmente)
+
+O caminho fiscal ativo hoje e focado em XML de NFe e inteligencia deterministica
+ou assistida, sem reabrir OCR generico prematuramente:
+
+- importacao oficial de XML de NFe
+- listagem e detalhamento de notas fiscais
+- payload fiscal interno normalizado e versionado
+- motor deterministico de custo e preco minimo
+- auditoria fiscal, feedback, dashboard de risco e classificacao NCM
+
+Ainda permanecem fora do escopo entregue:
+
+- emissao de NF-e / NFC-e
+- contas a pagar
+- comunicacao externa por WhatsApp
+
+### OCR e IA de documentos (Fase 2)
+
+- **Status atual:** OCR de imagens e PDFs esta desativado nesta linha.
+- **Direcao futura:** so retomar com fila persistente, retry, idempotencia e
+  rastreabilidade operacional adequadas.
+- **Regra de produto:** manter XML de NFe como fluxo fiscal oficial enquanto a
+  Fase 2 nao estiver estruturada.
+
+## 3. Infraestrutura e DevOps
+
+Os pilares operacionais principais ja foram estabelecidos:
+
+- `docker-compose.yml` para desenvolvimento
+- workflow de CI para testes criticos de backend
+- workflow de E2E de frontend com smoke tests e job integrado real
+- workflow de build desktop Windows com instalador `.exe` e checksum
+- gate de validacao em instalacao limpa documentado e executado
+
+As melhorias de infraestrutura que seguem relevantes sao:
+
+- evoluir builds Docker para estrategia multi-stage mais enxuta
+- refinar cache e tempo de pipeline
+- amadurecer o handoff de release desktop
+
+## 4. Proximas frentes prioritarias
+
+1. **Expandir E2E integrado real do frontend**
+   - Cobrir produtos, orcamentos e importacao de nota alem do fluxo atual de
+     PDV.
+
+2. **Consolidar design system**
+   - Padronizar componentes reutilizaveis no frontend e reduzir divergencia
+     visual entre telas.
+
+3. **Expandir versionamento v2 da API**
+   - Promover novos modulos para `/api/v2` sem reabrir contratos antigos em
+     `v1`.
+
+4. **Integracao WhatsApp para orcamentos**
+   - Prioridade de negocio para envio operacional de propostas e comunicacoes.
+
+5. **Retomar OCR/PDF apenas com arquitetura robusta**
+   - Fila persistente, observabilidade, retries e estado de tarefa fora da
+     memoria do processo.
+
+## 5. Resumo executivo
+
+- O projeto ja deixou de ser apenas uma base de backend e hoje opera como
+  plataforma full-stack.
+- A fundacao tecnica principal esta pronta: async, migrations, seguranca,
+  testes, frontend e desktop.
+- O foco agora deve sair de "construir infraestrutura basica" e migrar para
+  "aumentar cobertura real, consistencia de UX e amadurecer releases".

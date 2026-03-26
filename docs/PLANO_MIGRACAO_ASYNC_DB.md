@@ -1,5 +1,13 @@
 # Plano incremental de convergencia para AsyncEngine/AsyncSession
 
+> Atualizacao de status (2026-03-26)
+>
+> Este plano foi executado. A camada HTTP do backend e a infraestrutura
+> principal de banco ja operam com `AsyncSession` / `get_async_db`, a validacao
+> complementar em PostgreSQL real foi concluida e a chain Alembic foi ajustada
+> para bootstrap em banco vazio. O conteudo abaixo permanece como registro da
+> estrategia incremental originalmente adotada.
+
 ## 1) Motivacao tecnica
 
 A migracao de acesso a banco para SQLAlchemy assincrono (`AsyncEngine` + `AsyncSession`) reduz pontos de bloqueio da aplicacao FastAPI em cenarios com alto I/O, melhora a eficiencia de concorrencia por worker e prepara a base para modulos com picos de latencia externa (OCR e integracoes) sem saturar threads sincronas.

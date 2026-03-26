@@ -1,215 +1,211 @@
 # Recomendacoes Tecnicas Unificadas - Loja Project
 
 ## Objetivo
-Consolidar em um unico plano as recomendacoes ja levantadas anteriormente com as novas sugestoes recebidas, com foco em **confiabilidade**, **seguranca**, **performance** e **escalabilidade**.
+
+Consolidar o backlog tecnico com foco no que ja foi entregue, no que ainda esta
+aberto e no que vale investir a seguir.
 
 ---
 
-##  Alta Prioridade (executar primeiro)
+## Situacao consolidada
+
+A fundacao tecnica principal do projeto ja foi executada:
+
+- testes criticos e gates de CI ativos
+- seguranca de auth, CORS e segredos reforcada
+- contrato centralizado de erros
+- paginacao consistente e rate limiting
+- logging estruturado com `trace_id`
+- split de dependencias pesadas
+- convergencia do backend para async com validacao real em PostgreSQL
+- frontend operacional com React Query, smoke tests E2E e fluxo integrado real
+- trilha desktop com Electron Forge, pipeline Windows e gate de instalacao limpa
+
+O backlog abaixo passa a refletir esse estado, separando o que esta concluido do
+que permanece como proxima prioridade.
+
+---
+
+## Recomendacoes estruturais ja concluídas
 
 ### 1) Testes automatizados para fluxos criticos
-**Por que:** reduzir regressoes e dar seguranca para refatoracoes.
+**Status atual:** concluido como base; expansao integrada continua desejavel.
 
-**Escopo minimo inicial:**
-- Autenticacao (`/api/v1/users/token`, `/api/v1/users/me`)
-- Estoque v2 (`/api/v2/estoque`, `/api/v2/estoque/transacao`)
-- OCR assincrono (criacao de tarefa e consulta de status)
-
-**Recomendacao pratica:**
-- Criar suite com `pytest` + `httpx` + `pytest-asyncio`
-- Definir gate de CI para impedir merge com testes falhando
-- Meta incremental: 60% inicial  80% nos modulos criticos
-
----
+Entregue:
+- suites de backend para modulos criticos
+- gate de CI para backend
+- smoke tests E2E de frontend
+- primeiro fluxo integrado real de PDV com backend e PostgreSQL
 
 ### 2) Seguranca de autenticacao e CORS
-**Por que:** evitar inconsistencia de autenticacao e configuracao insegura em producao.
+**Status atual:** concluido.
 
-**Acoes:**
-- Padronizar `tokenUrl` em todos os pontos para `/api/v1/users/token`
-- Corrigir autenticacao opcional com `auto_error=False`
-- Restringir `CORS_ORIGINS` por ambiente (dev/staging/prod)
-- Impedir `allow_credentials=True` com wildcard em producao
-
----
+Entregue:
+- `tokenUrl` padronizado
+- validacoes de `ENVIRONMENT`, `CORS_ORIGINS` e `JWT_SECRET`
+- bloqueios explicitos para configuracoes inseguras em startup
 
 ### 3) Gestao de segredos e variaveis de ambiente
-**Por que:** prevenir vazamento de credenciais e falhas em runtime.
+**Status atual:** concluido.
 
-**Acoes:**
-- Garantir `.env` fora do versionamento (com `.env.example` versionado)
-- Validar campos obrigatorios no startup (ja existe base para isso)
-- Trocar placeholders sensiveis por instrucoes explicitas de seguranca na documentacao
-- Revisar `.gitignore` para remover ruidos e duplicacoes
-
----
+Entregue:
+- endurecimento de `.gitignore`
+- alinhamento de `.env.example`
+- validacoes de startup para placeholders e configuracoes invalidas
 
 ### 4) Tratamento centralizado de erros
-**Por que:** padronizar respostas de erro e evitar exposicao de detalhes internos.
+**Status atual:** concluido.
 
-**Acoes:**
-- Adicionar exception handlers globais no FastAPI
-- Criar formato unico de erro (`code`, `message`, `details`, `trace_id`)
-- Mapear excecoes de negocio (ex.: estoque insuficiente) para respostas consistentes
-
----
-
-##  Media Prioridade (qualidade e operacao)
+Entregue:
+- handlers globais
+- formato padronizado de erro com `code`, `message`, `details` e `trace_id`
+- migracao incremental de endpoints legados para excecoes de negocio
 
 ### 5) Otimizacao de performance no estoque (N+1)
-**Por que:** endpoints degradam com crescimento de produtos/transacoes.
+**Status atual:** concluido.
 
-**Acoes:**
-- Refatorar listagem para query agregada com `JOIN` + subquery/window function
-- Medir benchmark antes/depois (tempo de resposta e numero de queries)
-
----
+Entregue:
+- refatoracao das consultas principais do estoque
+- benchmark documentado para comparacao antes/depois
 
 ### 6) Rate limiting em OCR e LLM
-**Por que:** proteger endpoints caros contra abuso e sobrecarga.
+**Status atual:** concluido para endpoints relevantes.
 
-**Acoes:**
-- Introduzir limiter (ex.: `slowapi`)
-- Aplicar limites por IP e por usuario autenticado
-- Definir limites distintos para OCR upload e chamadas LLM
-
----
+Entregue:
+- limiter aplicado de forma consistente em autenticacao e modulos principais
+- cobertura automatizada para headers e limites por endpoint
 
 ### 7) Logging estruturado e observabilidade
-**Por que:** facilitar troubleshooting, auditoria e operacao em producao.
+**Status atual:** concluido.
 
-**Acoes:**
-- Padronizar logging em JSON (ou formato estruturado equivalente)
-- Inserir `request_id`/`trace_id` por requisicao
-- Medir metricas basicas (latencia, erros por endpoint, filas OCR)
-
----
+Entregue:
+- logging estruturado
+- `trace_id` por requisicao
+- testes para eventos criticos de autenticacao
 
 ### 8) Docker Compose para desenvolvimento e onboarding
-**Por que:** reduzir friccao de setup e diferencas de ambiente.
+**Status atual:** concluido.
 
-**Acoes:**
-- Versionar `docker-compose.yml` com API + PostgreSQL
-- Opcionalizar servicos pesados (OCR/LLM) por profiles
-- Incluir comandos de bootstrap no README
-
----
+Entregue:
+- `docker-compose.yml` versionado no repositorio
 
 ### 9) Paginacao consistente
-**Por que:** evitar payloads excessivos e manter padrao de API.
+**Status atual:** concluido.
 
-**Acoes:**
-- Padronizar paginacao (`limit/offset` ou cursor)
-- Retornar metadados (`total`, `page`, `next`, `prev`) nos endpoints listaveis
+Entregue:
+- padronizacao progressiva dos endpoints listaveis
+- metadados de pagina nos modulos principais
 
----
+### 10) Desacoplamento do pipeline OCR / LLM / cadastro
+**Status atual:** adiado ate a retomada da Fase 2 de OCR.
 
-##  Arquitetura e crescimento (medio/longo prazo)
-
-### 10) Desacoplamento do pipeline OCR  LLM  cadastro
-**Por que:** melhorar robustez, escalabilidade e rastreabilidade operacional.
-
-**Acoes:**
-- Migrar para fila assincrona (Celery + Redis / ARQ)
-- Persistir estado da tarefa fora da memoria do processo
-- Adicionar idempotencia, retry e TTL de tarefas
-
----
+Observacao:
+- o fluxo ativo atual permanece em XML de NFe
+- a fila persistente segue como pre-requisito para reativar OCR de imagem/PDF
 
 ### 11) Evolucao de autenticacao com refresh token
-**Por que:** melhorar UX e seguranca em sessoes longas.
+**Status atual:** concluido.
 
-**Acoes:**
-- Implementar `/refresh` com refresh token rotativo
-- Access token curto (ex.: 15 min) + refresh de maior duracao (ex.: 7 dias)
-- Estrategia de revogacao e blacklist para logout/comprometimento
-
----
+Entregue:
+- endpoint de refresh token
+- rotacao de refresh token
+- logout com revogacao
 
 ### 12) Estrategia explicita de versionamento de API
-**Por que:** reduzir ambiguidade de endpoints legados e evitar quebra de clientes.
+**Status atual:** concluido como politica; adocao operacional segue por modulo.
 
-**Acoes:**
-- Definir politica oficial (v1 legado, v2 ativo, cronograma de depreciacao)
-- Documentar claramente endpoints estaveis vs legados
-- Padronizar novas features na versao ativa
-
----
+Entregue:
+- politica oficial documentada
+- headers de deprecacao em estoque legado
 
 ### 13) Convergencia para arquitetura async no banco
-**Por que:** alinhar implementacao com direcao tecnica documentada.
+**Status atual:** concluido.
 
-**Acoes:**
-- Plano incremental para `AsyncEngine` / `AsyncSession`
-- Comecar por modulos de maior I/O (OCR/estoque)
-- Garantir cobertura de testes antes da migracao por modulo
-
----
+Entregue:
+- migracao do backend principal para `AsyncSession`
+- validacao complementar em PostgreSQL real
+- ajuste da chain Alembic para bootstrap em banco vazio
 
 ### 14) Desacoplamento de dependencias pesadas
-**Por que:** reduzir tempo de build e custo operacional do core.
+**Status atual:** concluido.
 
-**Acoes:**
-- Separar dependencias OCR/ML do core (ex.: `requirements-ocr.txt`)
-- Manter instalacao minima para API base
-
----
-
- ##  Modulos de Negocio (Status atual)
-
- - [x] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
- - [x] **Cadastro de Clientes:** Nome, telefone, tipo (varejo/atacado)
- - [x] **Categorias Hierarquicas:** Ex: Fios > Cabo 2.5mm
- - [x] **Precificacao Avancada:** Custo, Varejo, Atacado (multiplos precos)
- - [x] **Unidades de Medida:** Venda por metro ou unidade
- - [x] **PDV (Ponto de Venda):** Registro de venda com baixa automatica
- - [x] **Orcamentos:** Criacao e conversao automatica em venda
-- [x] **Contas a Receber:** Parcelamento e acompanhamento de valores pendentes
- - [x] **Financeiro:** Controle de caixa diario (abertura/fechamento)
- - [x] **Relatorios:** Estoque baixo, Vendas por periodo
-- [x] **Dashboard:** Alertas de estoque para operacao diaria
-
- ---
-
- ##  Frontend (Telas Planejadas)
-
- - [ ] **Login:** Autenticacao segura
- - [ ] **Dashboard:** Resumo do dia (vendas, alertas)
- - [ ] **PDV:** Interface agil para caixa
- - [ ] **Cadastros:** Grids para Produtos, Fornecedores, Clientes
- - [ ] **Estoque:** Consulta rapida e movimentacao
- - [ ] **Orcamentos:** Editor de orcamentos
- - [ ] **Relatorios:** Visualizacao de dados
-
- ---
-
- ## Plano sugerido de execucao (6 passos)
-
-1. **Passo 1 e passo 2:** testes criticos + seguranca (auth/CORS/segredos) + erro global
-2. **Passo 3:** performance estoque + paginacao consistente
-3. **Passo 4:**  rate limiting + logging estruturado
-4. **Passo 5:** docker compose + split de dependencias OCR/ML
-5. **Passo 6:** desenho tecnico de OCR em fila + refresh token + politica de versionamento API
+Entregue:
+- separacao entre `requirements.txt` e `requirements-ocr.txt`
 
 ---
 
-## Status de execucao (inicio das melhorias)
+## Modulos de negocio (status atual)
 
--  **Documentacao atualizada:** plano convertido para passos (passo 1, passo 2, etc.).
--  **Incremento concluido:** gate de CI configurado para rodar testes criticos de backend a cada push/PR.
--  **Incremento concluido:** suite de testes criticos expandida para cobrir OCR assincrono com cenario de erro e recuperacao.
--  **Incremento concluido:** gate de CI atualizado com cenarios criticos de OCR assincrono (erro/recuperacao e status de tarefa inexistente).
--  **Incremento concluido:** validacoes automatizadas adicionadas para CORS por ambiente e `tokenUrl` padronizado em autenticacao.
--  **Incremento concluido:** Passo 2 finalizado com fortalecimento da gestao de segredos, validacoes de startup e revisao de `.env.example`.
--  **Incremento concluido:** Passo 4 finalizado com rate limiting consistente em toda a API e logging estruturado observavel em eventos criticos.
--  **Proximo incremento:** relatorios basicos (estoque baixo, vendas por periodo).
+- [x] **Cadastro de Fornecedores:** CNPJ, contato, prazo de pagamento
+- [x] **Cadastro de Clientes:** nome, telefone, tipo e integracao com frontend
+- [x] **Categorias Hierarquicas:** arvore e filtro por subcategorias
+- [x] **Precificacao Avancada:** custo, varejo, atacado e preco minimo
+- [x] **Unidades de Medida:** suporte no cadastro e operacao
+- [x] **PDV:** venda com baixa automatica e validacoes operacionais
+- [x] **Orcamentos:** criacao, cancelamento e conversao em venda
+- [x] **Contas a Receber:** parcelamento e acompanhamento de pendencias
+- [x] **Financeiro:** caixa diario com abertura e fechamento
+- [x] **Relatorios:** estoque baixo e vendas por periodo
+- [x] **Dashboard:** alertas operacionais e visao fiscal
+- [x] **Notas Fiscais:** listagem, filtros e detalhamento
+- [x] **Configuracao da Loja:** leitura e atualizacao por API e frontend
+
+---
+
+## Frontend (telas disponiveis)
+
+- [x] **Login**
+- [x] **Dashboard**
+- [x] **PDV**
+- [x] **Produtos**
+- [x] **Fornecedores**
+- [x] **Clientes**
+- [x] **Estoque**
+- [x] **Orcamentos**
+- [x] **Relatorios**
+- [x] **Vendas**
+- [x] **Notas Fiscais**
+- [x] **Caixa Diario**
+- [x] **Configuracoes da Loja**
+- [x] **Importacao de Nota**
+
+Lacunas ainda abertas no frontend:
+
+- ampliar E2E integrado real alem do PDV
+- consolidar design system reutilizavel
+- continuar refatoracao de telas grandes quando necessario
+
+---
+
+## Proximas prioridades recomendadas
+
+### 1) Expandir testes E2E integrados reais
+**Por que:** hoje o fluxo real ja existe para PDV, mas ainda faltam produto,
+orcamento e importacao de nota.
+
+### 2) Consolidar design system no frontend
+**Por que:** reduzir duplicacao visual e aumentar consistencia entre telas.
+
+### 3) Integracao WhatsApp para orcamentos
+**Por que:** e uma necessidade de negocio ainda pendente.
+
+### 4) Promocao gradual de modulos para `/api/v2`
+**Por que:** a politica existe, mas a adocao completa ainda e parcial.
+
+### 5) Retomar OCR de imagem/PDF com arquitetura robusta
+**Por que:** o caminho antigo foi desativado corretamente; a volta deve ocorrer
+com fila persistente e observabilidade.
+
+### 6) Evolucao fiscal e financeira
+**Por que:** emissao de NF-e/NFC-e e contas a pagar continuam fora do escopo
+entregue.
 
 ---
 
 ## Criterios de sucesso (KPIs)
 
-- Cobertura de testes dos modulos criticos  80%
-- Reducao de queries no endpoint de estoque completo
-- Zero uso de CORS wildcard com credenciais em producao
-- Disponibilidade do OCR sem perda de tarefas em restart
-- Tempo de setup de ambiente dev reduzido (com compose)
+- Cobertura robusta dos modulos criticos e aumento da cobertura integrada real
+- Zero configuracao insegura de CORS com credenciais em producao
+- Bootstrap Alembic confiavel em PostgreSQL vazio
+- Releases desktop reproduziveis com checklist e evidencias
+- Menor retrabalho visual no frontend apos introducao do design system
