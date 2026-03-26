@@ -36,6 +36,65 @@ npm run dev
 
 Aplicação disponível em `http://localhost:5173` (padrão Vite).
 
+## Testes E2E
+
+O frontend possui uma suite Playwright em `frontend/e2e/` com smoke tests
+para login, dashboard, vendas e PDV.
+
+Execucao local:
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
+Relatorio HTML:
+
+```bash
+cd frontend
+npm run test:report
+```
+
+Observacao: a suite atual usa mocks de API para validar os fluxos principais
+de interface. Ela reduz regressao de UI, mas nao substitui cenarios
+integrados com backend real.
+
+## Testes E2E Integrados
+
+O projeto tambem possui um primeiro fluxo integrado real em
+`frontend/e2e/pdv.integration.spec.ts`, cobrindo:
+
+- login real via frontend
+- consulta de produto em backend real
+- finalizacao de venda no PDV
+- validacao de baixa de estoque no backend
+
+Execucao local:
+
+```bash
+cd frontend
+npm run test:e2e:integrated
+```
+
+Comportamento da config integrada:
+
+- sobe o backend em `http://127.0.0.1:8000`
+- sobe o frontend em `http://127.0.0.1:5173`
+- injeta `VITE_API_URL=http://127.0.0.1:8000` no Vite
+
+Pre-requisitos:
+
+- backend com dependencias instaladas
+- `DATABASE_URL`, `JWT_SECRET` e `CORS_ORIGINS` validos para o backend
+- banco acessivel para a aplicacao
+
+Relatorio HTML do fluxo integrado:
+
+```bash
+cd frontend
+npx playwright show-report playwright-report-integration
+```
+
 ## Como buildar e instalar (produção)
 
 ### 1. Build

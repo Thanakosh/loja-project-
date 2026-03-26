@@ -15,10 +15,29 @@ automaticamente.
 
 ### Contexto
 
-O projeto possui Playwright configurado (`playwright.config.ts`, diretorios
-`e2e/`, `tests/`, `playwright-report/`) mas sem testes substanciais. O
-frontend tem 15 paginas e nenhum teste automatizado validando fluxos de
-usuario completos.
+O projeto ja possui Playwright configurado (`playwright.config.ts`,
+diretorio `e2e/`, reporter HTML e workflow de CI opcional).
+
+Estado atual verificado em 2026-03-22:
+- specs existentes para login, dashboard, vendas e PDV
+- `npm run test:e2e` executa e passou com 5 testes locais
+- a suite atual e majoritariamente smoke/UI com mocks de API
+- workflow de CI foi endurecido para rodar em `push`/`pull_request`, sem
+  `continue-on-error`, com upload do `playwright-report`
+- `frontend/e2e/pdv.integration.spec.ts` agora cobre login real -> acesso ao
+  PDV -> adicao de produto -> finalizacao de venda -> confirmacao da baixa
+  de estoque no backend
+- `npm run test:e2e:integrated` passou localmente com frontend e backend reais
+  sobre PostgreSQL
+- workflow `frontend-e2e` agora possui job integrado com backend real,
+  `alembic upgrade head` e PostgreSQL 16 em CI
+
+Lacuna remanescente:
+- ainda faltam fluxos integrados e2e de produto, orcamento e importacao
+  de nota
+- a cobertura integrada real existe hoje apenas para o fluxo basico de PDV
+- ainda faltam cenarios com regras de desconto, venda a prazo e cancelamento
+  com estorno
 
 ### Pre-requisitos
 
@@ -72,10 +91,11 @@ usuario completos.
    "test:e2e:ui": "playwright test e2e/ --ui"
    ```
 
-### Criterio de aceite
+### Proximo criterio de aceite
 
 - 5 specs criados cobrindo os fluxos listados.
-- Todos os testes passando em execucao local.
+- Smoke tests e pelo menos 1 fluxo integrado real passando em execucao local.
+- Gate integrado do CI passando com backend real e PostgreSQL.
 - Screenshots de falha configurados corretamente.
 - README do frontend atualizado com instrucoes de execucao dos testes E2E.
 
