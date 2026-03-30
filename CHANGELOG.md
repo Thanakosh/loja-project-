@@ -41,6 +41,8 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Backend (OCR/XML): parser de NFe evoluido para extrair por item os campos fiscais `CFOP`, `CST/CSOSN`, `vBC/pICMS/vICMS` e rateio de frete por item, mantendo compatibilidade com o payload atual.
 - Backend: `TransacaoEstoque` e `caixa_service` agora gravam `datetime` UTC ingenuo compativel com o schema atual, corrigindo falha do `asyncpg` em PostgreSQL real.
 - Backend/Alembic: bootstrap PostgreSQL em banco vazio agora funciona com normalizacao da URL sincrona para `psycopg`, `alembic_version` ampliada para revision IDs longos e correcoes idempotentes nas migracoes legadas de estoque, orcamento e `fiscal_feedback`.
+- Backend/Frontend: gestao de usuarios agora exige admin para cadastro/listagem, permite edicao completa, desativacao, exclusao e controle de abas liberadas por usuario comum.
+- Backend/Frontend: importacao de nota agora preenche automaticamente `codigo_barras` em produto existente quando o campo estiver vazio e preserva o cadastro atual com aviso visual em caso de conflito.
 - CI: workflow `backend-tests` agora inclui um job dedicado de validacao PostgreSQL real com `alembic upgrade head` em banco vazio e runner async ponta a ponta contra PostgreSQL 16.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatorio de validacao de instalacao limpa (TASK-019): o build falha automaticamente se o checklist de evidencias (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
