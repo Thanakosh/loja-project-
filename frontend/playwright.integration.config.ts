@@ -12,6 +12,7 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.integration.spec.ts',
   timeout: 60_000,
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [['html', { outputFolder: 'playwright-report-integration' }], ['list']],
   use: {
