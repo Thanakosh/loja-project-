@@ -130,6 +130,135 @@ class TestProdutoCRUD:
         assert response.status_code == 422
 
 
+    def test_importacao_preenche_codigo_barras_em_produto_existente_sem_barcode(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+    ):
+        criado = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Importacao Barcode",
+                "fornecedor": "Fornecedor A",
+                "preco_unitario": 10.0,
+                "preco_liquido": 8.0,
+            },
+            headers=auth_headers,
+        )
+        assert criado.status_code == 200
+        produto_id = criado.json()["id"]
+        assert criado.json()["codigo_barras"] is None
+
+        response = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Importacao Barcode",
+                "fornecedor": "Fornecedor A",
+                "preco_unitario": 12.0,
+                "preco_liquido": 9.0,
+                "codigo_barras": "7891234567890",
+                "quantidade_inicial": 3,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.headers["x-produto-acao"] == "estoque_somado"
+        assert response.headers["x-produto-barcode-status"] == "preenchido"
+        data = response.json()
+        assert data["id"] == produto_id
+        assert data["codigo_barras"] == "7891234567890"
+        assert data["estoque_atual"] == pytest.approx(3.0)
+
+    def test_importacao_preserva_codigo_barras_existente_quando_nota_traz_outro(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+    ):
+        criado = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Barcode Existente",
+                "fornecedor": "Fornecedor B",
+                "preco_unitario": 10.0,
+                "preco_liquido": 8.0,
+                "codigo_barras": "1111111111111",
+            },
+            headers=auth_headers,
+        )
+        assert criado.status_code == 200
+        produto_id = criado.json()["id"]
+
+        response = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Barcode Existente",
+                "fornecedor": "Fornecedor B",
+                "preco_unitario": 11.0,
+                "preco_liquido": 9.0,
+                "codigo_barras": "2222222222222",
+                "quantidade_inicial": 2,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.headers["x-produto-acao"] == "estoque_somado"
+        assert response.headers["x-produto-barcode-status"] == "conflito_preservado"
+        data = response.json()
+        assert data["id"] == produto_id
+        assert data["codigo_barras"] == "1111111111111"
+        assert data["estoque_atual"] == pytest.approx(2.0)
+
+    def test_importacao_nao_preenche_barcode_se_ja_estiver_usado_por_outro_produto(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+    ):
+        ocupado = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Dono Barcode",
+                "fornecedor": "Fornecedor C",
+                "preco_unitario": 15.0,
+                "preco_liquido": 12.0,
+                "codigo_barras": "3333333333333",
+            },
+            headers=auth_headers,
+        )
+        assert ocupado.status_code == 200
+
+        criado = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Sem Barcode",
+                "fornecedor": "Fornecedor D",
+                "preco_unitario": 10.0,
+                "preco_liquido": 8.0,
+            },
+            headers=auth_headers,
+        )
+        assert criado.status_code == 200
+        produto_id = criado.json()["id"]
+
+        response = client.post(
+            "/api/v1/produtos/",
+            json={
+                "nome": "Produto Sem Barcode",
+                "fornecedor": "Fornecedor D",
+                "preco_unitario": 10.0,
+                "preco_liquido": 8.0,
+                "codigo_barras": "3333333333333",
+                "quantidade_inicial": 1,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.headers["x-produto-acao"] == "estoque_somado"
+        assert response.headers["x-produto-barcode-status"] == "conflito_outro_produto"
+        data = response.json()
+        assert data["id"] == produto_id
+        assert data["codigo_barras"] is None
+
+
 class TestUnidadeMedida:
     """Testes para unidades de medida flexíveis (TASK-025)."""
 

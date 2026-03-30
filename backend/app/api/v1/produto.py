@@ -43,6 +43,13 @@ def _normalizar_nome(nome: str) -> str:
     return nome.strip().lower()
 
 
+def _normalizar_codigo_barras(codigo_barras: str | None) -> str | None:
+    if codigo_barras is None:
+        return None
+    normalized = codigo_barras.strip()
+    return normalized or None
+
+
 @router.post("/", response_model=ProdutoRead)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def criar_produto(
@@ -55,6 +62,7 @@ async def criar_produto(
     produto_dict = produto.model_dump()
     quantidade_inicial = produto_dict.pop("quantidade_inicial", 0) or 0
     produto_dict["unidade_medida"] = (produto_dict.get("unidade_medida") or "UN").upper()
+    produto_dict["codigo_barras"] = _normalizar_codigo_barras(produto_dict.get("codigo_barras"))
     if not produto_dict.get("unidade"):
         produto_dict["unidade"] = produto_dict["unidade_medida"]
 
@@ -81,6 +89,28 @@ async def criar_produto(
             produto_existente.preco_unitario = novo_preco
             produto_existente.preco_liquido = produto_dict.get("preco_liquido", novo_preco)
 
+        barcode_importado = produto_dict.get("codigo_barras")
+        barcode_existente = _normalizar_codigo_barras(produto_existente.codigo_barras)
+        barcode_status: str | None = None
+
+        if barcode_importado:
+            if not barcode_existente:
+                produto_com_barcode = (
+                    await db.execute(
+                        select(Produto).where(
+                            Produto.codigo_barras == barcode_importado,
+                            Produto.id != produto_existente.id,
+                        )
+                    )
+                ).scalars().first()
+                if produto_com_barcode:
+                    barcode_status = "conflito_outro_produto"
+                else:
+                    produto_existente.codigo_barras = barcode_importado
+                    barcode_status = "preenchido"
+            elif barcode_existente != barcode_importado:
+                barcode_status = "conflito_preservado"
+
         if quantidade_inicial and quantidade_inicial > 0:
             db.add(
                 TransacaoEstoque(
@@ -96,6 +126,8 @@ async def criar_produto(
         await db.refresh(produto_existente)
         response.headers["X-Produto-Acao"] = "estoque_somado"
         response.headers["X-Produto-Id-Existente"] = str(produto_existente.id)
+        if barcode_status:
+            response.headers["X-Produto-Barcode-Status"] = barcode_status
         return produto_existente
 
     categoria_id = produto_dict.get("categoria_id")
