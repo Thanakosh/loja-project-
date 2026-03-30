@@ -14,10 +14,11 @@ def configure_json_logging(monkeypatch):
     yield
 
 
-def test_login_success_log_contains_user_id(client, caplog):
+def test_login_success_log_contains_user_id(client, admin_auth_headers, caplog):
     client.post(
         "/api/v1/users/register",
         json={"email": "log-sucesso@teste.com", "password": "Senha123!", "full_name": "Log Sucesso"},
+        headers=admin_auth_headers,
     )
 
     with caplog.at_level(logging.INFO):
@@ -40,7 +41,7 @@ def test_login_invalid_log_is_warning(client, caplog):
         )
 
     assert response.status_code == 401
-    record = next(r for r in caplog.records if r.message == "Tentativa de login inválida")
+    record = next(r for r in caplog.records if r.message == "Tentativa de login invalida")
     assert record.levelname == "WARNING"
 
 

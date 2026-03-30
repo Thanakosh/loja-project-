@@ -1,7 +1,10 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { AdminRoute } from './components/AdminRoute'
 import { PrivateRoute } from './components/PrivateRoute'
+import { TabRoute } from './components/TabRoute'
+import type { AppTabId } from './config/appTabs'
 import { Toaster } from 'react-hot-toast'
 
 const Layout = lazy(() => import('./components/Layout'))
@@ -32,6 +35,12 @@ const withRouteSuspense = (element: ReactNode) => (
   <Suspense fallback={<RouteFallback />}>{element}</Suspense>
 )
 
+const withTabAccess = (tabId: AppTabId, element: ReactNode) =>
+  withRouteSuspense(<TabRoute tabId={tabId}>{element}</TabRoute>)
+
+const withAdminAccess = (element: ReactNode) =>
+  withRouteSuspense(<AdminRoute>{element}</AdminRoute>)
+
 const App = () => {
   return (
     <>
@@ -43,20 +52,20 @@ const App = () => {
           <Route element={withRouteSuspense(<Layout />)}>
             <Route path="/" element={<Navigate replace to="/dashboard" />} />
             <Route path="/dashboard" element={withRouteSuspense(<Dashboard />)} />
-            <Route path="/pdv" element={withRouteSuspense(<PDV />)} />
-            <Route path="/caixa" element={withRouteSuspense(<CaixaDiario />)} />
-            <Route path="/vendas" element={withRouteSuspense(<Vendas />)} />
-            <Route path="/produtos" element={withRouteSuspense(<Produtos />)} />
-            <Route path="/estoque" element={withRouteSuspense(<Estoque />)} />
-            <Route path="/orcamentos" element={withRouteSuspense(<Orcamentos />)} />
-            <Route path="/fornecedores" element={withRouteSuspense(<Fornecedores />)} />
-            <Route path="/notas-fiscais" element={withRouteSuspense(<NotasFiscais />)} />
-            <Route path="/clientes" element={withRouteSuspense(<Clientes />)} />
-            <Route path="/contas-receber" element={withRouteSuspense(<ContasReceber />)} />
-            <Route path="/relatorios" element={withRouteSuspense(<Relatorios />)} />
-            <Route path="/importar-nota" element={withRouteSuspense(<ImportarNota />)} />
-            <Route path="/usuarios" element={withRouteSuspense(<Usuarios />)} />
-            <Route path="/configuracoes/loja" element={withRouteSuspense(<ConfiguracoesLoja />)} />
+            <Route path="/pdv" element={withTabAccess('pdv', <PDV />)} />
+            <Route path="/caixa" element={withTabAccess('caixa', <CaixaDiario />)} />
+            <Route path="/vendas" element={withTabAccess('vendas', <Vendas />)} />
+            <Route path="/produtos" element={withTabAccess('produtos', <Produtos />)} />
+            <Route path="/estoque" element={withTabAccess('estoque', <Estoque />)} />
+            <Route path="/orcamentos" element={withTabAccess('orcamentos', <Orcamentos />)} />
+            <Route path="/fornecedores" element={withTabAccess('fornecedores', <Fornecedores />)} />
+            <Route path="/notas-fiscais" element={withTabAccess('notas_fiscais', <NotasFiscais />)} />
+            <Route path="/clientes" element={withTabAccess('clientes', <Clientes />)} />
+            <Route path="/contas-receber" element={withTabAccess('contas_receber', <ContasReceber />)} />
+            <Route path="/relatorios" element={withTabAccess('relatorios', <Relatorios />)} />
+            <Route path="/importar-nota" element={withTabAccess('importar_nota', <ImportarNota />)} />
+            <Route path="/usuarios" element={withAdminAccess(<Usuarios />)} />
+            <Route path="/configuracoes/loja" element={withTabAccess('configuracoes', <ConfiguracoesLoja />)} />
           </Route>
         </Route>
 

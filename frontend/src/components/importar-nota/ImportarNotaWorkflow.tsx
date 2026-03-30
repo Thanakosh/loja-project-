@@ -578,13 +578,14 @@ const TabImportar = () => {
                 unidade: item.unidade || 'UN', numero_nota: numeroNota || undefined,
                 cnpj_fornecedor: cnpjFornecedor || undefined, quantidade_inicial: item.quantidade,
             }))
-            const results: { produto: unknown; acao: string }[] = []
+            const results: { produto: unknown; acao: string; barcodeStatus?: string }[] = []
             const erros: string[] = []
             for (const prod of produtos) {
                 try {
                     const res = await api.post('/produtos/', prod)
                     const acao = res.headers['x-produto-acao'] ?? 'criado'
-                    results.push({ produto: res.data, acao })
+                    const barcodeStatus = res.headers['x-produto-barcode-status']
+                    results.push({ produto: res.data, acao, barcodeStatus })
                 } catch (err: unknown) {
                     erros.push(isAxiosError<{ message?: string; detail?: string }>(err)
                         ? err.response?.data?.message ?? err.response?.data?.detail ?? `Erro ao cadastrar "${prod.nome}"`
@@ -596,8 +597,14 @@ const TabImportar = () => {
         onSuccess: ({ results, erros }) => {
             const criados = results.filter(r => r.acao === 'criado').length
             const somados = results.filter(r => r.acao === 'estoque_somado').length
+            const barcodesPreenchidos = results.filter(r => r.barcodeStatus === 'preenchido').length
+            const conflitosPreservados = results.filter(r => r.barcodeStatus === 'conflito_preservado').length
+            const conflitosOutroProduto = results.filter(r => r.barcodeStatus === 'conflito_outro_produto').length
             if (criados > 0) toast.success(`${criados} produto(s) novo(s) cadastrado(s)!`)
             if (somados > 0) toast.success(`${somados} produto(s) com estoque somado ao existente!`)
+            if (barcodesPreenchidos > 0) toast.success(`${barcodesPreenchidos} produto(s) existente(s) receberam codigo de barras da nota.`)
+            if (conflitosPreservados > 0) toast(`${conflitosPreservados} produto(s) ja tinham codigo de barras diferente. O valor atual foi mantido.`)
+            if (conflitosOutroProduto > 0) toast(`${conflitosOutroProduto} codigo(s) de barras da nota ja pertencem a outro produto e nao foram aplicados.`)
             erros.forEach(e => toast.error(e))
             if (results.length > 0) setStep('done')
         },
@@ -948,4 +955,3 @@ const TabImportar = () => {
 }
 
 export default ImportarNota
-

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, String, Integer
+from sqlalchemy import Boolean, Column, Integer, JSON, String
 from sqlalchemy.orm import relationship
 
 from ..core.database import Base
@@ -14,6 +14,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    allowed_tabs = Column(JSON, default=list, nullable=False)
     
     # Relacionamentos
     transacoes_estoque = relationship("TransacaoEstoque", back_populates="usuario")

@@ -146,8 +146,35 @@ def test_user(db_session: Session) -> User:
 
 
 @pytest.fixture(scope="function")
+def admin_user(db_session: Session) -> User:
+    user = User(
+        email="admin@example.com",
+        username="admin",
+        hashed_password=get_password_hash("adminpassword123"),
+        full_name="Admin User",
+        is_active=True,
+        is_superuser=True,
+        allowed_tabs=[],
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
 def auth_headers(client: TestClient, test_user: User) -> dict[str, str]:
     login_data = {"username": test_user.email, "password": "testpassword123"}
+    response = client.post("/api/v1/users/token", data=login_data)
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+def admin_auth_headers(client: TestClient, admin_user: User) -> dict[str, str]:
+    login_data = {"username": admin_user.email, "password": "adminpassword123"}
     response = client.post("/api/v1/users/token", data=login_data)
     assert response.status_code == 200
 

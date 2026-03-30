@@ -4,6 +4,11 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select
 
 export const useAccessibleModal = (isOpen: boolean, onClose: () => void) => {
   const modalRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!isOpen || !modalRef.current) return
@@ -16,7 +21,7 @@ export const useAccessibleModal = (isOpen: boolean, onClose: () => void) => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -46,7 +51,7 @@ export const useAccessibleModal = (isOpen: boolean, onClose: () => void) => {
       document.removeEventListener('keydown', handleKeyDown)
       previousFocus?.focus?.()
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   return modalRef
 }
