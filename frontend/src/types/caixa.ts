@@ -7,6 +7,10 @@ export interface CaixaDiario {
   status: 'aberto' | 'fechado'
   observacao?: string | null
   usuario_id: number
+  usuario_abertura_id: number
+  usuario_abertura_nome?: string | null
+  usuario_fechamento_id?: number | null
+  usuario_fechamento_nome?: string | null
   diferenca?: number | null
 }
 
