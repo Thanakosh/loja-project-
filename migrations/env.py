@@ -100,6 +100,10 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
+        # Em PostgreSQL com SQLAlchemy 2.x, explicitar o commit evita perder
+        # o upgrade ao fechar a conexao em alguns fluxos de execucao locais.
+        connection.commit()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
