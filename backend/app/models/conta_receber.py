@@ -1,10 +1,12 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import query_expression, relationship
+
 from ..core.database import Base
 
 
 class ContaReceber(Base):
     """Conta a receber importada de CR.DBF."""
+
     __tablename__ = "conta_receber"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -26,14 +28,45 @@ class ContaReceber(Base):
     autorizacao_nome = Column(String(120))
     autorizacao_documento = Column(String(30))
     autorizacao_observacao = Column(String(255))
+    total_parcelas = query_expression()
 
-    # Relationships
     cliente = relationship("Cliente", back_populates="contas_receber")
 
     @property
+    def cliente_nome(self):
+        return self.cliente.nome if self.cliente is not None else None
+
+    @property
+    def saldo_em_aberto(self):
+        saldo = (
+            (self.valor or 0)
+            + (self.juros or 0)
+            - (self.desconto or 0)
+            - (self.valor_pago or 0)
+        )
+        return max(round(saldo, 2), 0.0)
+
+    @property
     def em_aberto(self):
-        """Verifica se a conta ainda está em aberto."""
-        return self.data_pagamento is None and self.valor_pago < self.valor
+        return self.saldo_em_aberto > 0
+
+    @property
+    def situacao(self):
+        if not self.em_aberto:
+            return "quitada"
+        if any(
+            (
+                (self.valor_pago or 0) > 0,
+                (self.desconto or 0) > 0,
+                (self.juros or 0) > 0,
+                self.data_pagamento is not None,
+            )
+        ):
+            return "parcial"
+        return "aberta"
 
     def __repr__(self):
-        return f"<ContaReceber(id={self.id}, doc={self.documento}, parcela={self.parcela}, valor={self.valor})>"
+        return (
+            f"<ContaReceber(id={self.id}, doc={self.documento}, "
+            f"parcela={self.parcela}, valor={self.valor})>"
+        )

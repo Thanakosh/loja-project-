@@ -127,6 +127,16 @@ class ContaJaBaixadaError(BusinessException):
         )
 
 
+class ContaBaixaExcedeSaldoError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="conta_baixa_excede_saldo",
+            message="O valor informado excede o saldo em aberto da conta",
+            status_code=400,
+            details=details,
+        )
+
+
 class ItemEstoqueNaoEncontradoError(BusinessException):
     def __init__(self, *, details: Any | None = None) -> None:
         super().__init__(

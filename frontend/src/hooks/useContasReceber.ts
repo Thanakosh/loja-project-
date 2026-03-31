@@ -13,6 +13,7 @@ export interface ContasReceberFilters {
   apenas_em_aberto?: boolean
   vencidas?: boolean
   cliente_id?: string
+  cliente_nome?: string
 }
 
 export const useContasReceber = (filters: ContasReceberFilters) =>
