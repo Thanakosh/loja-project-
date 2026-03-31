@@ -4,6 +4,11 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 ## [2.1.1] - Alinhamento tecnico pos ondas T-001 a T-005
 
+###  Adicionado
+- Fluxo operacional de caixa com `sangria` e `suprimento`, historico por usuario e horario e resumo com `saldo_esperado`.
+- Fechamento de caixa com separacao entre valor esperado e valor contado, incluindo justificativa obrigatoria quando houver diferenca.
+- Cobertura automatizada para movimentacoes de caixa no backend e fluxo integrado de UI com Playwright.
+
 ###  Ajustado
 - Alinhamento e estabilizacao da suite de testes dos fluxos criticos do backend.
 - Contrato de erro unificado para respostas de excecao, com formato consistente entre endpoints.

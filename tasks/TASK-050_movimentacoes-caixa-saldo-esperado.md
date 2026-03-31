@@ -1,7 +1,7 @@
 ---
 task_id: TASK-050
 title: "Movimentacoes de caixa e saldo esperado no fechamento"
-status: pendente
+status: concluida
 priority: alta
 agent_chat_executable: "sim"
 depends_on: ["TASK-022"]

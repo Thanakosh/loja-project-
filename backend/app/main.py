@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API para gerenciamento de loja. Importação de notas fiscais via XML de NFe.",
-    version="2.1.0",
+    version="2.1.1",
     lifespan=lifespan,
 )
 
@@ -166,4 +166,4 @@ async def root():
 @app.get("/ping", tags=["Health Check"])
 def health_check():
     """Health check endpoint to verify if the API is running."""
-    return {"status": "healthy", "message": "pong", "version": "2.1.0"}
+    return {"status": "healthy", "message": "pong", "version": "2.1.1"}

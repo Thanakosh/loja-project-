@@ -24,6 +24,12 @@ class CaixaDiario(Base):
     # Relationships
     usuario_abertura = relationship("User", foreign_keys=[usuario_id])
     usuario_fechamento = relationship("User", foreign_keys=[usuario_fechamento_id])
+    movimentacoes = relationship(
+        "MovimentacaoCaixa",
+        back_populates="caixa",
+        cascade="all, delete-orphan",
+        order_by="MovimentacaoCaixa.created_at.desc()",
+    )
 
     @property
     def usuario_abertura_id(self) -> int:

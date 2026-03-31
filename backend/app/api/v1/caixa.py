@@ -9,15 +9,24 @@ from ...core.database import get_async_db
 from ...core.limiter import limiter
 from ...core.security import get_current_active_user_async
 from ...models.user import User
-from ...schemas.caixa import CaixaAbrir, CaixaFechar, CaixaDiarioRead, CaixaDiarioResumo
+from ...schemas.caixa import (
+    CaixaAbrir,
+    CaixaFechar,
+    CaixaDiarioRead,
+    CaixaDiarioResumo,
+    MovimentacaoCaixaCreate,
+    MovimentacaoCaixaRead,
+)
 from ...services.caixa_service import (
     abrir_caixa_async,
     fechar_caixa_async,
     get_caixa_atual_async,
     listar_historico_async,
+    listar_movimentacoes_caixa_async,
+    registrar_movimentacao_caixa_async,
 )
 
-router = APIRouter(tags=["Caixa Diário"])
+router = APIRouter(tags=["Caixa Diario"])
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +39,6 @@ async def abrir(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user_async),
 ):
-    """Abre o caixa do dia com o valor inicial (troco)."""
     trace_id = getattr(request.state, "trace_id", "")
     caixa = await abrir_caixa_async(db, dados, current_user.id)
     logger.info(
@@ -50,22 +58,56 @@ async def fechar(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user_async),
 ):
-    """Fecha o caixa com o valor conferido. Retorna diferença se houver."""
     trace_id = getattr(request.state, "trace_id", "")
     caixa = await fechar_caixa_async(db, caixa_id, dados, current_user.id)
-    diferenca = (caixa.valor_fechamento or 0) - caixa.valor_abertura
     logger.info(
         "Caixa fechado",
         extra={
             "caixa_id": caixa.id,
-            "diferenca": diferenca,
+            "diferenca": caixa.diferenca,
             "usuario_id": current_user.id,
             "trace_id": trace_id,
         },
     )
-    result = CaixaDiarioResumo.model_validate(caixa)
-    result.diferenca = diferenca
-    return result
+    return CaixaDiarioResumo.model_validate(caixa)
+
+
+@router.post("/{caixa_id}/movimentacoes", response_model=MovimentacaoCaixaRead, status_code=201)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def registrar_movimentacao(
+    request: Request,
+    response: Response,
+    caixa_id: int,
+    dados: MovimentacaoCaixaCreate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
+):
+    trace_id = getattr(request.state, "trace_id", "")
+    movimentacao = await registrar_movimentacao_caixa_async(db, caixa_id, dados, current_user.id)
+    logger.info(
+        "Movimentacao de caixa registrada",
+        extra={
+            "caixa_id": caixa_id,
+            "movimentacao_id": movimentacao.id,
+            "tipo": movimentacao.tipo,
+            "valor": movimentacao.valor,
+            "usuario_id": current_user.id,
+            "trace_id": trace_id,
+        },
+    )
+    return movimentacao
+
+
+@router.get("/{caixa_id}/movimentacoes", response_model=List[MovimentacaoCaixaRead])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def listar_movimentacoes(
+    request: Request,
+    response: Response,
+    caixa_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
+):
+    return await listar_movimentacoes_caixa_async(db, caixa_id)
 
 
 @router.get("/atual", response_model=CaixaDiarioRead)
@@ -76,7 +118,6 @@ async def caixa_atual(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user_async),
 ):
-    """Retorna o caixa aberto do dia, ou 400 se não houver."""
     return await get_caixa_atual_async(db)
 
 
@@ -90,5 +131,4 @@ async def historico(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user_async),
 ):
-    """Listagem paginada do histórico de caixas."""
     return await listar_historico_async(db, skip=skip, limit=limit)

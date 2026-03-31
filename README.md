@@ -3,7 +3,7 @@
 Sistema de gerenciamento comercial para pequenos e medios negocios, com backend
 FastAPI + PostgreSQL e frontend React/Electron para operacao web e desktop.
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-teal.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
