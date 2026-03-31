@@ -14,6 +14,7 @@ from .orcamento import Orcamento, OrcamentoItem
 
 from .categoria import Categoria
 from .caixa_diario import CaixaDiario
+from .movimentacao_caixa import MovimentacaoCaixa
 from .politica_desconto import PoliticaDescontoProduto
 from .fiscal_feedback import FiscalFeedback
 from .configuracao_loja import ConfiguracaoLoja

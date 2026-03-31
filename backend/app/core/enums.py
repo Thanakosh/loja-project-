@@ -8,3 +8,8 @@ class FormaPagamento(int, Enum):
     PIX = 4
     BOLETO = 5
     PRAZO = 6
+
+
+class TipoMovimentacaoCaixa(str, Enum):
+    SANGRIA = "sangria"
+    SUPRIMENTO = "suprimento"

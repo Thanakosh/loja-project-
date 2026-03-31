@@ -267,6 +267,16 @@ class CaixaJaFechadoError(BusinessException):
         )
 
 
+class CaixaObservacaoFechamentoObrigatoriaError(BusinessException):
+    def __init__(self, *, details: Any | None = None) -> None:
+        super().__init__(
+            code="caixa_observacao_obrigatoria",
+            message="Informe uma observacao para justificar a diferenca no fechamento do caixa",
+            status_code=400,
+            details=details,
+        )
+
+
 class DescontoExcedidoError(BusinessException):
     def __init__(self, *, details: Any | None = None) -> None:
         super().__init__(

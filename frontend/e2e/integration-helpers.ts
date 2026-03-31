@@ -25,6 +25,15 @@ export interface BackendProduct {
   ativo: boolean
 }
 
+export interface BackendCash {
+  id: number
+  status: 'aberto' | 'fechado'
+  saldo_esperado: number
+  total_sangrias: number
+  total_suprimentos: number
+  valor_em_dinheiro_vendas: number
+}
+
 const buildUrl = (path: string) => `${BACKEND_BASE_URL}${path}`
 
 const loginSeedAdmin = async (request: APIRequestContext): Promise<SeededUser> => {
@@ -95,7 +104,10 @@ export const createSeededProduct = async (
   }
 }
 
-export const ensureOpenCash = async (request: APIRequestContext, token: string): Promise<void> => {
+export const fetchCurrentCash = async (
+  request: APIRequestContext,
+  token: string,
+): Promise<BackendCash | null> => {
   const currentCashResponse = await request.get(buildUrl('/api/v1/caixa/atual'), {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -103,19 +115,42 @@ export const ensureOpenCash = async (request: APIRequestContext, token: string):
   })
 
   if (currentCashResponse.ok()) {
-    return
+    return await currentCashResponse.json() as BackendCash
   }
 
+  if (currentCashResponse.status() === 400) {
+    return null
+  }
+
+  expect(currentCashResponse.ok()).toBeTruthy()
+  return null
+}
+
+export const openCash = async (
+  request: APIRequestContext,
+  token: string,
+  valorAbertura = 100,
+): Promise<BackendCash> => {
   const openCashResponse = await request.post(buildUrl('/api/v1/caixa/abrir'), {
     headers: {
       Authorization: `Bearer ${token}`,
     },
     data: {
-      valor_abertura: 100,
+      valor_abertura: valorAbertura,
       observacao: 'Caixa aberto pelo E2E integrado',
     },
   })
   expect(openCashResponse.ok()).toBeTruthy()
+  return await openCashResponse.json() as BackendCash
+}
+
+export const ensureOpenCash = async (request: APIRequestContext, token: string): Promise<BackendCash> => {
+  const currentCash = await fetchCurrentCash(request, token)
+  if (currentCash) {
+    return currentCash
+  }
+
+  return openCash(request, token)
 }
 
 export const fetchProductStock = async (
