@@ -7,11 +7,27 @@ const json = (route: Route, payload: unknown, status = 200) =>
     body: JSON.stringify(payload),
   })
 
+const mockCurrentUser = async (page: Page) => {
+  await page.route('**/api/v1/users/me', (route) =>
+    json(route, {
+      id: 1,
+      username: 'admin.e2e',
+      email: 'admin@empresa.com',
+      full_name: 'Administrador E2E',
+      is_active: true,
+      is_superuser: true,
+      allowed_tabs: [],
+    }),
+  )
+}
+
 export const mockAuthenticatedSession = async (page: Page) => {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'token-e2e')
     localStorage.setItem('refresh_token', 'refresh-e2e')
   })
+
+  await mockCurrentUser(page)
 }
 
 export const mockLoginApi = async (page: Page) => {
@@ -32,15 +48,7 @@ export const mockLoginApi = async (page: Page) => {
     })
   })
 
-  await page.route('**/api/v1/users/me', (route) =>
-    json(route, {
-      id: 1,
-      email: 'admin@empresa.com',
-      full_name: 'Administrador E2E',
-      is_active: true,
-      is_superuser: true,
-    }),
-  )
+  await mockCurrentUser(page)
 }
 
 export const mockDashboardApi = async (page: Page) => {

@@ -1,6 +1,8 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
 
 const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL ?? process.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+const SEED_ADMIN_EMAIL = 'admin@loja.com'
+const SEED_ADMIN_PASSWORD = 'admin'
 
 export interface SeededUser {
   email: string
@@ -25,33 +27,26 @@ export interface BackendProduct {
 
 const buildUrl = (path: string) => `${BACKEND_BASE_URL}${path}`
 
-export const createSeededUser = async (request: APIRequestContext, suffix: string): Promise<SeededUser> => {
-  const email = `e2e-integrado-${suffix}@teste.com.br`
-  const password = 'SenhaForte123!'
-
-  const registerResponse = await request.post(buildUrl('/api/v1/users/register'), {
-    data: {
-      email,
-      password,
-      full_name: `E2E Integrado ${suffix}`,
-    },
-  })
-  expect(registerResponse.ok()).toBeTruthy()
-
+const loginSeedAdmin = async (request: APIRequestContext): Promise<SeededUser> => {
   const tokenResponse = await request.post(buildUrl('/api/v1/users/token'), {
     form: {
-      username: email,
-      password,
+      username: SEED_ADMIN_EMAIL,
+      password: SEED_ADMIN_PASSWORD,
     },
   })
   expect(tokenResponse.ok()).toBeTruthy()
 
   const tokenData = await tokenResponse.json()
   return {
-    email,
-    password,
+    email: SEED_ADMIN_EMAIL,
+    password: SEED_ADMIN_PASSWORD,
     token: tokenData.access_token as string,
   }
+}
+
+export const createSeededUser = async (request: APIRequestContext, _suffix: string): Promise<SeededUser> => {
+  void _suffix
+  return loginSeedAdmin(request)
 }
 
 export const loginThroughUi = async (
