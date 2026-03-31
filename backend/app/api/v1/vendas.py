@@ -29,7 +29,7 @@ async def get_vendas(
     cliente_id: Optional[int] = None,
     db: AsyncSession = Depends(get_async_db),
 ):
-    query = select(Venda).options(joinedload(Venda.itens))
+    query = select(Venda).options(joinedload(Venda.itens), joinedload(Venda.pagamentos))
 
     if start_date:
         query = query.where(Venda.data >= start_date)
@@ -101,7 +101,11 @@ async def get_venda(
     db: AsyncSession = Depends(get_async_db),
 ):
     venda = (
-        await db.execute(select(Venda).options(joinedload(Venda.itens)).where(Venda.id == venda_id))
+        await db.execute(
+            select(Venda)
+            .options(joinedload(Venda.itens), joinedload(Venda.pagamentos))
+            .where(Venda.id == venda_id)
+        )
     ).unique().scalars().first()
     if not venda:
         raise VendaNaoEncontradaError()
@@ -120,7 +124,7 @@ async def get_vendas_cliente(
     return (
         await db.execute(
             select(Venda)
-            .options(joinedload(Venda.itens))
+            .options(joinedload(Venda.itens), joinedload(Venda.pagamentos))
             .where(Venda.cliente_id == cliente_id)
             .order_by(Venda.data.desc())
             .limit(limit)

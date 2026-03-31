@@ -48,6 +48,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Backend/Alembic: bootstrap PostgreSQL em banco vazio agora funciona com normalizacao da URL sincrona para `psycopg`, `alembic_version` ampliada para revision IDs longos e correcoes idempotentes nas migracoes legadas de estoque, orcamento e `fiscal_feedback`.
 - Backend/Frontend: gestao de usuarios agora exige admin para cadastro/listagem, permite edicao completa, desativacao, exclusao e controle de abas liberadas por usuario comum.
 - Backend/Frontend: importacao de nota agora preenche automaticamente `codigo_barras` em produto existente quando o campo estiver vazio e preserva o cadastro atual com aviso visual em caso de conflito.
+- Backend/Frontend: PDV agora suporta pagamento misto, troco em dinheiro, composicao detalhada de pagamentos no resultado da venda e impacto liquido do dinheiro no caixa e no historico.
 - CI: workflow `backend-tests` agora inclui um job dedicado de validacao PostgreSQL real com `alembic upgrade head` em banco vazio e runner async ponta a ponta contra PostgreSQL 16.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatorio de validacao de instalacao limpa (TASK-019): o build falha automaticamente se o checklist de evidencias (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.
@@ -80,6 +81,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Adicionados testes para o normalizador de payload fiscal interno e para retorno do payload normalizado no fluxo de OCR XML (`backend/tests/test_fiscal_normalizer.py`, `backend/tests/test_ocr.py`).
 - Adicionados testes para endpoints de notas fiscais cobrindo listagem com filtros, detalhamento com itens e retorno 404 para nota inexistente (`backend/tests/test_notas_fiscais.py`).
 - Adicionado teste E2E integrado de Playwright para o fluxo real de PDV (`frontend/e2e/pdv.integration.spec.ts`), incluindo login, venda concluida e verificacao da baixa de estoque no backend.
+- Adicionados testes para venda com pagamento misto, troco, bloqueio de combinacoes invalidas e reflexo liquido do dinheiro no caixa (`backend/tests/test_pdv.py`, `backend/tests/test_caixa.py`, `frontend/e2e/pdv.integration.spec.ts`).
 - Adicionados testes automatizados por endpoint para rate limiting (`/users/token`, `/ocr/upload`, `/produtos/`) e validacao de headers de limite (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), alem de testes de logging estruturado em JSON para eventos de login.
 - Adicionados testes automatizados para criacao e atualizacao de clientes na API (`backend/tests/test_clientes.py`).
 

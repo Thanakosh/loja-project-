@@ -4,16 +4,23 @@ interface VendaPDVRead {
   id: number
   numero_legado?: string | number | null
   total: number
-  forma_pagamento: number
+  forma_pagamento?: number | null
+  forma_pagamento_label?: string | null
+  troco?: number
+  pagamentos?: {
+    forma_pagamento: number
+    forma_pagamento_label?: string | null
+    valor: number
+  }[]
 }
 
 interface PDVSaleResultModalProps {
   open: boolean
   saleResult: VendaPDVRead | null
   totalVenda: number
-  formaPagamento: number
+  formaPagamento?: number | null
   moneyFormatter: Intl.NumberFormat
-  formatPayment: (value: number) => string
+  formatPayment: (value?: number | null) => string
   onPrint: () => void
   onReset: () => void
 }
@@ -52,8 +59,18 @@ const PDVSaleResultModal = ({
           Total: <strong>{moneyFormatter.format(Number(saleResult?.total ?? totalVenda))}</strong>
         </p>
         <p>
-          Forma de pagamento: <strong>{formatPayment(saleResult?.forma_pagamento ?? formaPagamento)}</strong>
+          Forma de pagamento: <strong>{saleResult?.forma_pagamento_label ?? formatPayment(saleResult?.forma_pagamento ?? formaPagamento)}</strong>
         </p>
+        {saleResult?.pagamentos?.map((pagamento, index) => (
+          <p key={`${pagamento.forma_pagamento}-${index}`}>
+            {pagamento.forma_pagamento_label ?? formatPayment(pagamento.forma_pagamento)}: <strong>{moneyFormatter.format(pagamento.valor)}</strong>
+          </p>
+        ))}
+        {(saleResult?.troco ?? 0) > 0 ? (
+          <p>
+            Troco: <strong>{moneyFormatter.format(saleResult?.troco ?? 0)}</strong>
+          </p>
+        ) : null}
       </div>
 
       <button

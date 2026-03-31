@@ -1,9 +1,18 @@
+from __future__ import annotations
+
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..core.enums import FormaPagamento
+from ..core.payment_utils import (
+    get_sale_payment_label,
+    get_total_change,
+    get_total_received,
+    round_money,
+)
+from .payment import VendaPagamentoCreate, VendaPagamentoRead
 from .venda import VendaItemRead
 
 
@@ -39,14 +48,15 @@ class VendaPDVItemCreate(BaseModel):
 
 class VendaPDVCreate(BaseModel):
     cliente_id: Optional[int] = None
-    forma_pagamento: FormaPagamento
+    forma_pagamento: Optional[FormaPagamento] = None
     desconto_geral: float = 0.0
     observacao: Optional[str] = None
     autorizacao_terceiro_nome: Optional[str] = None
     autorizacao_terceiro_documento: Optional[str] = None
     autorizacao_terceiro_observacao: Optional[str] = None
-    itens: List[VendaPDVItemCreate] = Field(min_length=1)
+    itens: list[VendaPDVItemCreate] = Field(min_length=1)
     parcelas: int = 1
+    pagamentos: list[VendaPagamentoCreate] = Field(default_factory=list)
 
     @field_validator("desconto_geral")
     @classmethod
@@ -62,12 +72,14 @@ class VendaPDVCreate(BaseModel):
             raise ValueError("parcelas deve ser maior ou igual a 1")
         return value
 
-
-# ── Alertas de preço mínimo ──────────────────────────────────────────────
+    @model_validator(mode="after")
+    def validar_pagamento(self):
+        if self.forma_pagamento is None and not self.pagamentos:
+            raise ValueError("informe forma_pagamento ou pagamentos")
+        return self
 
 
 class AlertaPrecoMinimo(BaseModel):
-    """Alerta emitido quando o preço praticado está abaixo do preço mínimo calculado."""
     produto_id: int
     produto_nome: str
     preco_praticado: float
@@ -76,13 +88,11 @@ class AlertaPrecoMinimo(BaseModel):
 
 
 class VerificacaoPrecoRequest(BaseModel):
-    """Request para verificar preços antes de registrar a venda."""
-    itens: List[VendaPDVItemCreate] = Field(min_length=1)
+    itens: list[VendaPDVItemCreate] = Field(min_length=1)
 
 
 class VerificacaoPrecoResponse(BaseModel):
-    """Resultado da verificação de preço mínimo."""
-    alertas: List[AlertaPrecoMinimo] = []
+    alertas: list[AlertaPrecoMinimo] = Field(default_factory=list)
     tem_alertas: bool = False
 
 
@@ -94,33 +104,26 @@ class VendaPDVRead(BaseModel):
     desconto: float
     forma_pagamento: Optional[int] = None
     forma_pagamento_label: Optional[str] = None
+    pagamentos: list[VendaPagamentoRead] = Field(default_factory=list)
+    total_recebido: float = 0.0
+    troco: float = 0.0
     cliente_id: Optional[int] = None
     caixa_id: Optional[int] = None
     observacao: Optional[str] = None
     autorizacao_terceiro_nome: Optional[str] = None
     autorizacao_terceiro_documento: Optional[str] = None
     autorizacao_terceiro_observacao: Optional[str] = None
-    itens: List[VendaItemRead] = []
+    itens: list[VendaItemRead] = Field(default_factory=list)
     cancelada: bool
-    alertas_preco: List[AlertaPrecoMinimo] = []
+    alertas_preco: list[AlertaPrecoMinimo] = Field(default_factory=list)
 
-    @model_validator(mode='after')
-    def populate_forma_pagamento_label(self):
-        from ..core.enums import FormaPagamento
-        labels = {
-            FormaPagamento.DINHEIRO: 'Dinheiro',
-            FormaPagamento.CARTAO_DEBITO: 'Cartão Débito',
-            FormaPagamento.CARTAO_CREDITO: 'Cartão Crédito',
-            FormaPagamento.PIX: 'PIX',
-            FormaPagamento.BOLETO: 'Boleto',
-            FormaPagamento.PRAZO: 'A Prazo',
-        }
-        if self.forma_pagamento is not None:
-            try:
-                self.forma_pagamento_label = labels.get(FormaPagamento(self.forma_pagamento))
-            except ValueError:
-                self.forma_pagamento_label = None
+    @model_validator(mode="after")
+    def populate_payment_metadata(self):
+        self.total = round_money(self.total)
+        self.desconto = round_money(self.desconto)
+        self.forma_pagamento_label = get_sale_payment_label(self.forma_pagamento, self.pagamentos)
+        self.total_recebido = get_total_received(self.pagamentos)
+        self.troco = get_total_change(self.pagamentos)
         return self
 
     model_config = ConfigDict(from_attributes=True)
-

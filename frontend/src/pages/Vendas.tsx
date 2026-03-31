@@ -12,13 +12,23 @@ interface VendaItem {
     desconto?: number
 }
 
+interface VendaPagamento {
+    forma_pagamento: number
+    forma_pagamento_label?: string | null
+    valor: number
+    troco?: number
+}
+
 interface Venda {
     id: number
     numero_legado: number
     data: string
     total: number
     desconto: number
-    forma_pagamento: number
+    forma_pagamento?: number | null
+    forma_pagamento_label?: string | null
+    troco?: number
+    pagamentos?: VendaPagamento[]
     cancelada: boolean
     observacao?: string
     cliente_id?: number
@@ -47,6 +57,17 @@ const PAYMENT_LABELS: Record<number, string> = {
     4: 'PIX',
     5: 'Boleto',
     6: 'A Prazo',
+}
+
+const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+const formatVendaPagamentos = (venda: Venda) => {
+    if (venda.pagamentos && venda.pagamentos.length > 0) {
+        return venda.pagamentos
+            .map((pagamento) => `${pagamento.forma_pagamento_label ?? PAYMENT_LABELS[pagamento.forma_pagamento] ?? 'Nao informado'} (${currencyFormatter.format(pagamento.valor)})`)
+            .join(' + ')
+    }
+    return venda.forma_pagamento_label ?? PAYMENT_LABELS[venda.forma_pagamento ?? 0] ?? 'Nao informado'
 }
 
 const PAGE_SIZE = 50
@@ -189,7 +210,7 @@ const Vendas = () => {
                                 <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{new Date(venda.data).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{venda.numero_legado}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{PAYMENT_LABELS[venda.forma_pagamento] ?? 'Não informado'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatVendaPagamentos(venda)}</td>
                                     <td className="px-6 py-4 text-sm">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${venda.cancelada ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
                                             {venda.cancelada ? 'Cancelada' : 'Ativa'}
@@ -262,7 +283,7 @@ const Vendas = () => {
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Forma de Pagamento</p>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">{PAYMENT_LABELS[selectedVenda.forma_pagamento] ?? 'Não informado'}</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{formatVendaPagamentos(selectedVenda)}</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
@@ -270,6 +291,14 @@ const Vendas = () => {
                                     {selectedVenda.cancelada ? 'Cancelada' : 'Ativa'}
                                 </p>
                             </div>
+                            {(selectedVenda.troco ?? 0) > 0 && (
+                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Troco</p>
+                                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                                        {currencyFormatter.format(selectedVenda.troco ?? 0)}
+                                    </p>
+                                </div>
+                            )}
                             {selectedVenda.desconto > 0 && (
                                 <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Desconto</p>

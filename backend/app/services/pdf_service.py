@@ -20,6 +20,13 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from ..core.payment_utils import (
+    format_payment_breakdown,
+    get_sale_payment_label,
+    get_total_change,
+    get_total_received,
+)
+
 # ---------------------------------------------------------------------------
 # Paleta de cores
 # ---------------------------------------------------------------------------
@@ -497,6 +504,7 @@ def gerar_pdf_comprovante_venda(venda) -> bytes:
     content.append(header_table)
     content.append(HRFlowable(width="100%", thickness=2, color=AZUL_PRIMARIO, spaceAfter=8))
 
+    pagamentos = list(getattr(venda, "pagamentos", []) or [])
     forma_pagamento_map = {
         1: "Dinheiro",
         2: "Cartão Débito",
@@ -506,11 +514,24 @@ def gerar_pdf_comprovante_venda(venda) -> bytes:
         6: "A Prazo",
     }
     forma_pagamento = forma_pagamento_map.get(venda.forma_pagamento, "Não informado")
+    if pagamentos:
+        forma_pagamento = get_sale_payment_label(venda.forma_pagamento, pagamentos) or "Nao informado"
+        pagamento_detalhado = format_payment_breakdown(pagamentos) or forma_pagamento
+    else:
+        pagamento_detalhado = forma_pagamento
+
     info = [
         [Paragraph("Data", normal_style), Paragraph(_fmt_date(venda.data), right_style)],
         [Paragraph("Cliente", normal_style), Paragraph(venda.cliente.nome if venda.cliente else "Consumidor final", right_style)],
-        [Paragraph("Pagamento", normal_style), Paragraph(forma_pagamento, right_style)],
+        [Paragraph("Pagamento", normal_style), Paragraph(pagamento_detalhado, right_style)],
     ]
+    if pagamentos:
+        total_recebido = get_total_received(pagamentos)
+        troco = get_total_change(pagamentos)
+        if total_recebido > 0 and total_recebido != float(venda.total or 0):
+            info.append([Paragraph("Valor informado", normal_style), Paragraph(_money(total_recebido), right_style)])
+        if troco > 0:
+            info.append([Paragraph("Troco", normal_style), Paragraph(_money(troco), right_style)])
     if venda.autorizacao_terceiro_nome:
         info.append([
             Paragraph("Autorizado para retirada", normal_style),
