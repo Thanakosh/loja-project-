@@ -11,7 +11,7 @@ import api from '../services/api'
 
 type ModalMode = 'create' | 'edit'
 
-interface Usuario extends AuthenticatedUser {}
+type Usuario = AuthenticatedUser
 
 interface UsuarioPayload {
   username: string
