@@ -64,10 +64,15 @@ def main() -> None:
     }
 
     with TestClient(fastapi_app) as client:
-        health = _assert_status(client.get("/api/v2/health-async"), 200, "health-async")
-        assert health["database"] == "async"
-        assert health["result"] == 1
-        summary["health_async"] = health
+        health_live = _assert_status(client.get("/api/v2/health/live"), 200, "health/live")
+        assert health_live["checks"]["api"]["status"] == "ok"
+        summary["health_live"] = health_live
+
+        health_ready = _assert_status(client.get("/api/v2/health/ready"), 200, "health/ready")
+        assert health_ready["checks"]["database"]["status"] == "ok"
+        assert health_ready["checks"]["database"]["mode"] == "async"
+        assert health_ready["checks"]["database"]["result"] == 1
+        summary["health_ready"] = health_ready
 
         user = _assert_status(
             client.post(
