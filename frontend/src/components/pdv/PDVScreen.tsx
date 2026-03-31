@@ -92,13 +92,18 @@ interface ProdutoListResponse {
 
 interface VendaPDVCreate {
   cliente_id?: number
-  forma_pagamento: number
+  forma_pagamento?: number
   desconto_geral: number
   observacao?: string
   autorizacao_terceiro_nome?: string
   autorizacao_terceiro_documento?: string
   autorizacao_terceiro_observacao?: string
   parcelas: number
+  pagamentos: {
+    forma_pagamento: number
+    valor: number
+    valor_recebido?: number
+  }[]
   itens: {
     produto_id: number
     quantidade: number
@@ -111,7 +116,19 @@ interface VendaPDVRead {
   id: number
   numero_legado?: string | number | null
   total: number
-  forma_pagamento: number
+  forma_pagamento?: number | null
+  forma_pagamento_label?: string | null
+  total_recebido?: number
+  troco?: number
+  pagamentos?: {
+    id?: number
+    ordem?: number
+    forma_pagamento: number
+    forma_pagamento_label?: string | null
+    valor: number
+    valor_recebido?: number | null
+    troco?: number
+  }[]
 }
 
 interface AlertaPrecoMinimo {
@@ -138,6 +155,25 @@ const moneyFormatter = new Intl.NumberFormat('pt-BR', {
 
 const formatPayment = (value: number) => paymentOptions.find((option) => option.value === value)?.label ?? 'Não informado'
 
+interface PaymentRow {
+  id: string
+  forma_pagamento: number
+  valor: string
+  valor_recebido: string
+}
+
+const roundCurrency = (value: number) => Math.round(value * 100) / 100
+
+const createPaymentRow = (partial: Partial<PaymentRow> = {}): PaymentRow => ({
+  id: partial.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  forma_pagamento: partial.forma_pagamento ?? 1,
+  valor: partial.valor ?? '',
+  valor_recebido: partial.valor_recebido ?? ''
+})
+
+const isMoneyPayment = (value: number) => value === 1
+const isPrazoPayment = (value: number) => value === 6
+
 const calcItemTotal = (item: ItemCarrinho) => {
   const descontoPercentual = Math.min(100, Math.max(0, item.desconto))
   return item.quantidade * item.preco_unitario * (1 - descontoPercentual / 100)
@@ -156,7 +192,7 @@ const PDVScreen = () => {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [cartItems, setCartItems] = useState<ItemCarrinho[]>([])
   const [descontoGeral, setDescontoGeral] = useState('')
-  const [formaPagamento, setFormaPagamento] = useState(1)
+  const [paymentRows, setPaymentRows] = useState<PaymentRow[]>(() => [createPaymentRow()])
   const [parcelas, setParcelas] = useState(1)
   const [observacao, setObservacao] = useState('')
   const [autorizacaoTerceiroNome, setAutorizacaoTerceiroNome] = useState('')
@@ -310,7 +346,78 @@ const PDVScreen = () => {
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + calcItemTotal(item), 0), [cartItems])
   const descontoGeralNumber = Math.max(0, Number(descontoGeral) || 0)
-  const totalVenda = Math.max(0, subtotal - descontoGeralNumber)
+  const totalVenda = roundCurrency(Math.max(0, subtotal - descontoGeralNumber))
+  const resolvedPaymentRows = useMemo(() => {
+    return paymentRows.map((row, index) => {
+      const parsedValue = Number(row.valor)
+      const valor = roundCurrency(
+        paymentRows.length === 1 && row.valor.trim() === ''
+          ? totalVenda
+          : Math.max(0, Number.isNaN(parsedValue) ? 0 : parsedValue)
+      )
+
+      if (!isMoneyPayment(row.forma_pagamento)) {
+        return {
+          ...row,
+          ordem: index + 1,
+          valor,
+          valor_recebido: undefined as number | undefined
+        }
+      }
+
+      const parsedReceived = Number(row.valor_recebido)
+      const valorRecebido = roundCurrency(
+        row.valor_recebido.trim() === ''
+          ? valor
+          : Math.max(0, Number.isNaN(parsedReceived) ? 0 : parsedReceived)
+      )
+
+      return {
+        ...row,
+        ordem: index + 1,
+        valor,
+        valor_recebido: valorRecebido
+      }
+    })
+  }, [paymentRows, totalVenda])
+  const totalInformado = useMemo(
+    () => roundCurrency(resolvedPaymentRows.reduce((acc, row) => acc + row.valor, 0)),
+    [resolvedPaymentRows]
+  )
+  const restantePagamento = roundCurrency(Math.max(0, totalVenda - totalInformado))
+  const excessoPagamento = roundCurrency(Math.max(0, totalInformado - totalVenda))
+  const trocoPrevisto = useMemo(
+    () => roundCurrency(
+      resolvedPaymentRows.reduce((acc, row) => {
+        if (!isMoneyPayment(row.forma_pagamento)) {
+          return acc
+        }
+        return acc + Math.max(0, (row.valor_recebido ?? row.valor) - row.valor)
+      }, 0)
+    ),
+    [resolvedPaymentRows]
+  )
+  const hasPrazoRow = paymentRows.some((row) => isPrazoPayment(row.forma_pagamento))
+  const isPrazoOnly = paymentRows.length === 1 && hasPrazoRow
+  const paymentValidationError = useMemo(() => {
+    if (hasPrazoRow && paymentRows.length > 1) {
+      return 'Pagamento a prazo nao pode ser combinado com outras formas.'
+    }
+
+    for (const row of resolvedPaymentRows) {
+      if (isMoneyPayment(row.forma_pagamento) && (row.valor_recebido ?? row.valor) + 0.01 < row.valor) {
+        return 'Valor recebido em dinheiro nao pode ser menor que o valor da parcela.'
+      }
+    }
+
+    if (excessoPagamento > 0.01) {
+      return 'Os pagamentos excedem o valor total da venda.'
+    }
+    if (restantePagamento > 0.01) {
+      return 'Os pagamentos ainda nao cobrem o valor total da venda.'
+    }
+    return ''
+  }, [excessoPagamento, hasPrazoRow, paymentRows.length, resolvedPaymentRows, restantePagamento])
 
   const resetSale = () => {
     setCartItems([])
@@ -319,7 +426,7 @@ const PDVScreen = () => {
     setDebouncedClientSearch('')
     setProductSearch('')
     setDescontoGeral('')
-    setFormaPagamento(1)
+    setPaymentRows([createPaymentRow()])
     setParcelas(1)
     setObservacao('')
     setAutorizacaoTerceiroNome('')
@@ -527,17 +634,74 @@ const PDVScreen = () => {
     setDebouncedClientSearch('')
   }
 
+  const updatePaymentRow = (
+    rowId: string,
+    field: 'forma_pagamento' | 'valor' | 'valor_recebido',
+    value: string,
+  ) => {
+    setPaymentRows((previous) =>
+      previous.map((row) => {
+        if (row.id !== rowId) {
+          return row
+        }
+        if (field === 'forma_pagamento') {
+          const nextPaymentType = Number(value)
+          return {
+            ...row,
+            forma_pagamento: nextPaymentType,
+            valor_recebido: isMoneyPayment(nextPaymentType) ? row.valor_recebido : ''
+          }
+        }
+        return {
+          ...row,
+          [field]: value
+        }
+      })
+    )
+  }
+
+  const addPaymentRow = () => {
+    setPaymentRows((previous) => [
+      ...previous,
+      createPaymentRow({
+        forma_pagamento: 4,
+        valor: restantePagamento > 0 ? restantePagamento.toFixed(2) : ''
+      })
+    ])
+  }
+
+  const removePaymentRow = (rowId: string) => {
+    setPaymentRows((previous) => {
+      if (previous.length === 1) {
+        return previous
+      }
+      return previous.filter((row) => row.id !== rowId)
+    })
+  }
+
   const buildPayload = (): VendaPDVCreate => {
+    const pagamentos = resolvedPaymentRows
+      .filter((row) => row.valor > 0 || (resolvedPaymentRows.length === 1 && totalVenda === 0))
+      .map((row) => ({
+        forma_pagamento: row.forma_pagamento,
+        valor: row.valor,
+        ...(isMoneyPayment(row.forma_pagamento) ? { valor_recebido: row.valor_recebido } : {})
+      }))
+
     const payload: VendaPDVCreate = {
-      forma_pagamento: formaPagamento,
       desconto_geral: descontoGeralNumber,
-      parcelas: formaPagamento === 6 ? Math.max(1, parcelas) : 1,
+      parcelas: isPrazoOnly ? Math.max(1, parcelas) : 1,
+      pagamentos,
       itens: cartItems.map((item) => ({
         produto_id: item.produto.id,
         quantidade: item.quantidade,
         preco_unitario: item.preco_unitario,
         desconto: item.desconto
       }))
+    }
+
+    if (pagamentos.length === 1) {
+      payload.forma_pagamento = pagamentos[0].forma_pagamento
     }
 
     if (selectedClient) {
@@ -570,6 +734,11 @@ const PDVScreen = () => {
     setSubmitError('')
 
     if (cartItems.length === 0) {
+      return
+    }
+
+    if (paymentValidationError) {
+      setSubmitError(paymentValidationError)
       return
     }
 
@@ -919,8 +1088,8 @@ const PDVScreen = () => {
               <label className="block">
                 <span className="mb-1 block text-gray-700 dark:text-gray-300">Forma de Pagamento</span>
                 <select
-                  value={formaPagamento}
-                  onChange={(event) => setFormaPagamento(Number(event.target.value))}
+                  value={paymentRows[0]?.forma_pagamento ?? 1}
+                  onChange={(event) => updatePaymentRow(paymentRows[0].id, 'forma_pagamento', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
                 >
                   {paymentOptions.map((option) => (
@@ -931,7 +1100,124 @@ const PDVScreen = () => {
                 </select>
               </label>
 
-              {formaPagamento === 6 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Composicao</span>
+                  <button
+                    type="button"
+                    onClick={addPaymentRow}
+                    disabled={hasPrazoRow}
+                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Adicionar pagamento
+                  </button>
+                </div>
+
+                {paymentRows.map((row, index) => {
+                  const resolvedRow = resolvedPaymentRows[index]
+                  const trocoLinha = isMoneyPayment(row.forma_pagamento)
+                    ? roundCurrency(Math.max(0, (resolvedRow?.valor_recebido ?? resolvedRow?.valor ?? 0) - (resolvedRow?.valor ?? 0)))
+                    : 0
+
+                  return (
+                    <div key={row.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]">
+                        <label className="block">
+                          <span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Forma</span>
+                          <select
+                            aria-label={`Forma pagamento ${index + 1}`}
+                            value={row.forma_pagamento}
+                            onChange={(event) => updatePaymentRow(row.id, 'forma_pagamento', event.target.value)}
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                          >
+                            {paymentOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Valor</span>
+                          <input
+                            aria-label={`Valor pagamento ${index + 1}`}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={row.valor}
+                            onChange={(event) => updatePaymentRow(row.id, 'valor', event.target.value)}
+                            placeholder={paymentRows.length === 1 ? totalVenda.toFixed(2) : '0.00'}
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                          />
+                        </label>
+
+                        {isMoneyPayment(row.forma_pagamento) ? (
+                          <label className="block">
+                            <span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Recebido</span>
+                            <input
+                              aria-label={`Recebido pagamento ${index + 1}`}
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={row.valor_recebido}
+                              onChange={(event) => updatePaymentRow(row.id, 'valor_recebido', event.target.value)}
+                              placeholder={(resolvedRow?.valor ?? totalVenda).toFixed(2)}
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
+                            />
+                          </label>
+                        ) : (
+                          <div className="flex items-end">
+                            <p className="w-full rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                              Sem troco
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => removePaymentRow(row.id)}
+                            disabled={paymentRows.length === 1}
+                            className="rounded-lg border border-rose-300 dark:border-rose-700 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+
+                      {isMoneyPayment(row.forma_pagamento) ? (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Troco previsto nesta linha: <span className="font-semibold text-gray-700 dark:text-gray-200">{moneyFormatter.format(trocoLinha)}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  )
+                })}
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Informado</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{moneyFormatter.format(totalInformado)}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Restante</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{moneyFormatter.format(restantePagamento)}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 dark:bg-gray-700 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Troco previsto</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{moneyFormatter.format(trocoPrevisto)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {paymentValidationError ? (
+                <p className="rounded-lg bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                  {paymentValidationError}
+                </p>
+              ) : null}
+
+              {isPrazoOnly ? (
                 <label className="block">
                   <span className="mb-1 block text-gray-700 dark:text-gray-300">Parcelas</span>
                   <input
@@ -955,7 +1241,7 @@ const PDVScreen = () => {
                 />
               </label>
 
-              {formaPagamento === 6 ? (
+              {isPrazoOnly ? (
                 <>
                   <label className="block">
                     <span className="mb-1 block text-gray-700 dark:text-gray-300">Autorizado por (nome)</span>
@@ -996,7 +1282,7 @@ const PDVScreen = () => {
 
           <button
             type="submit"
-            disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco}
+            disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco || Boolean(paymentValidationError)}
             className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {checkingPreco ? 'Verificando preços...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
@@ -1077,8 +1363,22 @@ const PDVScreen = () => {
                 Total: <strong>{moneyFormatter.format(Number(saleResult.total ?? totalVenda))}</strong>
               </p>
               <p>
-                Forma de pagamento: <strong>{formatPayment(saleResult.forma_pagamento ?? formaPagamento)}</strong>
+                Forma de pagamento: <strong>{saleResult.forma_pagamento_label ?? formatPayment(saleResult.forma_pagamento ?? paymentRows[0]?.forma_pagamento ?? 1)}</strong>
               </p>
+              {saleResult.pagamentos && saleResult.pagamentos.length > 0 ? (
+                <div className="space-y-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2">
+                  {saleResult.pagamentos.map((pagamento, index) => (
+                    <p key={`${pagamento.forma_pagamento}-${index}`}>
+                      {(pagamento.forma_pagamento_label ?? formatPayment(pagamento.forma_pagamento))}: <strong>{moneyFormatter.format(pagamento.valor)}</strong>
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {(saleResult.troco ?? 0) > 0 ? (
+                <p>
+                  Troco: <strong>{moneyFormatter.format(Number(saleResult.troco ?? 0))}</strong>
+                </p>
+              ) : null}
             </div>
 
             <button

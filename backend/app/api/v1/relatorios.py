@@ -35,7 +35,7 @@ async def exportar_relatorio_vendas_pdf(
 ):
     query = (
         select(Venda)
-        .options(joinedload(Venda.itens))
+        .options(joinedload(Venda.itens), joinedload(Venda.pagamentos))
         .where(Venda.data >= start_date, Venda.data <= end_date)
         .order_by(Venda.data.desc(), Venda.id.desc())
     )

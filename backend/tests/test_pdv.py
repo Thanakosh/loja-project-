@@ -39,7 +39,15 @@ class TestPDV:
         assert resp.status_code == 201
         return resp.json()["id"]
 
-    def _criar_venda(self, client: TestClient, auth_headers: dict, produto_id: int, forma_pagamento: int = 1, parcelas: int = 1):
+    def _criar_venda(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        produto_id: int,
+        forma_pagamento: int = 1,
+        parcelas: int = 1,
+        pagamentos: list[dict] | None = None,
+    ):
         self._garantir_caixa_aberto(client, auth_headers)
         payload = {
             "forma_pagamento": forma_pagamento,
@@ -54,6 +62,8 @@ class TestPDV:
                 }
             ],
         }
+        if pagamentos is not None:
+            payload["pagamentos"] = pagamentos
         return client.post("/api/v1/pdv/venda", json=payload, headers=auth_headers)
 
     def _obter_estoque(self, client: TestClient, auth_headers: dict, produto_id: int) -> int:
@@ -123,6 +133,81 @@ class TestPDV:
 
         estoque_atual = self._obter_estoque(client, auth_headers, produto_com_estoque)
         assert estoque_atual == 98
+
+    def test_venda_pagamento_misto_retorna_pagamentos_e_troco(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        resp = self._criar_venda(
+            client,
+            auth_headers,
+            produto_com_estoque,
+            forma_pagamento=1,
+            pagamentos=[
+                {"forma_pagamento": 1, "valor": 20.0, "valor_recebido": 30.0},
+                {"forma_pagamento": 4, "valor": 30.0},
+            ],
+        )
+        assert resp.status_code == 201
+
+        body = resp.json()
+        assert body["forma_pagamento"] is None
+        assert body["forma_pagamento_label"] == "Misto"
+        assert body["troco"] == 10.0
+        assert body["total_recebido"] == 60.0
+        assert len(body["pagamentos"]) == 2
+        assert body["pagamentos"][0]["forma_pagamento"] == 1
+        assert body["pagamentos"][0]["valor"] == 20.0
+        assert body["pagamentos"][0]["valor_recebido"] == 30.0
+        assert body["pagamentos"][0]["troco"] == 10.0
+        assert body["pagamentos"][1]["forma_pagamento"] == 4
+        assert body["pagamentos"][1]["valor"] == 30.0
+        assert body["pagamentos"][1]["troco"] == 0.0
+
+    def test_venda_bloqueia_pagamento_insuficiente(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        resp = self._criar_venda(
+            client,
+            auth_headers,
+            produto_com_estoque,
+            forma_pagamento=1,
+            pagamentos=[
+                {"forma_pagamento": 1, "valor": 40.0},
+            ],
+        )
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "pagamento_insuficiente"
+
+    def test_venda_bloqueia_troco_em_pagamento_nao_dinheiro(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        resp = self._criar_venda(
+            client,
+            auth_headers,
+            produto_com_estoque,
+            forma_pagamento=4,
+            pagamentos=[
+                {"forma_pagamento": 4, "valor": 50.0, "valor_recebido": 60.0},
+            ],
+        )
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "troco_forma_pagamento_invalida"
+
+    def test_venda_bloqueia_pagamento_misto_com_prazo(
+        self, client: TestClient, auth_headers: dict, produto_com_estoque: int
+    ):
+        resp = self._criar_venda(
+            client,
+            auth_headers,
+            produto_com_estoque,
+            forma_pagamento=6,
+            pagamentos=[
+                {"forma_pagamento": 6, "valor": 30.0},
+                {"forma_pagamento": 1, "valor": 20.0},
+            ],
+        )
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "pagamento_misto_prazo"
 
     def test_busca_produto_por_codigo_barras(self, client: TestClient, auth_headers: dict):
         payload = {

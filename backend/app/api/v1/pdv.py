@@ -63,6 +63,7 @@ async def criar_venda_pdv(
             "venda_id": venda.id,
             "total": venda.total,
             "forma_pagamento": venda.forma_pagamento,
+            "qtd_pagamentos": len(venda.pagamentos or []),
             "usuario_id": current_user.id,
             "trace_id": trace_id,
         },

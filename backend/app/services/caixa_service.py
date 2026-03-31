@@ -14,7 +14,7 @@ from ..core.exceptions import (
 )
 from ..models.caixa_diario import CaixaDiario
 from ..models.movimentacao_caixa import MovimentacaoCaixa
-from ..models.venda import Venda
+from ..models.venda import Venda, VendaPagamento
 from ..schemas.caixa import CaixaAbrir, CaixaFechar, MovimentacaoCaixaCreate
 
 
@@ -108,11 +108,12 @@ async def _build_caixa_summary_map_async(
         await db.execute(
             select(
                 Venda.caixa_id,
-                func.coalesce(func.sum(Venda.total), 0.0).label("valor_em_dinheiro_vendas"),
+                func.coalesce(func.sum(VendaPagamento.valor), 0.0).label("valor_em_dinheiro_vendas"),
             )
+            .join(VendaPagamento, VendaPagamento.venda_id == Venda.id)
             .where(
                 Venda.caixa_id.in_(caixa_ids),
-                Venda.forma_pagamento == FormaPagamento.DINHEIRO.value,
+                VendaPagamento.forma_pagamento == FormaPagamento.DINHEIRO.value,
                 Venda.cancelada.is_(False),
             )
             .group_by(Venda.caixa_id)

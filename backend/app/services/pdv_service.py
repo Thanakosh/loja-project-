@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 from sqlalchemy import delete, func, select
@@ -6,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from ..core.enums import FormaPagamento
 from ..core.exceptions import (
+    BusinessException,
     CaixaNaoAbertoError,
     DescontoExcedidoError,
     EstoqueInsuficienteError,
@@ -14,14 +18,27 @@ from ..core.exceptions import (
     VendaJaCanceladaError,
     VendaNaoEncontradaError,
 )
+from ..core.payment_utils import round_money
 from ..models.caixa_diario import CaixaDiario
 from ..models.conta_receber import ContaReceber
 from ..models.produto import Produto, UNIDADES_FRACIONAVEIS
 from ..models.politica_desconto import PoliticaDescontoProduto
 from ..models.transacao_estoque import TipoTransacao, TransacaoEstoque
-from ..models.venda import Venda, VendaItem
+from ..models.venda import Venda, VendaItem, VendaPagamento
+from ..schemas.payment import VendaPagamentoCreate
 from ..schemas.pdv import VendaPDVCreate
+
 DEFAULT_MARGEM_MINIMA_PERCENTUAL = 0.05
+MONEY_TOLERANCE = 0.01
+
+
+@dataclass(slots=True)
+class PagamentoNormalizado:
+    forma_pagamento: FormaPagamento
+    valor: float
+    ordem: int
+    valor_recebido: float | None
+    troco: float
 
 
 def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: float) -> float:
@@ -32,6 +49,124 @@ def _calcular_preco_pdv(produto: Produto, quantidade: float, preco_enviado: floa
     ):
         return produto.preco_atacado
     return preco_enviado
+
+
+def _build_venda_load_options(*, include_client: bool = False):
+    options = [joinedload(Venda.itens), joinedload(Venda.pagamentos)]
+    if include_client:
+        options.append(joinedload(Venda.cliente))
+    return options
+
+
+def _raise_payment_business_error(code: str, message: str, details: dict | None = None) -> None:
+    raise BusinessException(code=code, message=message, status_code=400, details=details)
+
+
+def _distribuir_parcelas(total_venda: float, parcelas: int) -> list[float]:
+    if parcelas <= 1:
+        return [round_money(total_venda)]
+
+    valor_base = round_money(total_venda / parcelas)
+    valores = [valor_base for _ in range(parcelas)]
+    diferenca = round_money(total_venda - sum(valores))
+    valores[-1] = round_money(valores[-1] + diferenca)
+    return valores
+
+
+def _normalizar_pagamentos(
+    venda_in: VendaPDVCreate,
+    total_venda: float,
+) -> tuple[list[PagamentoNormalizado], int | None]:
+    pagamentos_input = list(venda_in.pagamentos)
+    if not pagamentos_input:
+        if venda_in.forma_pagamento is None:
+            _raise_payment_business_error(
+                "pagamento_obrigatorio",
+                "Informe forma_pagamento ou pagamentos",
+            )
+        pagamentos_input = [
+            VendaPagamentoCreate(
+                forma_pagamento=venda_in.forma_pagamento,
+                valor=round_money(total_venda),
+                valor_recebido=round_money(total_venda)
+                if venda_in.forma_pagamento == FormaPagamento.DINHEIRO
+                else None,
+            )
+        ]
+
+    if any(pagamento.forma_pagamento == FormaPagamento.PRAZO for pagamento in pagamentos_input):
+        if len(pagamentos_input) != 1:
+            _raise_payment_business_error(
+                "pagamento_misto_prazo",
+                "Pagamento a prazo nao pode ser combinado com outras formas",
+                {"quantidade_pagamentos": len(pagamentos_input)},
+            )
+
+    pagamentos: list[PagamentoNormalizado] = []
+    total_informado = 0.0
+
+    for ordem, pagamento_input in enumerate(pagamentos_input, start=1):
+        valor = round_money(pagamento_input.valor)
+        valor_recebido = pagamento_input.valor_recebido
+        troco = 0.0
+
+        if pagamento_input.forma_pagamento == FormaPagamento.DINHEIRO:
+            valor_recebido = round_money(valor if valor_recebido is None else valor_recebido)
+            if valor_recebido + MONEY_TOLERANCE < valor:
+                _raise_payment_business_error(
+                    "pagamento_insuficiente",
+                    "O total informado em pagamentos nao cobre o valor da venda",
+                    {
+                        "ordem": ordem,
+                        "valor_pagamento": valor,
+                        "valor_recebido": valor_recebido,
+                    },
+                )
+            troco = round_money(valor_recebido - valor)
+        else:
+            if valor_recebido is not None and abs(round_money(valor_recebido) - valor) > MONEY_TOLERANCE:
+                _raise_payment_business_error(
+                    "troco_forma_pagamento_invalida",
+                    "Troco so pode ser informado em pagamentos em dinheiro",
+                    {
+                        "ordem": ordem,
+                        "forma_pagamento": pagamento_input.forma_pagamento.value,
+                        "valor": valor,
+                        "valor_recebido": round_money(valor_recebido),
+                    },
+                )
+            valor_recebido = None
+
+        pagamentos.append(
+            PagamentoNormalizado(
+                forma_pagamento=pagamento_input.forma_pagamento,
+                valor=valor,
+                ordem=ordem,
+                valor_recebido=valor_recebido,
+                troco=troco,
+            )
+        )
+        total_informado += valor
+
+    total_informado = round_money(total_informado)
+    total_venda = round_money(total_venda)
+
+    if total_informado + MONEY_TOLERANCE < total_venda:
+        _raise_payment_business_error(
+            "pagamento_insuficiente",
+            "O total informado em pagamentos nao cobre o valor da venda",
+            {"total_venda": total_venda, "total_pagamentos": total_informado},
+        )
+    if total_informado - MONEY_TOLERANCE > total_venda:
+        _raise_payment_business_error(
+            "pagamento_excedente",
+            "O total informado em pagamentos excede o valor da venda",
+            {"total_venda": total_venda, "total_pagamentos": total_informado},
+        )
+
+    payment_types = {pagamento.forma_pagamento.value for pagamento in pagamentos}
+    forma_pagamento_legada = payment_types.pop() if len(payment_types) == 1 else None
+    return pagamentos, forma_pagamento_legada
 
 
 async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usuario_id: int) -> Venda:
@@ -118,19 +253,25 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
 
             preco_efetivo = _calcular_preco_pdv(produto, item.quantidade, item.preco_unitario)
             if produto.preco_custo is not None:
-                preco_minimo = round(
-                    produto.preco_custo * (1 + DEFAULT_MARGEM_MINIMA_PERCENTUAL),
-                    2,
+                preco_minimo = round_money(
+                    produto.preco_custo * (1 + DEFAULT_MARGEM_MINIMA_PERCENTUAL)
                 )
                 if preco_efetivo < preco_minimo:
                     preco_efetivo = preco_minimo
-            precos_por_item.append(preco_efetivo)
-            preco_total = item.quantidade * preco_efetivo * (1 - (item.desconto / 100))
+            precos_por_item.append(round_money(preco_efetivo))
+            preco_total = round_money(
+                item.quantidade * preco_efetivo * (1 - (item.desconto / 100))
+            )
             totais_por_item.append(preco_total)
 
-        total_venda = sum(totais_por_item) - venda_in.desconto_geral
+        total_venda = round_money(sum(totais_por_item) - venda_in.desconto_geral)
         if total_venda < 0:
             total_venda = 0.0
+
+        pagamentos_normalizados, forma_pagamento_legada = _normalizar_pagamentos(
+            venda_in,
+            total_venda,
+        )
 
         numero_legado = (await db.scalar(select(func.max(Venda.numero_legado))) or 0) + 1
 
@@ -140,8 +281,8 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
             cliente_id=venda_in.cliente_id,
             caixa_id=caixa.id,
             total=total_venda,
-            desconto=venda_in.desconto_geral,
-            forma_pagamento=venda_in.forma_pagamento.value,
+            desconto=round_money(venda_in.desconto_geral),
+            forma_pagamento=forma_pagamento_legada,
             observacao=venda_in.observacao,
             autorizacao_terceiro_nome=venda_in.autorizacao_terceiro_nome,
             autorizacao_terceiro_documento=venda_in.autorizacao_terceiro_documento,
@@ -153,9 +294,6 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
 
         for idx, item in enumerate(venda_in.itens):
             produto = produtos_by_id[item.produto_id]
-            preco_total = totais_por_item[idx]
-            preco_unitario = precos_por_item[idx]
-
             db.add(
                 VendaItem(
                     venda_id=venda.id,
@@ -165,8 +303,8 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
                     codigo_barras=produto.codigo_barras,
                     unidade=produto.unidade,
                     quantidade=item.quantidade,
-                    preco_unitario=preco_unitario,
-                    preco_total=preco_total,
+                    preco_unitario=precos_por_item[idx],
+                    preco_total=totais_por_item[idx],
                     desconto=item.desconto,
                     desconto_motivo=item.motivo_desconto,
                     desconto_autorizado_por=item.autorizacao_desconto,
@@ -183,9 +321,21 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
                 )
             )
 
-        if venda_in.forma_pagamento == FormaPagamento.PRAZO:
-            valor_parcela = total_venda / venda_in.parcelas
-            for parcela in range(1, venda_in.parcelas + 1):
+        for pagamento in pagamentos_normalizados:
+            db.add(
+                VendaPagamento(
+                    venda_id=venda.id,
+                    forma_pagamento=pagamento.forma_pagamento.value,
+                    valor=pagamento.valor,
+                    ordem=pagamento.ordem,
+                    valor_recebido=pagamento.valor_recebido,
+                    troco=pagamento.troco,
+                )
+            )
+
+        if len(pagamentos_normalizados) == 1 and pagamentos_normalizados[0].forma_pagamento == FormaPagamento.PRAZO:
+            valores_parcelas = _distribuir_parcelas(total_venda, venda_in.parcelas)
+            for parcela, valor_parcela in enumerate(valores_parcelas, start=1):
                 db.add(
                     ContaReceber(
                         cliente_id=venda_in.cliente_id,
@@ -209,7 +359,7 @@ async def registrar_venda_async(db: AsyncSession, venda_in: VendaPDVCreate, usua
     return (
         await db.execute(
             select(Venda)
-            .options(joinedload(Venda.itens))
+            .options(*_build_venda_load_options())
             .where(Venda.id == venda.id)
         )
     ).unique().scalars().first()
@@ -261,7 +411,7 @@ async def buscar_venda_por_id_async(db: AsyncSession, venda_id: int) -> Venda | 
     return (
         await db.execute(
             select(Venda)
-            .options(joinedload(Venda.itens))
+            .options(*_build_venda_load_options())
             .where(Venda.id == venda_id)
         )
     ).unique().scalars().first()
@@ -271,7 +421,7 @@ async def buscar_venda_com_cliente_async(db: AsyncSession, venda_id: int) -> Ven
     return (
         await db.execute(
             select(Venda)
-            .options(joinedload(Venda.itens), joinedload(Venda.cliente))
+            .options(*_build_venda_load_options(include_client=True))
             .where(Venda.id == venda_id)
         )
     ).unique().scalars().first()

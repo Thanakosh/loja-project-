@@ -56,6 +56,31 @@ def _registrar_venda_dinheiro(
     )
 
 
+def _registrar_venda_mista(
+    client: TestClient,
+    auth_headers: dict,
+    produto_id: int,
+):
+    return client.post(
+        "/api/v1/pdv/venda",
+        json={
+            "forma_pagamento": 1,
+            "itens": [
+                {
+                    "produto_id": produto_id,
+                    "quantidade": 1,
+                    "preco_unitario": 10.0,
+                }
+            ],
+            "pagamentos": [
+                {"forma_pagamento": 1, "valor": 4.0, "valor_recebido": 5.0},
+                {"forma_pagamento": 4, "valor": 6.0},
+            ],
+        },
+        headers=auth_headers,
+    )
+
+
 class TestAbrirCaixa:
     def test_abre_com_sucesso_e_expoe_resumo_inicial(
         self,
@@ -196,6 +221,23 @@ class TestFecharCaixa:
         data = atual.json()
         assert data["valor_em_dinheiro_vendas"] == 10.0
         assert data["saldo_esperado"] == 110.0
+
+    def test_saldo_esperado_considera_so_parcela_liquida_em_dinheiro_de_venda_mista(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        produto_com_estoque: int,
+    ):
+        _abrir_caixa(client, auth_headers, valor=100.0)
+
+        venda = _registrar_venda_mista(client, auth_headers, produto_com_estoque)
+        assert venda.status_code == 201
+
+        atual = client.get("/api/v1/caixa/atual", headers=auth_headers)
+        assert atual.status_code == 200
+        data = atual.json()
+        assert data["valor_em_dinheiro_vendas"] == 4.0
+        assert data["saldo_esperado"] == 104.0
 
     def test_fecha_com_diferenca_quando_observacao_e_informada(
         self,

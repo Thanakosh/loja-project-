@@ -1,7 +1,7 @@
 ---
 task_id: TASK-051
 title: "PDV com pagamento misto, troco e integracao correta com caixa"
-status: pendente
+status: concluida
 priority: alta
 agent_chat_executable: "sim"
 depends_on: ["TASK-050"]

@@ -11,6 +11,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import HRFlowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from ..core.payment_utils import get_sale_payment_label
+
 AZUL_PRIMARIO = colors.HexColor("#1E40AF")
 CINZA_TEXTO = colors.HexColor("#374151")
 CINZA_SUAVE = colors.HexColor("#F3F4F6")
@@ -148,11 +150,16 @@ def gerar_pdf_relatorio_vendas(vendas, start_date: date, end_date: date) -> byte
             total += float(venda.total or 0)
             quantidade_vendas += 1
 
+        pagamento_label = (
+            get_sale_payment_label(venda.forma_pagamento, getattr(venda, "pagamentos", None))
+            or forma_pagamento.get(venda.forma_pagamento, "Outro")
+        )
+
         rows.append([
             Paragraph(_fmt_date(venda.data), normal),
             Paragraph(str(venda.numero_legado or venda.id), normal),
             Paragraph(f"{itens_qtd:g}", right),
-            Paragraph(forma_pagamento.get(venda.forma_pagamento, "Outro"), normal),
+            Paragraph(pagamento_label, normal),
             Paragraph(_money(float(venda.desconto or 0)), right),
             Paragraph(_money(float(venda.total or 0)), right),
         ])

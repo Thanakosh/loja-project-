@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey
+from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -31,6 +31,12 @@ class Venda(Base):
     # Relationships
     cliente = relationship("Cliente", back_populates="vendas")
     itens = relationship("VendaItem", back_populates="venda", cascade="all, delete-orphan")
+    pagamentos = relationship(
+        "VendaPagamento",
+        back_populates="venda",
+        cascade="all, delete-orphan",
+        order_by="VendaPagamento.ordem",
+    )
 
     def __repr__(self):
         return f"<Venda(id={self.id}, numero_legado={self.numero_legado}, data={self.data}, total={self.total})>"
@@ -63,3 +69,23 @@ class VendaItem(Base):
 
     def __repr__(self):
         return f"<VendaItem(id={self.id}, venda_id={self.venda_id}, nome='{self.nome_produto}', qtd={self.quantidade})>"
+
+
+class VendaPagamento(Base):
+    __tablename__ = "venda_pagamento"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    venda_id = Column(Integer, ForeignKey("venda.id"), nullable=False, index=True)
+    forma_pagamento = Column(Integer, nullable=False, index=True)
+    valor = Column(Float, nullable=False, default=0)
+    ordem = Column(Integer, nullable=False, default=1, index=True)
+    valor_recebido = Column(Float, nullable=True)
+    troco = Column(Float, nullable=False, default=0)
+
+    venda = relationship("Venda", back_populates="pagamentos")
+
+    def __repr__(self):
+        return (
+            f"<VendaPagamento(id={self.id}, venda_id={self.venda_id}, "
+            f"forma_pagamento={self.forma_pagamento}, valor={self.valor})>"
+        )
