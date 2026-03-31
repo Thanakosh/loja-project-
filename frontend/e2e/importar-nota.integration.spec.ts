@@ -38,6 +38,10 @@ test('Importacao de nota integrada processa XML valido e cadastra produto no bac
   const importButton = page.getByRole('button', { name: /Importar 1 Produto/i })
   await expect(importButton).toBeEnabled({ timeout: 30_000 })
   await importButton.click()
+  const confirmResolutionButton = page.getByRole('button', { name: /Confirmar resolucoes e importar/i })
+  if (await confirmResolutionButton.isVisible()) {
+    await confirmResolutionButton.click()
+  }
 
   await expect(page.getByRole('heading', { name: 'Importação Concluída!' })).toBeVisible({ timeout: 30_000 })
 
