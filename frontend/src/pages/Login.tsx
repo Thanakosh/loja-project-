@@ -2,11 +2,13 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { useAuthContext } from '../contexts/AuthContext'
 import { useLogin } from '../hooks/useAuth'
 import logoImg from '../assets/logo.png'
 
 const Login = () => {
   const navigate = useNavigate()
+  const { setAuthenticatedUser } = useAuthContext()
   const { login, isLoading, error } = useLogin()
 
   const [username, setUsername] = useState('')
@@ -16,7 +18,8 @@ const Login = () => {
     event.preventDefault()
 
     try {
-      await login(username, password)
+      const user = await login(username, password)
+      setAuthenticatedUser(user)
       navigate('/dashboard', { replace: true })
     } catch {
       // Erro já tratado no hook

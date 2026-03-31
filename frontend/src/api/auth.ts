@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { AppTabId } from '../config/appTabs'
 import { saveToken, saveRefreshToken } from '../utils/auth'
 
 interface TokenResponse {
@@ -8,12 +9,14 @@ interface TokenResponse {
   expires_in: number
 }
 
-interface LoggedUser {
+export interface LoggedUser {
   id: number
+  username: string | null
   email: string
   full_name: string | null
   is_active: boolean
   is_superuser: boolean
+  allowed_tabs: AppTabId[]
 }
 
 export const login = async (username: string, password: string): Promise<LoggedUser> => {

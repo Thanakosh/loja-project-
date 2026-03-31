@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode, SVGProps } from 'react'
 
+import type { AppTabId } from '../config/appTabs'
+import { useAuthContext } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { removeToken } from '../utils/auth'
 
 type IconProps = SVGProps<SVGSVGElement>
 
@@ -124,34 +125,55 @@ const CloseIcon = (props: IconProps) => (
   </StrokeIcon>
 )
 
-const menuItems = [
+interface MenuItem {
+  name: string
+  path: string
+  icon: (props: IconProps) => ReactNode
+  tabId?: AppTabId
+  requiresSuperuser?: boolean
+}
+
+const menuItems: MenuItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: DashboardIcon },
-  { name: 'Caixa', path: '/caixa', icon: CashIcon },
-  { name: 'PDV', path: '/pdv', icon: CartIcon },
-  { name: 'Vendas', path: '/vendas', icon: ReceiptIcon },
-  { name: 'Produtos', path: '/produtos', icon: BoxIcon },
-  { name: 'Estoque', path: '/estoque', icon: BoxIcon },
-  { name: 'Orcamentos', path: '/orcamentos', icon: ReceiptIcon },
-  { name: 'Fornecedores', path: '/fornecedores', icon: PeopleIcon },
-  { name: 'Notas Fiscais', path: '/notas-fiscais', icon: ReceiptIcon },
-  { name: 'Importar Nota', path: '/importar-nota', icon: ImportIcon },
-  { name: 'Clientes', path: '/clientes', icon: PeopleIcon },
-  { name: 'Contas a Receber', path: '/contas-receber', icon: CashIcon },
-  { name: 'Relatorios', path: '/relatorios', icon: ReportIcon },
-  { name: 'Usuarios', path: '/usuarios', icon: PeopleIcon },
-  { name: 'Configuracoes', path: '/configuracoes/loja', icon: SettingsIcon },
+  { name: 'Caixa', path: '/caixa', icon: CashIcon, tabId: 'caixa' },
+  { name: 'PDV', path: '/pdv', icon: CartIcon, tabId: 'pdv' },
+  { name: 'Vendas', path: '/vendas', icon: ReceiptIcon, tabId: 'vendas' },
+  { name: 'Produtos', path: '/produtos', icon: BoxIcon, tabId: 'produtos' },
+  { name: 'Estoque', path: '/estoque', icon: BoxIcon, tabId: 'estoque' },
+  { name: 'Orcamentos', path: '/orcamentos', icon: ReceiptIcon, tabId: 'orcamentos' },
+  { name: 'Fornecedores', path: '/fornecedores', icon: PeopleIcon, tabId: 'fornecedores' },
+  { name: 'Notas Fiscais', path: '/notas-fiscais', icon: ReceiptIcon, tabId: 'notas_fiscais' },
+  { name: 'Importar Nota', path: '/importar-nota', icon: ImportIcon, tabId: 'importar_nota' },
+  { name: 'Clientes', path: '/clientes', icon: PeopleIcon, tabId: 'clientes' },
+  { name: 'Contas a Receber', path: '/contas-receber', icon: CashIcon, tabId: 'contas_receber' },
+  { name: 'Relatorios', path: '/relatorios', icon: ReportIcon, tabId: 'relatorios' },
+  { name: 'Usuarios', path: '/usuarios', icon: PeopleIcon, requiresSuperuser: true },
+  { name: 'Configuracoes', path: '/configuracoes/loja', icon: SettingsIcon, tabId: 'configuracoes' },
 ]
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { canAccessTab, logout, user } = useAuthContext()
   const { isDark, toggleTheme } = useTheme()
 
-  const handleLogout = () => {
-    removeToken()
-    navigate('/login')
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
   }
+
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.requiresSuperuser) {
+      return user?.is_superuser
+    }
+
+    if (!item.tabId) {
+      return true
+    }
+
+    return canAccessTab(item.tabId)
+  })
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
@@ -176,7 +198,7 @@ const Layout = () => {
         </div>
 
         <nav className="h-[calc(100vh-4rem)] space-y-2 overflow-y-auto p-4">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon
             return (
               <Link
@@ -230,7 +252,9 @@ const Layout = () => {
             </button>
 
             <button
-              onClick={handleLogout}
+              onClick={() => {
+                void handleLogout()
+              }}
               className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 focus:outline-none dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
             >
               Sair

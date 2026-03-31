@@ -22,10 +22,11 @@ def _find_first_429(client, method: str, path: str, max_calls: int, **kwargs):
     raise AssertionError(f"Nenhuma resposta 429 em até {max_calls} chamadas para {path}")
 
 
-def test_users_token_rate_limit_20_per_minute(client):
+def test_users_token_rate_limit_20_per_minute(client, admin_auth_headers):
     client.post(
         "/api/v1/users/register",
         json={"email": "ratelimit@teste.com", "password": "Senha123!", "full_name": "Rate Limit"},
+        headers=admin_auth_headers,
     )
 
     call_number, response = _find_first_429(

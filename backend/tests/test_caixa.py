@@ -24,13 +24,23 @@ def _abrir_caixa(client: TestClient, auth_headers: dict, valor: float = 100.0) -
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestAbrirCaixa:
-    def test_abre_com_sucesso(self, client: TestClient, auth_headers: dict):
+    def test_abre_com_sucesso(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_user,
+    ):
         resp = _abrir_caixa(client, auth_headers, valor=50.0)
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "aberto"
         assert data["valor_abertura"] == 50.0
         assert data["data_fechamento"] is None
+        assert data["usuario_id"] == test_user.id
+        assert data["usuario_abertura_id"] == test_user.id
+        assert data["usuario_abertura_nome"] == test_user.full_name
+        assert data["usuario_fechamento_id"] is None
+        assert data["usuario_fechamento_nome"] is None
 
     def test_nao_permite_abrir_segundo_caixa(self, client: TestClient, auth_headers: dict):
         _abrir_caixa(client, auth_headers)
@@ -57,7 +67,12 @@ class TestAbrirCaixa:
 
 class TestFecharCaixa:
     def test_fecha_com_sucesso_e_retorna_diferenca(
-        self, client: TestClient, auth_headers: dict
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        admin_auth_headers: dict,
+        test_user,
+        admin_user,
     ):
         aberto = _abrir_caixa(client, auth_headers, valor=100.0).json()
         caixa_id = aberto["id"]
@@ -65,7 +80,7 @@ class TestFecharCaixa:
         resp = client.post(
             f"/api/v1/caixa/{caixa_id}/fechar",
             json={"valor_fechamento": 130.0},
-            headers=auth_headers,
+            headers=admin_auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -73,6 +88,11 @@ class TestFecharCaixa:
         assert data["valor_fechamento"] == 130.0
         assert data["diferenca"] == pytest.approx(30.0)
         assert data["data_fechamento"] is not None
+        assert data["usuario_id"] == test_user.id
+        assert data["usuario_abertura_id"] == test_user.id
+        assert data["usuario_abertura_nome"] == test_user.full_name
+        assert data["usuario_fechamento_id"] == admin_user.id
+        assert data["usuario_fechamento_nome"] == admin_user.username
 
     def test_diferenca_negativa(self, client: TestClient, auth_headers: dict):
         aberto = _abrir_caixa(client, auth_headers, valor=200.0).json()
@@ -117,23 +137,48 @@ class TestFecharCaixa:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestConsultaCaixa:
-    def test_atual_retorna_caixa_aberto(self, client: TestClient, auth_headers: dict):
+    def test_atual_retorna_caixa_aberto(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_user,
+    ):
         _abrir_caixa(client, auth_headers, valor=75.0)
         resp = client.get("/api/v1/caixa/atual", headers=auth_headers)
         assert resp.status_code == 200
-        assert resp.json()["status"] == "aberto"
+        data = resp.json()
+        assert data["status"] == "aberto"
+        assert data["usuario_abertura_id"] == test_user.id
+        assert data["usuario_abertura_nome"] == test_user.full_name
 
     def test_atual_retorna_400_sem_caixa(self, client: TestClient, auth_headers: dict):
         resp = client.get("/api/v1/caixa/atual", headers=auth_headers)
         assert resp.status_code == 400
         assert resp.json()["code"] == "caixa_nao_aberto"
 
-    def test_historico_retorna_lista(self, client: TestClient, auth_headers: dict):
-        _abrir_caixa(client, auth_headers)
+    def test_historico_retorna_lista(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        admin_auth_headers: dict,
+        test_user,
+        admin_user,
+    ):
+        aberto = _abrir_caixa(client, auth_headers).json()
+        client.post(
+            f"/api/v1/caixa/{aberto['id']}/fechar",
+            json={"valor_fechamento": 100.0},
+            headers=admin_auth_headers,
+        )
         resp = client.get("/api/v1/caixa/historico", headers=auth_headers)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
-        assert len(resp.json()) >= 1
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        assert data[0]["usuario_abertura_id"] == test_user.id
+        assert data[0]["usuario_abertura_nome"] == test_user.full_name
+        assert data[0]["usuario_fechamento_id"] == admin_user.id
+        assert data[0]["usuario_fechamento_nome"] == admin_user.username
 
     def test_historico_paginacao(self, client: TestClient, auth_headers: dict):
         resp = client.get(

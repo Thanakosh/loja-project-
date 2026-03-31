@@ -1,8 +1,8 @@
-import { expect, type APIRequestContext } from '@playwright/test'
+import { expect, type APIRequestContext, type Page } from '@playwright/test'
 
 const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL ?? process.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
-interface SeededUser {
+export interface SeededUser {
   email: string
   password: string
   token: string
@@ -11,6 +11,16 @@ interface SeededUser {
 interface SeededProduct {
   id: number
   nome: string
+}
+
+export interface BackendProduct {
+  id: number
+  nome: string
+  fornecedor: string
+  preco_unitario: number
+  preco_liquido: number
+  estoque_atual: number
+  ativo: boolean
 }
 
 const buildUrl = (path: string) => `${BACKEND_BASE_URL}${path}`
@@ -42,6 +52,19 @@ export const createSeededUser = async (request: APIRequestContext, suffix: strin
     password,
     token: tokenData.access_token as string,
   }
+}
+
+export const loginThroughUi = async (
+  page: Page,
+  user: Pick<SeededUser, 'email' | 'password'>,
+): Promise<void> => {
+  await page.goto('/#/login')
+
+  await page.locator('#username').fill(user.email)
+  await page.locator('#password').fill(user.password)
+  await page.getByRole('button', { name: 'Entrar' }).click()
+
+  await expect(page).toHaveURL(/#\/dashboard$/)
 }
 
 export const createSeededProduct = async (
@@ -114,4 +137,31 @@ export const fetchProductStock = async (
 
   const stock = await stockResponse.json()
   return Number(stock.quantidade_atual)
+}
+
+export const fetchProductByName = async (
+  request: APIRequestContext,
+  token: string,
+  productName: string,
+): Promise<BackendProduct | null> => {
+  const productsResponse = await request.get(buildUrl('/api/v1/produtos/'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    params: {
+      incluir_inativos: true,
+      page: 1,
+      page_size: 20,
+      search: productName,
+    },
+  })
+  expect(productsResponse.ok()).toBeTruthy()
+
+  const products = await productsResponse.json() as { items?: BackendProduct[] }
+  const normalizedName = productName.trim().toLowerCase()
+
+  return (
+    products.items?.find((product) => product.nome.trim().toLowerCase() === normalizedName)
+    ?? null
+  )
 }

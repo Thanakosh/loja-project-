@@ -17,7 +17,7 @@ test('Login real e PDV finalizam venda com backend+frontend integrados', async (
   await expect(page).toHaveURL(/#\/dashboard$/)
 
   await page.goto('/#/pdv')
-  await expect(page.getByRole('heading', { name: 'PDV' })).toBeVisible()
+  await expect(page.getByLabel('Buscar produto')).toBeVisible({ timeout: 30_000 })
 
   await page.getByLabel('Buscar produto').fill(product.nome)
 

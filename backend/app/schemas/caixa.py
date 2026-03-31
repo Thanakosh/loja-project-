@@ -39,6 +39,10 @@ class CaixaDiarioRead(BaseModel):
     status: str
     observacao: Optional[str] = None
     usuario_id: int
+    usuario_abertura_id: int
+    usuario_abertura_nome: Optional[str] = None
+    usuario_fechamento_id: Optional[int] = None
+    usuario_fechamento_nome: Optional[str] = None
 
 
 class CaixaDiarioResumo(CaixaDiarioRead):
