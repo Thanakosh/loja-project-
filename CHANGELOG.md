@@ -49,6 +49,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Backend/Frontend: gestao de usuarios agora exige admin para cadastro/listagem, permite edicao completa, desativacao, exclusao e controle de abas liberadas por usuario comum.
 - Backend/Frontend: importacao de nota agora preenche automaticamente `codigo_barras` em produto existente quando o campo estiver vazio e preserva o cadastro atual com aviso visual em caso de conflito.
 - Backend/Frontend: PDV agora suporta pagamento misto, troco em dinheiro, composicao detalhada de pagamentos no resultado da venda e impacto liquido do dinheiro no caixa e no historico.
+- Backend/Frontend: contas a receber agora exibe documento e parcela de forma explicita, mostra nome do cliente, permite ver detalhes da divida e trata recebimentos parciais com saldo, resumo e status coerentes.
 - CI: workflow `backend-tests` agora inclui um job dedicado de validacao PostgreSQL real com `alembic upgrade head` em banco vazio e runner async ponta a ponta contra PostgreSQL 16.
 - CI: workflow `windows-desktop-build` agora inclui gate obrigatorio de validacao de instalacao limpa (TASK-019): o build falha automaticamente se o checklist de evidencias (`docs/evidencias/TASK-019_validacao-vm-limpa.md`) contiver itens incompletos.
 - CI: workflow `windows-desktop-build` agora publica instalador `.exe` e checksum SHA256 em artifacts dedicados para handoff de release desktop.

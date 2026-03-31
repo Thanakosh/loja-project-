@@ -20,6 +20,10 @@ class ContaReceberBase(BaseModel):
 
 class ContaReceberRead(ContaReceberBase):
     id: int
+    cliente_nome: Optional[str] = None
+    total_parcelas: Optional[int] = None
+    saldo_em_aberto: float = 0.0
+    situacao: str
     em_aberto: bool
 
     model_config = ConfigDict(from_attributes=True)
