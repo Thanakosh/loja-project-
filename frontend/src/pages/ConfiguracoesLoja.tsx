@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
+import { useEffect, useMemo, useState } from 'react'
 import type { AxiosError } from 'axios'
+import { Building2, MapPinned, ReceiptText } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 import { useAtualizarConfiguracaoLoja, useConfiguracaoLoja } from '../hooks/useConfiguracoes'
 import type { ConfiguracaoLojaPayload } from '../types/configuracoes'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const formInicial: ConfiguracaoLojaPayload = {
   cnpj: null,
@@ -25,7 +34,9 @@ const formInicial: ConfiguracaoLojaPayload = {
   cnae: null,
 }
 
-const formatarDocumento = (valor: string | null) => valor ?? ''
+const PORTE_NONE = '__none__'
+
+const asFieldValue = (valor: string | null) => valor ?? ''
 
 const ConfiguracoesLoja = () => {
   const { data, isLoading, isError } = useConfiguracaoLoja()
@@ -57,6 +68,10 @@ const ConfiguracoesLoja = () => {
     })
   }, [data])
 
+  const updateField = (field: keyof ConfiguracaoLojaPayload, value: string | null) => {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
   const preencherEnderecoPorCep = async () => {
     const cepNormalizado = (form.cep ?? '').replace(/\D/g, '')
     if (cepNormalizado.length !== 8) return
@@ -64,9 +79,7 @@ const ConfiguracoesLoja = () => {
     try {
       setCepLoading(true)
       const response = await fetch(`https://viacep.com.br/ws/${cepNormalizado}/json/`)
-      if (!response.ok) {
-        throw new Error('Falha ao consultar CEP')
-      }
+      if (!response.ok) throw new Error('Falha ao consultar CEP')
 
       const dataCep = (await response.json()) as {
         erro?: boolean
@@ -105,337 +118,311 @@ const ConfiguracoesLoja = () => {
     }
 
     atualizarMutation.mutate(payload, {
-      onSuccess: () => {
-        toast.success('Configuracoes da loja atualizadas.')
-      },
+      onSuccess: () => toast.success('Configuracoes da loja atualizadas.'),
       onError: (error: AxiosError<{ detail?: string }>) => {
         toast.error(error.response?.data?.detail ?? 'Nao foi possivel salvar as configuracoes da loja.')
       },
     })
   }
 
+  const pendingFields = useMemo(
+    () => [
+      'CRT e enquadramento fiscal detalhado',
+      'Parametros especificos para regras de entrada e saida',
+      'Dados complementares de emissao e ambiente fiscal',
+    ],
+    [],
+  )
+
+  const engineNotes = useMemo(
+    () => [
+      'Entrada usa CFOP, regime e outlier de preco por NCM.',
+      'Saida usa contexto da operacao e nao penaliza outlier de compra.',
+      'Quanto melhor o cadastro fiscal da loja, menor a chance de falso positivo.',
+    ],
+    [],
+  )
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configuracoes da Loja</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Esses parametros alimentam a engine fiscal e regras de precificacao do sistema.
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">Configuracoes da loja</h1>
+        <p className="text-sm text-muted-foreground">
+          Esses parametros alimentam a engine fiscal e as regras de precificacao do sistema.
         </p>
       </div>
 
-      <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100">
-        <p className="font-semibold">Impacto atual na engine</p>
-        <p className="mt-2">
-          Regime tributario, porte, inscricoes fiscais e UF ajudam a dar contexto para a leitura de notas de entrada e saida.
-        </p>
-      </section>
+      <Alert>
+        <ReceiptText className="size-4" />
+        <AlertTitle>Impacto atual na engine</AlertTitle>
+        <AlertDescription>
+          Regime tributario, porte, inscricoes fiscais e UF ajudam a contextualizar leituras de notas de entrada e saida.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          {isLoading ? (
-            <div className="py-10 text-center text-gray-500 dark:text-gray-400">Carregando configuracoes...</div>
-          ) : isError ? (
-            <div className="py-10 text-center text-red-600 dark:text-red-400">Erro ao carregar configuracoes da loja.</div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div>
-                  <label htmlFor="cnpj-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    CNPJ
-                  </label>
-                  <input
-                    id="cnpj-loja"
-                    type="text"
-                    value={formatarDocumento(form.cnpj)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, cnpj: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="00.000.000/0000-00"
-                  />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <Card>
+            <CardHeader className="gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-1">
+                  <CardTitle>Cadastro fiscal</CardTitle>
+                  <CardDescription>Base juridica, regime tributario e inscricoes da empresa.</CardDescription>
                 </div>
-
-                <div>
-                  <label htmlFor="razao-social" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Razao social
-                  </label>
-                  <input
-                    id="razao-social"
-                    type="text"
-                    value={formatarDocumento(form.razao_social)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, razao_social: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="nome-fantasia" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Nome fantasia
-                  </label>
-                  <input
-                    id="nome-fantasia"
-                    type="text"
-                    value={formatarDocumento(form.nome_fantasia)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, nome_fantasia: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="regime-tributario" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Regime tributario
-                  </label>
-                  <select
-                    id="regime-tributario"
-                    value={form.regime_tributario}
-                    onChange={(event) =>
-                      setForm((estadoAtual) => ({
-                        ...estadoAtual,
-                        regime_tributario: event.target.value as ConfiguracaoLojaPayload['regime_tributario'],
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="simples_nacional">Simples Nacional</option>
-                    <option value="regime_normal">Regime Normal</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="cnae-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    CNAE
-                  </label>
-                  <input
-                    id="cnae-loja"
-                    type="text"
-                    value={formatarDocumento(form.cnae)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, cnae: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="0000000"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="porte-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Porte
-                  </label>
-                  <select
-                    id="porte-loja"
-                    value={form.porte ?? ''}
-                    onChange={(event) =>
-                      setForm((estadoAtual) => ({
-                        ...estadoAtual,
-                        porte: event.target.value === '' ? null : (event.target.value as ConfiguracaoLojaPayload['porte']),
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Selecione</option>
-                    <option value="ME">ME</option>
-                    <option value="EPP">EPP</option>
-                    <option value="MEI">MEI</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="inscricao-estadual" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Inscricao estadual
-                  </label>
-                  <input
-                    id="inscricao-estadual"
-                    type="text"
-                    value={formatarDocumento(form.inscricao_estadual)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, inscricao_estadual: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="inscricao-municipal" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Inscricao municipal
-                  </label>
-                  <input
-                    id="inscricao-municipal"
-                    type="text"
-                    value={formatarDocumento(form.inscricao_municipal)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, inscricao_municipal: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="email-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    E-mail
-                  </label>
-                  <input
-                    id="email-loja"
-                    type="email"
-                    value={formatarDocumento(form.email)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, email: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="fone-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Fone
-                  </label>
-                  <input
-                    id="fone-loja"
-                    type="text"
-                    value={formatarDocumento(form.fone)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, fone: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="(00) 0000-0000"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="cep-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    CEP
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="cep-loja"
-                      type="text"
-                      value={formatarDocumento(form.cep)}
-                      onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, cep: event.target.value }))}
-                      onBlur={() => void preencherEnderecoPorCep()}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="00000-000"
+                {data && <Badge variant="outline">Atualizado em {new Date(data.updated_at).toLocaleString('pt-BR')}</Badge>}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p className="py-8 text-center text-muted-foreground">Carregando configuracoes...</p>
+              ) : isError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Erro ao carregar configuracoes</AlertTitle>
+                  <AlertDescription>Tente novamente em alguns instantes.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="config-cnpj">CNPJ</Label>
+                    <Input
+                      id="config-cnpj"
+                      value={asFieldValue(form.cnpj)}
+                      onChange={(event) => updateField('cnpj', event.target.value)}
+                      placeholder="00.000.000/0000-00"
                     />
-                    <button
-                      type="button"
-                      onClick={() => void preencherEnderecoPorCep()}
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-razao-social">Razao social</Label>
+                    <Input
+                      id="config-razao-social"
+                      value={asFieldValue(form.razao_social)}
+                      onChange={(event) => updateField('razao_social', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-nome-fantasia">Nome fantasia</Label>
+                    <Input
+                      id="config-nome-fantasia"
+                      value={asFieldValue(form.nome_fantasia)}
+                      onChange={(event) => updateField('nome_fantasia', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-regime">Regime tributario</Label>
+                    <Select
+                      value={form.regime_tributario}
+                      onValueChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          regime_tributario: value as ConfiguracaoLojaPayload['regime_tributario'],
+                        }))
+                      }
                     >
-                      {cepLoading ? 'Buscando...' : 'Buscar'}
-                    </button>
+                      <SelectTrigger id="config-regime" className="w-full">
+                        <SelectValue placeholder="Selecione o regime" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
+                        <SelectItem value="regime_normal">Regime Normal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-cnae">CNAE</Label>
+                    <Input
+                      id="config-cnae"
+                      value={asFieldValue(form.cnae)}
+                      onChange={(event) => updateField('cnae', event.target.value)}
+                      placeholder="0000000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-porte">Porte</Label>
+                    <Select
+                      value={form.porte ?? PORTE_NONE}
+                      onValueChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          porte: value === PORTE_NONE ? null : (value as ConfiguracaoLojaPayload['porte']),
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="config-porte" className="w-full">
+                        <SelectValue placeholder="Selecione o porte" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={PORTE_NONE}>Nao informado</SelectItem>
+                        <SelectItem value="ME">ME</SelectItem>
+                        <SelectItem value="EPP">EPP</SelectItem>
+                        <SelectItem value="MEI">MEI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-ie">Inscricao estadual</Label>
+                    <Input
+                      id="config-ie"
+                      value={asFieldValue(form.inscricao_estadual)}
+                      onChange={(event) => updateField('inscricao_estadual', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-im">Inscricao municipal</Label>
+                    <Input
+                      id="config-im"
+                      value={asFieldValue(form.inscricao_municipal)}
+                      onChange={(event) => updateField('inscricao_municipal', event.target.value)}
+                    />
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div>
-                  <label htmlFor="logradouro-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Logradouro
-                  </label>
-                  <input
-                    id="logradouro-loja"
-                    type="text"
-                    value={formatarDocumento(form.logradouro)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, logradouro: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle>Contato e endereco</CardTitle>
+              <CardDescription>Informacoes comerciais e dados de localizacao utilizados em cadastros e documentos.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p className="py-8 text-center text-muted-foreground">Carregando endereco...</p>
+              ) : isError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Erro ao carregar endereco</AlertTitle>
+                  <AlertDescription>Os dados nao puderam ser exibidos.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="config-email">E-mail</Label>
+                    <Input
+                      id="config-email"
+                      type="email"
+                      value={asFieldValue(form.email)}
+                      onChange={(event) => updateField('email', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-fone">Fone</Label>
+                    <Input
+                      id="config-fone"
+                      value={asFieldValue(form.fone)}
+                      onChange={(event) => updateField('fone', event.target.value)}
+                      placeholder="(00) 0000-0000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-cep">CEP</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="config-cep"
+                        value={asFieldValue(form.cep)}
+                        onChange={(event) => updateField('cep', event.target.value)}
+                        onBlur={() => void preencherEnderecoPorCep()}
+                        placeholder="00000-000"
+                      />
+                      <Button type="button" variant="outline" onClick={() => void preencherEnderecoPorCep()}>
+                        {cepLoading ? 'Buscando...' : 'Buscar'}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-logradouro">Logradouro</Label>
+                    <Input
+                      id="config-logradouro"
+                      value={asFieldValue(form.logradouro)}
+                      onChange={(event) => updateField('logradouro', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-numero">Numero</Label>
+                    <Input
+                      id="config-numero"
+                      value={asFieldValue(form.numero)}
+                      onChange={(event) => updateField('numero', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-bairro">Bairro</Label>
+                    <Input
+                      id="config-bairro"
+                      value={asFieldValue(form.bairro)}
+                      onChange={(event) => updateField('bairro', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-municipio">Municipio</Label>
+                    <Input
+                      id="config-municipio"
+                      value={asFieldValue(form.municipio)}
+                      onChange={(event) => updateField('municipio', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-uf">UF</Label>
+                    <Input
+                      id="config-uf"
+                      maxLength={2}
+                      value={form.uf}
+                      onChange={(event) => setForm((current) => ({ ...current, uf: event.target.value.toUpperCase() }))}
+                      placeholder="SP"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="config-pais">Pais</Label>
+                    <Input
+                      id="config-pais"
+                      value={asFieldValue(form.pais)}
+                      onChange={(event) => updateField('pais', event.target.value)}
+                      placeholder="Brasil"
+                    />
+                  </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div>
-                  <label htmlFor="numero-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Numero
-                  </label>
-                  <input
-                    id="numero-loja"
-                    type="text"
-                    value={formatarDocumento(form.numero)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, numero: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isLoading || isError || atualizarMutation.isPending}>
+              {atualizarMutation.isPending ? 'Salvando...' : 'Salvar configuracoes'}
+            </Button>
+          </div>
+        </form>
 
-                <div>
-                  <label htmlFor="bairro-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Bairro
-                  </label>
-                  <input
-                    id="bairro-loja"
-                    type="text"
-                    value={formatarDocumento(form.bairro)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, bairro: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
+        <div className="space-y-4">
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Building2 className="size-4" />
+                Dados ainda pendentes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {pendingFields.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
 
-                <div>
-                  <label htmlFor="municipio-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Municipio
-                  </label>
-                  <input
-                    id="municipio-loja"
-                    type="text"
-                    value={formatarDocumento(form.municipio)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, municipio: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="uf-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    UF da loja
-                  </label>
-                  <input
-                    id="uf-loja"
-                    type="text"
-                    inputMode="text"
-                    maxLength={2}
-                    value={form.uf}
-                    onChange={(event) =>
-                      setForm((estadoAtual) => ({
-                        ...estadoAtual,
-                        uf: event.target.value.toUpperCase(),
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="SP"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="pais-loja" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Pais
-                  </label>
-                  <input
-                    id="pais-loja"
-                    type="text"
-                    value={formatarDocumento(form.pais)}
-                    onChange={(event) => setForm((estadoAtual) => ({ ...estadoAtual, pais: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="Brasil"
-                  />
-                </div>
-
-              </div>
-
-              <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {data ? `Ultima atualizacao: ${new Date(data.updated_at).toLocaleString('pt-BR')}` : 'Sem dados carregados.'}
-                </div>
-                <button
-                  type="submit"
-                  disabled={atualizarMutation.isPending}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {atualizarMutation.isPending ? 'Salvando...' : 'Salvar configuracoes'}
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
-
-        <aside className="space-y-4">
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/30">
-            <h2 className="text-base font-semibold text-amber-900 dark:text-amber-100">Dados ainda pendentes</h2>
-            <ul className="mt-3 space-y-2 text-sm text-amber-900 dark:text-amber-100">
-              <li>CRT e enquadramento fiscal detalhado</li>
-              <li>Parametros especificos para regras de entrada e saida</li>
-              <li>Dados complementares de emissao e ambiente fiscal</li>
-            </ul>
-          </section>
-
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Leitura atual da engine</h2>
-            <ul className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-              <li>Entrada usa CFOP, regime e outlier de preco por NCM.</li>
-              <li>Saida usa contexto da operacao e nao penaliza outlier de compra.</li>
-              <li>Quanto melhor o cadastro fiscal da loja, menor a chance de falso positivo.</li>
-            </ul>
-          </section>
-        </aside>
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <MapPinned className="size-4" />
+                Leitura atual da engine
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {engineNotes.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

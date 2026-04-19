@@ -1,404 +1,476 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Ban, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
+
 import api from '../services/api'
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
 interface VendaItem {
-    id: number
-    nome_produto: string
-    quantidade: number
-    preco_unitario: number
-    preco_total: number
-    unidade?: string
-    desconto?: number
+  id: number
+  nome_produto: string
+  quantidade: number
+  preco_unitario: number
+  preco_total: number
+  unidade?: string
+  desconto?: number
 }
 
 interface VendaPagamento {
-    forma_pagamento: number
-    forma_pagamento_label?: string | null
-    valor: number
-    troco?: number
+  forma_pagamento: number
+  forma_pagamento_label?: string | null
+  valor: number
+  troco?: number
 }
 
 interface Venda {
-    id: number
-    numero_legado: number
-    data: string
-    total: number
-    desconto: number
-    forma_pagamento?: number | null
-    forma_pagamento_label?: string | null
-    troco?: number
-    pagamentos?: VendaPagamento[]
-    cancelada: boolean
-    observacao?: string
-    cliente_id?: number
-    itens: VendaItem[]
+  id: number
+  numero_legado: number
+  data: string
+  total: number
+  desconto: number
+  forma_pagamento?: number | null
+  forma_pagamento_label?: string | null
+  troco?: number
+  pagamentos?: VendaPagamento[]
+  cancelada: boolean
+  observacao?: string
+  cliente_id?: number
+  itens: VendaItem[]
 }
 
 interface VendasPaginadas {
-    items: Venda[]
-    total: number
-    page: number
-    page_size: number
-    pages: number
+  items: Venda[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
 }
 
 interface VendasParams {
-    page: number
-    page_size: number
-    start_date?: string
-    end_date?: string
+  page: number
+  page_size: number
+  start_date?: string
+  end_date?: string
 }
 
 const PAYMENT_LABELS: Record<number, string> = {
-    1: 'Dinheiro',
-    2: 'Débito',
-    3: 'Crédito',
-    4: 'PIX',
-    5: 'Boleto',
-    6: 'A Prazo',
-}
-
-const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-
-const formatVendaPagamentos = (venda: Venda) => {
-    if (venda.pagamentos && venda.pagamentos.length > 0) {
-        return venda.pagamentos
-            .map((pagamento) => `${pagamento.forma_pagamento_label ?? PAYMENT_LABELS[pagamento.forma_pagamento] ?? 'Nao informado'} (${currencyFormatter.format(pagamento.valor)})`)
-            .join(' + ')
-    }
-    return venda.forma_pagamento_label ?? PAYMENT_LABELS[venda.forma_pagamento ?? 0] ?? 'Nao informado'
+  1: 'Dinheiro',
+  2: 'Debito',
+  3: 'Credito',
+  4: 'PIX',
+  5: 'Boleto',
+  6: 'A prazo',
 }
 
 const PAGE_SIZE = 50
+const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+const formatVendaPagamentos = (venda: Venda) => {
+  if (venda.pagamentos && venda.pagamentos.length > 0) {
+    return venda.pagamentos
+      .map(
+        (pagamento) =>
+          `${pagamento.forma_pagamento_label ?? PAYMENT_LABELS[pagamento.forma_pagamento] ?? 'Nao informado'} (${currencyFormatter.format(pagamento.valor)})`,
+      )
+      .join(' + ')
+  }
+  return venda.forma_pagamento_label ?? PAYMENT_LABELS[venda.forma_pagamento ?? 0] ?? 'Nao informado'
+}
 
 const Vendas = () => {
-    const [vendas, setVendas] = useState<Venda[]>([])
-    const [loading, setLoading] = useState(true)
-    const [startDate, setStartDate] = useState('')
-    const [endDate, setEndDate] = useState('')
-    const [appliedStartDate, setAppliedStartDate] = useState('')
-    const [appliedEndDate, setAppliedEndDate] = useState('')
-    const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null)
-    const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
-    const [modalLoading, setModalLoading] = useState(false)
-    const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(1)
+  const [vendas, setVendas] = useState<Venda[]>([])
+  const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [appliedStartDate, setAppliedStartDate] = useState('')
+  const [appliedEndDate, setAppliedEndDate] = useState('')
+  const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null)
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
+  const [modalLoading, setModalLoading] = useState(false)
+  const [detailError, setDetailError] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-    const fetchVendas = useCallback(async (currentPage: number, currentStartDate: string, currentEndDate: string) => {
-        setLoading(true)
-        try {
-            const params: VendasParams = { page: currentPage, page_size: PAGE_SIZE }
-            if (currentStartDate) params.start_date = currentStartDate
-            if (currentEndDate) params.end_date = currentEndDate
+  const fetchVendas = useCallback(async (currentPage: number, currentStartDate: string, currentEndDate: string) => {
+    setLoading(true)
+    setListError('')
+    try {
+      const params: VendasParams = { page: currentPage, page_size: PAGE_SIZE }
+      if (currentStartDate) params.start_date = currentStartDate
+      if (currentEndDate) params.end_date = currentEndDate
 
-            const response = await api.get('/vendas/', { params })
-            const data = response.data as VendasPaginadas
-            setVendas(data.items ?? [])
-            setTotalPages(data.pages ?? 1)
-        } catch (error) {
-            console.error('Erro ao buscar vendas', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    useEffect(() => {
-        fetchVendas(page, appliedStartDate, appliedEndDate)
-    }, [appliedEndDate, appliedStartDate, fetchVendas, page])
-
-    const handleFilter = (e: React.FormEvent) => {
-        e.preventDefault()
-        setAppliedStartDate(startDate)
-        setAppliedEndDate(endDate)
-        setPage(1)
+      const response = await api.get('/vendas/', { params })
+      const data = response.data as VendasPaginadas
+      setVendas(data.items ?? [])
+      setTotalPages(data.pages ?? 1)
+    } catch (error) {
+      console.error('Erro ao buscar vendas', error)
+      setListError('Nao foi possivel carregar o historico de vendas.')
+    } finally {
+      setLoading(false)
     }
+  }, [])
 
-    const handleOpenDetails = async (vendaId: number) => {
-        setModalLoading(true)
-        try {
-            const response = await api.get(`/vendas/${vendaId}`)
-            setSelectedVenda(response.data)
-        } catch (error) {
-            console.error('Erro ao carregar detalhes da venda', error)
-        } finally {
-            setModalLoading(false)
-        }
+  useEffect(() => {
+    void fetchVendas(page, appliedStartDate, appliedEndDate)
+  }, [appliedEndDate, appliedStartDate, fetchVendas, page])
+
+  const resumo = useMemo(
+    () => ({
+      total: vendas.length,
+      ativas: vendas.filter((venda) => !venda.cancelada).length,
+      canceladas: vendas.filter((venda) => venda.cancelada).length,
+      faturamento: vendas.filter((venda) => !venda.cancelada).reduce((acc, venda) => acc + venda.total, 0),
+    }),
+    [vendas],
+  )
+
+  const handleFilter = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedStartDate(startDate)
+    setAppliedEndDate(endDate)
+    setPage(1)
+  }
+
+  const handleOpenDetails = async (vendaId: number) => {
+    setModalLoading(true)
+    setDetailError('')
+    setSelectedVenda(null)
+    try {
+      const response = await api.get(`/vendas/${vendaId}`)
+      setSelectedVenda(response.data)
+    } catch (error) {
+      console.error('Erro ao carregar detalhes da venda', error)
+      setDetailError('Nao foi possivel carregar os detalhes da venda.')
+    } finally {
+      setModalLoading(false)
     }
+  }
 
-    const handleRequestCancelVenda = () => {
-        if (!selectedVenda || selectedVenda.cancelada) {
-            return
-        }
+  const closeDetails = () => {
+    setSelectedVenda(null)
+    setDetailError('')
+    setModalLoading(false)
+    setIsCancelConfirmOpen(false)
+  }
 
-        setIsCancelConfirmOpen(true)
+  const handleCancelVenda = async () => {
+    if (!selectedVenda || selectedVenda.cancelada) return
+
+    try {
+      await api.post(`/pdv/venda/${selectedVenda.id}/cancelar`)
+      setIsCancelConfirmOpen(false)
+      closeDetails()
+      await fetchVendas(page, appliedStartDate, appliedEndDate)
+      toast.success('Venda cancelada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao cancelar venda', error)
+      toast.error('Nao foi possivel cancelar a venda. Tente novamente.')
     }
+  }
 
-    const handleCancelVenda = async () => {
-        if (!selectedVenda || selectedVenda.cancelada) {
-            return
-        }
+  return (
+    <div className="space-y-6">
+      <AlertDialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar venda</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar a venda #{selectedVenda?.numero_legado ?? selectedVenda?.id}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleCancelVenda}>
+              Confirmar cancelamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        try {
-            await api.post(`/pdv/venda/${selectedVenda.id}/cancelar`)
-            setIsCancelConfirmOpen(false)
-            setSelectedVenda(null)
-            fetchVendas(page, appliedStartDate, appliedEndDate)
-            toast.success('Venda cancelada com sucesso!')
-        } catch (error) {
-            console.error('Erro ao cancelar venda', error)
-            toast.error('Não foi possível cancelar a venda. Tente novamente.')
-        }
-    }
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">Historico de vendas</h1>
+        <p className="text-sm text-muted-foreground">Consulte vendas concluidas, pagamentos e cancelamentos realizados no PDV.</p>
+      </div>
 
-    return (
-        <div className="container mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Histórico de Vendas</h1>
-                <form onSubmit={handleFilter} className="flex gap-2 items-end">
-                    <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400">De</label>
-                        <input
-                            type="date"
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400">Até</label>
-                        <input
-                            type="date"
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                        Filtrar
-                    </button>
-                </form>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Vendas na pagina</CardDescription>
+            <CardTitle>{resumo.total}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Ativas</CardDescription>
+            <CardTitle>{resumo.ativas}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Canceladas</CardDescription>
+            <CardTitle>{resumo.canceladas}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Faturamento da pagina</CardDescription>
+            <CardTitle>{currencyFormatter.format(resumo.faturamento)}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Filtro por periodo</CardTitle>
+              <CardDescription>Use as datas para revisar vendas e cancelamentos de um intervalo especifico.</CardDescription>
             </div>
+            <Badge variant="outline">Pagina {page} de {totalPages}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleFilter} className="grid gap-3 lg:grid-cols-[minmax(0,220px)_minmax(0,220px)_auto]">
+            <div className="space-y-2">
+              <Label htmlFor="vendas-start-date">De</Label>
+              <Input id="vendas-start-date" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendas-end-date">Ate</Label>
+              <Input id="vendas-end-date" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            </div>
+            <div className="flex items-end">
+              <Button type="submit" variant="outline">
+                Filtrar
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Itens</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? (
-                            <tr>
-                                <td colSpan={7} className="px-6 py-4 text-center text-gray-800 dark:text-gray-100">Carregando...</td>
-                            </tr>
-                        ) : vendas.length === 0 ? (
-                            <tr>
-                                <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda encontrada no período.</td>
-                            </tr>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Lista de vendas</CardTitle>
+              <CardDescription>Visao resumida das vendas registradas no periodo filtrado.</CardDescription>
+            </div>
+            {(appliedStartDate || appliedEndDate) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {appliedStartDate && <Badge variant="secondary">Inicio: {appliedStartDate}</Badge>}
+                {appliedEndDate && <Badge variant="secondary">Fim: {appliedEndDate}</Badge>}
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Numero</TableHead>
+                <TableHead>Pagamento</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Itens</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Carregando vendas...</TableCell>
+                </TableRow>
+              ) : listError ? (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <Alert variant="destructive">
+                      <AlertTitle>Erro ao carregar vendas</AlertTitle>
+                      <AlertDescription>{listError}</AlertDescription>
+                    </Alert>
+                  </TableCell>
+                </TableRow>
+              ) : vendas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Nenhuma venda encontrada no periodo.</TableCell>
+                </TableRow>
+              ) : (
+                vendas.map((venda) => (
+                  <TableRow key={venda.id}>
+                    <TableCell className="text-muted-foreground">{new Date(venda.data).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className="font-medium">{venda.numero_legado}</TableCell>
+                    <TableCell className="max-w-sm text-muted-foreground">{formatVendaPagamentos(venda)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={venda.cancelada ? 'outline' : 'secondary'}
+                        className={venda.cancelada ? 'border-destructive/40 text-destructive' : 'bg-primary/10 text-primary'}
+                      >
+                        {venda.cancelada ? 'Cancelada' : 'Ativa'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={venda.cancelada ? 'line-through text-muted-foreground' : 'font-medium text-primary'}>
+                      {currencyFormatter.format(venda.total)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{venda.itens.length} itens</TableCell>
+                    <TableCell className="text-right">
+                      <Button type="button" variant="outline" size="sm" onClick={() => void handleOpenDetails(venda.id)}>
+                        <FileText className="size-3.5" />
+                        Ver detalhes
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
+          <Separator />
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Exibindo {vendas.length} registro(s) na pagina {page} de {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={loading || page <= 1}>
+                Anterior
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((prev) => prev + 1)} disabled={loading || page >= totalPages}>
+                Proxima
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={modalLoading || selectedVenda !== null || Boolean(detailError)} onOpenChange={(open) => !open && closeDetails()}>
+        <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>
+              {selectedVenda
+                ? `Detalhes da venda #${selectedVenda.numero_legado || selectedVenda.id}`
+                : 'Detalhes da venda'}
+            </DialogTitle>
+            <DialogDescription>Resumo financeiro, pagamentos e itens da venda selecionada.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 overflow-y-auto px-6 py-5">
+            {modalLoading ? (
+              <p className="py-10 text-center text-muted-foreground">Carregando detalhes...</p>
+            ) : detailError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Falha ao carregar detalhes</AlertTitle>
+                <AlertDescription>{detailError}</AlertDescription>
+              </Alert>
+            ) : selectedVenda ? (
+              <>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Data da venda</CardDescription>
+                      <CardTitle>{new Date(selectedVenda.data).toLocaleString('pt-BR')}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Total</CardDescription>
+                      <CardTitle>{currencyFormatter.format(selectedVenda.total)}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Pagamento</CardDescription>
+                      <CardTitle>{formatVendaPagamentos(selectedVenda)}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Status</CardDescription>
+                      <CardTitle>{selectedVenda.cancelada ? 'Cancelada' : 'Ativa'}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                {selectedVenda.observacao && (
+                  <Alert>
+                    <AlertTitle>Observacao</AlertTitle>
+                    <AlertDescription>{selectedVenda.observacao}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Itens da venda</CardTitle>
+                    <CardDescription>Produtos registrados na venda selecionada.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-center">Qtd</TableHead>
+                          <TableHead className="text-right">Preco unit.</TableHead>
+                          <TableHead className="text-right">Subtotal</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedVenda.itens.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">Nenhum item registrado nesta venda.</TableCell>
+                          </TableRow>
                         ) : (
-                            vendas.map((venda) => (
-                                <tr key={venda.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{new Date(venda.data).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{venda.numero_legado}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatVendaPagamentos(venda)}</td>
-                                    <td className="px-6 py-4 text-sm">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${venda.cancelada ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                                            {venda.cancelada ? 'Cancelada' : 'Ativa'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(venda.total)}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">{venda.itens.length} itens</td>
-                                    <td
-                                        className="px-6 py-4 text-sm text-blue-600 cursor-pointer hover:underline"
-                                        onClick={() => handleOpenDetails(venda.id)}
-                                    >
-                                        Ver Detalhes
-                                    </td>
-                                </tr>
-                            ))
+                          selectedVenda.itens.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium">{item.nome_produto}</TableCell>
+                              <TableCell className="text-center text-muted-foreground">{item.quantidade}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{currencyFormatter.format(item.preco_unitario)}</TableCell>
+                              <TableCell className="text-right font-medium">{currencyFormatter.format(item.preco_total)}</TableCell>
+                            </TableRow>
+                          ))
                         )}
-                    </tbody>
-                </table>
-            </div>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            ) : null}
+          </div>
 
-            <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Exibindo {vendas.length} registro(s) na página {page} de {totalPages}
-                </p>
-                <div className="flex gap-2">
-                    <button
-                        type="button"
-                        className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 disabled:opacity-50"
-                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={loading || page <= 1}
-                    >
-                        Anterior
-                    </button>
-                    <button
-                        type="button"
-                        className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 disabled:opacity-50"
-                        onClick={() => setPage((prev) => prev + 1)}
-                        disabled={loading || page >= totalPages}
-                    >
-                        Próxima
-                    </button>
-                </div>
-            </div>
-
-            {/* Modal de Detalhes da Venda */}
-            {selectedVenda && (
-                <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6 border-b pb-3">
-                            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                                Detalhes da Venda {selectedVenda.numero_legado ? `#${selectedVenda.numero_legado}` : `(ID: ${selectedVenda.id})`}
-                            </h2>
-                            <button onClick={() => { setSelectedVenda(null); setIsCancelConfirmOpen(false) }} className="text-gray-500 hover:text-gray-700 dark:text-gray-300">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="mb-6 grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Data da Venda</p>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">{new Date(selectedVenda.data).toLocaleString()}</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</p>
-                                <p className="font-medium text-emerald-600 dark:text-emerald-400 text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedVenda.total)}</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Forma de Pagamento</p>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">{formatVendaPagamentos(selectedVenda)}</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
-                                <p className={`font-medium ${selectedVenda.cancelada ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                    {selectedVenda.cancelada ? 'Cancelada' : 'Ativa'}
-                                </p>
-                            </div>
-                            {(selectedVenda.troco ?? 0) > 0 && (
-                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Troco</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                        {currencyFormatter.format(selectedVenda.troco ?? 0)}
-                                    </p>
-                                </div>
-                            )}
-                            {selectedVenda.desconto > 0 && (
-                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Desconto</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedVenda.desconto)}
-                                    </p>
-                                </div>
-                            )}
-                            {selectedVenda.observacao && (
-                                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded md:col-span-2">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Observação</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">{selectedVenda.observacao}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">Itens da Venda</h3>
-                        <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Produto</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Qtd</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Preço Un.</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {selectedVenda.itens && selectedVenda.itens.length > 0 ? (
-                                        selectedVenda.itens.map((item, idx) => (
-                                            <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{item.nome_produto}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">{item.quantidade}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario)}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_total)}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={4} className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">Nenhum item registrado nesta venda.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="mt-6 flex justify-between">
-                            {!selectedVenda.cancelada && (
-                                <button
-                                    onClick={handleRequestCancelVenda}
-                                    className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition"
-                                >
-                                    Cancelar Venda
-                                </button>
-                            )}
-                            <button
-                                onClick={() => { setSelectedVenda(null); setIsCancelConfirmOpen(false) }}
-                                className="px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                            >
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
-                </div>
+          <DialogFooter>
+            {selectedVenda && !selectedVenda.cancelada && (
+              <Button type="button" variant="destructive" onClick={() => setIsCancelConfirmOpen(true)}>
+                <Ban className="size-4" />
+                Cancelar venda
+              </Button>
             )}
-
-            {isCancelConfirmOpen && selectedVenda && (
-                <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-                    <div className="w-full max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-2xl">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirmar cancelamento</h3>
-                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                            Tem certeza que deseja cancelar a venda #{selectedVenda.numero_legado}?
-                        </p>
-                        <div className="mt-5 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setIsCancelConfirmOpen(false)}
-                                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                            >
-                                Voltar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleCancelVenda}
-                                className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition"
-                            >
-                                Confirmar cancelamento
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {modalLoading && (
-                <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center">
-                    <div className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">Carregando detalhes...</div>
-                </div>
-            )}
-        </div>
-    )
+            <Button type="button" variant="outline" onClick={closeDetails}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
 }
 
 export default Vendas

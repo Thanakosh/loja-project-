@@ -1,5 +1,16 @@
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+
 import type {
   DuplicateResolution,
   DuplicateResolutionMode,
@@ -146,21 +157,25 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-5xl rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
-        <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-6 py-4 flex items-center gap-3">
-          <span className="text-2xl">🤖</span>
-          <div>
-            <h2 className="text-base font-semibold text-amber-900 dark:text-amber-100">
-              IA detectou nomes similares
-            </h2>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-              Escolha como cada item deve ser importado para evitar cadastros duplicados.
-            </p>
+    <Dialog open onOpenChange={(open) => !open && onCancelar()}>
+      <DialogContent className="max-w-5xl gap-0 overflow-hidden p-0" showCloseButton={false}>
+        <DialogHeader className="gap-3 border-b border-amber-200 bg-amber-50 px-6 py-4 dark:border-amber-700 dark:bg-amber-900/30">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-800 dark:bg-amber-800/60 dark:text-amber-100">
+              IA
+            </div>
+            <div className="space-y-1">
+              <DialogTitle className="text-amber-900 dark:text-amber-100">
+                IA detectou nomes similares
+              </DialogTitle>
+              <DialogDescription className="text-xs text-amber-700 dark:text-amber-300">
+                Escolha como cada item deve ser importado para evitar cadastros duplicados.
+              </DialogDescription>
+            </div>
           </div>
-        </div>
+        </DialogHeader>
 
-        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto space-y-4">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-4">
           {itens.map((item) => {
             const choice = choices[item.key]
             const resolvedPreview =
@@ -175,45 +190,47 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                 key={item.key}
                 className={`rounded-2xl border p-4 ${
                   item.nivel === 'duplicata'
-                    ? 'border-red-200 dark:border-red-700 bg-red-50/70 dark:bg-red-900/20'
-                    : 'border-amber-200 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-900/20'
+                    ? 'border-red-200 bg-red-50/70 dark:border-red-700 dark:bg-red-900/20'
+                    : 'border-amber-200 bg-amber-50/70 dark:border-amber-700 dark:bg-amber-900/20'
                 }`}
               >
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-3 min-w-0">
+                    <div className="min-w-0 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
                             item.nivel === 'duplicata'
-                              ? 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200'
-                              : 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200'
                           }`}
                         >
                           {item.nivel === 'duplicata' ? 'Possivel duplicata' : 'Nome parecido'}
                           {' · '}
                           {Math.round(item.similaridade * 100)}% similar
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => applyToSameMatch(item)}
-                          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white/90 dark:bg-gray-800 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50"
+                          className="h-7 bg-white/90 text-xs dark:bg-gray-800"
                         >
                           Aplicar a todos com mesmo match
-                        </button>
+                        </Button>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-gray-800/70 p-3">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Nome importado</p>
+                        <div className="rounded-xl border border-blue-200 bg-white/70 p-3 dark:border-blue-800 dark:bg-gray-800/70">
+                          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Nome importado</p>
                           <HighlightedName
                             value={item.nomeImportando}
                             reference={item.nomeExistente}
                             tone="importado"
                           />
                         </div>
-                        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white/70 dark:bg-gray-800/70 p-3">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Nome existente</p>
+                        <div className="rounded-xl border border-amber-200 bg-white/70 p-3 dark:border-amber-800 dark:bg-gray-800/70">
+                          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Nome existente</p>
                           <HighlightedName
                             value={item.nomeExistente}
                             reference={item.nomeImportando}
@@ -223,11 +240,11 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-3 lg:w-64">
+                    <div className="rounded-xl border border-gray-200 bg-white/80 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/40 lg:w-64">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Nome final
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 break-words">
+                      <p className="mt-2 break-words text-sm font-semibold text-gray-800 dark:text-gray-100">
                         {resolvedPreview || 'Defina um nome'}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -241,7 +258,7 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                   </div>
 
                   <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr]">
-                    <label className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 p-3 text-sm text-gray-700 dark:text-gray-200">
+                    <label className="rounded-xl border border-gray-200 bg-white/80 p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
                       <div className="flex items-start gap-2">
                         <input
                           type="radio"
@@ -259,7 +276,7 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                       </div>
                     </label>
 
-                    <label className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 p-3 text-sm text-gray-700 dark:text-gray-200">
+                    <label className="rounded-xl border border-gray-200 bg-white/80 p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
                       <div className="flex items-start gap-2">
                         <input
                           type="radio"
@@ -277,7 +294,7 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                       </div>
                     </label>
 
-                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 p-3 text-sm text-gray-700 dark:text-gray-200">
+                    <div className="rounded-xl border border-gray-200 bg-white/80 p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
                       <label className="flex items-start gap-2">
                         <input
                           type="radio"
@@ -291,15 +308,13 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Define manualmente o nome final deste item antes de enviar.
                           </p>
-                          <input
+                          <Input
                             type="text"
                             value={choice.customNome}
-                            onChange={(event) =>
-                              updateChoice(item.key, 'customNome', event.target.value)
-                            }
+                            onChange={(event) => updateChoice(item.key, 'customNome', event.target.value)}
                             onFocus={() => updateChoice(item.key, 'mode', 'personalizado')}
                             placeholder="Digite o nome final"
-                            className="mt-3 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="mt-3 bg-white dark:bg-gray-800"
                           />
                         </div>
                       </label>
@@ -311,31 +326,22 @@ const ModalDuplicatas = ({ itens, onConfirmar, onCancelar }: ModalDuplicatasProp
           })}
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <DialogFooter className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-700/50 sm:items-center sm:justify-between">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Revise os nomes finais antes de confirmar. A opcao "Usar nome existente" apenas troca o
+            Revise os nomes finais antes de confirmar. A opcao &quot;Usar nome existente&quot; apenas troca o
             nome enviado para ativar o merge automatico ja existente no backend.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={onCancelar}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition"
-            >
+            <Button type="button" variant="outline" onClick={onCancelar}>
               Voltar para revisao
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={hasInvalidCustomName}
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50"
-            >
+            </Button>
+            <Button type="button" onClick={handleConfirm} disabled={hasInvalidCustomName}>
               Confirmar resolucoes e importar
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

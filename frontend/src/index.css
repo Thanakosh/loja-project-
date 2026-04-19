@@ -1,3 +1,91 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Geist Variable', sans-serif;
+    --font-heading: var(--font-sans);
+    --background: 0.985 0.002 155;
+    --foreground: 0.145 0.014 155;
+    --card: 1 0 0;
+    --card-foreground: 0.145 0.014 155;
+    --popover: 1 0 0;
+    --popover-foreground: 0.145 0.014 155;
+    --primary: 0.508 0.118 155;
+    --primary-foreground: 0.985 0.002 155;
+    --secondary: 0.97 0.006 155;
+    --secondary-foreground: 0.25 0.02 155;
+    --muted: 0.97 0.006 155;
+    --muted-foreground: 0.556 0.02 155;
+    --accent: 0.97 0.006 155;
+    --accent-foreground: 0.25 0.02 155;
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0.002 155;
+    --border: 0.922 0.008 155;
+    --input: 0.922 0.008 155;
+    --ring: 0.508 0.118 155;
+    --chart-1: 0.508 0.118 155;
+    --chart-2: 0.62 0.13 155;
+    --chart-3: 0.439 0.1 155;
+    --chart-4: 0.371 0.08 155;
+    --chart-5: 0.745 0.14 155;
+    --radius: 0.625rem;
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+    --sidebar: 0.985 0.002 155;
+    --sidebar-foreground: 0.145 0.014 155;
+    --sidebar-primary: 0.508 0.118 155;
+    --sidebar-primary-foreground: 0.985 0.002 155;
+    --sidebar-accent: 0.97 0.006 155;
+    --sidebar-accent-foreground: 0.25 0.02 155;
+    --sidebar-border: 0.922 0.008 155;
+    --sidebar-ring: 0.508 0.118 155;
+  }
+  .dark {
+    --background: 0.145 0.014 155;
+    --foreground: 0.985 0.002 155;
+    --card: 0.205 0.015 155;
+    --card-foreground: 0.985 0.002 155;
+    --popover: 0.205 0.015 155;
+    --popover-foreground: 0.985 0.002 155;
+    --primary: 0.62 0.13 155;
+    --primary-foreground: 0.145 0.014 155;
+    --secondary: 0.269 0.02 155;
+    --secondary-foreground: 0.985 0.002 155;
+    --muted: 0.269 0.02 155;
+    --muted-foreground: 0.708 0.02 155;
+    --accent: 0.269 0.02 155;
+    --accent-foreground: 0.985 0.002 155;
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.985 0.002 155;
+    --border: 0.269 0.02 155;
+    --input: 0.269 0.02 155;
+    --ring: 0.62 0.13 155;
+    --chart-1: 0.62 0.13 155;
+    --chart-2: 0.508 0.118 155;
+    --chart-3: 0.745 0.14 155;
+    --chart-4: 0.371 0.08 155;
+    --chart-5: 0.439 0.1 155;
+    --sidebar: 0.205 0.015 155;
+    --sidebar-foreground: 0.985 0.002 155;
+    --sidebar-primary: 0.62 0.13 155;
+    --sidebar-primary-foreground: 0.985 0.002 155;
+    --sidebar-accent: 0.269 0.02 155;
+    --sidebar-accent-foreground: 0.985 0.002 155;
+    --sidebar-border: 1 0 0;
+    --sidebar-ring: 0.62 0.13 155;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

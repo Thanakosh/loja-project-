@@ -1,8 +1,25 @@
 import { useMemo, useState } from 'react'
+import { Pencil, Plus, Search } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import api from '../services/api'
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Cliente {
   id: number
@@ -42,16 +59,14 @@ const emptyFormState: FormState = {
   telefone: '',
   cidade: '',
   uf: '',
-  codigo_legado: ''
+  codigo_legado: '',
 }
 
 const removeNonDigits = (value: string) => value.replace(/\D/g, '')
 
 const normalizeCpfCnpj = (value: string) => {
   const digits = removeNonDigits(value)
-  if (!digits) {
-    return ''
-  }
+  if (!digits) return ''
 
   if (digits.length <= 11) {
     return digits
@@ -70,35 +85,18 @@ const normalizeCpfCnpj = (value: string) => {
 }
 
 const normalizePayload = (formState: FormState): ClientePayload => {
-  const payload: ClientePayload = {
-    nome: formState.nome.trim()
-  }
-
+  const payload: ClientePayload = { nome: formState.nome.trim() }
   const cpfCnpj = removeNonDigits(formState.cpf_cnpj)
   const telefone = formState.telefone.trim()
   const cidade = formState.cidade.trim()
   const uf = formState.uf.trim().toUpperCase()
   const codigoLegado = formState.codigo_legado.trim()
 
-  if (cpfCnpj) {
-    payload.cpf_cnpj = cpfCnpj
-  }
-
-  if (telefone) {
-    payload.telefone = telefone
-  }
-
-  if (cidade) {
-    payload.cidade = cidade
-  }
-
-  if (uf) {
-    payload.uf = uf
-  }
-
-  if (codigoLegado) {
-    payload.codigo_legado = Number(codigoLegado)
-  }
+  if (cpfCnpj) payload.cpf_cnpj = cpfCnpj
+  if (telefone) payload.telefone = telefone
+  if (cidade) payload.cidade = cidade
+  if (uf) payload.uf = uf
+  if (codigoLegado) payload.codigo_legado = Number(codigoLegado)
 
   return payload
 }
@@ -121,12 +119,12 @@ const Clientes = () => {
         params: {
           search: searchTerm || undefined,
           limit: PAGE_SIZE,
-          skip: page * PAGE_SIZE
-        }
+          skip: page * PAGE_SIZE,
+        },
       })
       return response.data as Cliente[]
     },
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
   })
 
   const clientes = clientesQuery.data ?? []
@@ -136,13 +134,11 @@ const Clientes = () => {
       const response = await api.post('/clientes/', payload)
       return response.data as Cliente
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clientes'] })
       closeModal()
     },
-    onError: () => {
-      setFormError('Não foi possível criar o cliente. Verifique os dados e tente novamente.')
-    }
+    onError: () => setFormError('Nao foi possivel criar o cliente. Verifique os dados e tente novamente.'),
   })
 
   const updateMutation = useMutation({
@@ -150,31 +146,27 @@ const Clientes = () => {
       const response = await api.put(`/clientes/${id}`, payload)
       return response.data as Cliente
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['clientes'] })
       closeModal()
     },
-    onError: () => {
-      setFormError('Não foi possível atualizar o cliente. Verifique os dados e tente novamente.')
-    }
+    onError: () => setFormError('Nao foi possivel atualizar o cliente. Verifique os dados e tente novamente.'),
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending
-  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
   const totalEstimado = useMemo(() => {
-    if (clientes.length < PAGE_SIZE) {
-      return page * PAGE_SIZE + clientes.length
-    }
+    if (clientes.length < PAGE_SIZE) return page * PAGE_SIZE + clientes.length
     return (page + 2) * PAGE_SIZE
   }, [clientes.length, page])
 
   const totalPages = Math.max(1, Math.ceil(totalEstimado / PAGE_SIZE))
 
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setPage(0)
-    setSearchTerm(searchInput.trim())
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingCliente(null)
+    setFormState(emptyFormState)
+    setFormError('')
   }
 
   const openCreateModal = () => {
@@ -194,48 +186,27 @@ const Clientes = () => {
       telefone: cliente.telefone ?? '',
       cidade: cliente.cidade ?? '',
       uf: (cliente.uf ?? '').toUpperCase(),
-      codigo_legado: cliente.codigo_legado ? String(cliente.codigo_legado) : ''
+      codigo_legado: cliente.codigo_legado ? String(cliente.codigo_legado) : '',
     })
     setFormError('')
     setIsModalOpen(true)
   }
 
-  function closeModal() {
-    setIsModalOpen(false)
-    setEditingCliente(null)
-    setFormState(emptyFormState)
-    setFormError('')
-  }
-
   const handleInputChange = (field: keyof FormState, value: string) => {
     if (field === 'cpf_cnpj') {
-      setFormState((previous) => ({
-        ...previous,
-        cpf_cnpj: normalizeCpfCnpj(value)
-      }))
+      setFormState((previous) => ({ ...previous, cpf_cnpj: normalizeCpfCnpj(value) }))
       return
     }
-
     if (field === 'codigo_legado') {
-      setFormState((previous) => ({
-        ...previous,
-        codigo_legado: removeNonDigits(value).slice(0, 10)
-      }))
+      setFormState((previous) => ({ ...previous, codigo_legado: removeNonDigits(value).slice(0, 10) }))
       return
     }
-
     if (field === 'uf') {
-      setFormState((previous) => ({
-        ...previous,
-        uf: value.toUpperCase().slice(0, 2)
-      }))
+      setFormState((previous) => ({ ...previous, uf: value.toUpperCase().slice(0, 2) }))
       return
     }
 
-    setFormState((previous) => ({
-      ...previous,
-      [field]: value
-    }))
+    setFormState((previous) => ({ ...previous, [field]: value }))
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -249,7 +220,7 @@ const Clientes = () => {
 
     const cpfCnpjDigits = removeNonDigits(formState.cpf_cnpj)
     if (cpfCnpjDigits && cpfCnpjDigits.length !== 11 && cpfCnpjDigits.length !== 14) {
-      setFormError('CPF/CNPJ deve ter 11 ou 14 dígitos.')
+      setFormError('CPF/CNPJ deve ter 11 ou 14 digitos.')
       return
     }
 
@@ -261,7 +232,7 @@ const Clientes = () => {
     }
 
     if (!editingCliente) {
-      setFormError('Cliente inválido para edição.')
+      setFormError('Cliente invalido para edicao.')
       return
     }
 
@@ -269,230 +240,158 @@ const Clientes = () => {
   }
 
   return (
-    <div className="container mx-auto">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes</h1>
-        <div className="flex flex-wrap gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Buscar por nome ou CPF/CNPJ"
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-            >
-              Buscar
-            </button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Cadastre e mantenha os clientes para vendas, contas a receber e historico comercial.</p>
+        </div>
+        <Button type="button" onClick={openCreateModal}>
+          <Plus className="size-4" />
+          Novo cliente
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Busca</CardTitle>
+          <CardDescription>Pesquise por nome ou CPF/CNPJ e navegue pelas paginas do cadastro.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              setPage(0)
+              setSearchTerm(searchInput.trim())
+            }}
+            className="contents"
+          >
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar por nome ou CPF/CNPJ" className="pl-9" />
+            </div>
+            <Button type="submit" variant="outline">Buscar</Button>
           </form>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
-          >
-            + Novo Cliente
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CPF/CNPJ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Telefone</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cidade/UF</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cód. Legado</th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-            {clientesQuery.isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center">Carregando...</td>
-              </tr>
-            ) : clientesQuery.isError ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-red-600">Erro ao carregar clientes.</td>
-              </tr>
-            ) : clientes.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum cliente encontrado.</td>
-              </tr>
-            ) : (
-              clientes.map((cliente) => (
-                <tr key={cliente.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{cliente.nome}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{normalizeCpfCnpj(cliente.cpf_cnpj || '') || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.telefone || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.cidade || ''}/{cliente.uf || ''}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{cliente.codigo_legado || '-'}</td>
-                  <td className="px-6 py-4 text-right text-sm">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(cliente)}
-                      className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-gray-700 transition hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Lista de clientes</CardTitle>
+              <CardDescription>{clientesQuery.isFetching && !clientesQuery.isLoading ? 'Atualizando resultados...' : 'Visao atual do cadastro.'}</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline">Pagina {page + 1} de {totalPages}</Badge>
+              <Badge variant="outline">{clientes.length} registros</Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>CPF/CNPJ</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Cidade/UF</TableHead>
+                <TableHead>Cod. legado</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clientesQuery.isLoading ? (
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Carregando...</TableCell></TableRow>
+              ) : clientesQuery.isError ? (
+                <TableRow><TableCell colSpan={6}><Alert variant="destructive"><AlertTitle>Erro ao carregar clientes</AlertTitle><AlertDescription>Tente novamente em alguns instantes.</AlertDescription></Alert></TableCell></TableRow>
+              ) : clientes.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum cliente encontrado.</TableCell></TableRow>
+              ) : (
+                clientes.map((cliente) => (
+                  <TableRow key={cliente.id}>
+                    <TableCell className="font-medium">{cliente.nome}</TableCell>
+                    <TableCell className="text-muted-foreground">{normalizeCpfCnpj(cliente.cpf_cnpj || '') || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{cliente.telefone || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{cliente.cidade || '-'} / {cliente.uf || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{cliente.codigo_legado || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(cliente)}>
+                        <Pencil className="size-3.5" />
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Página {page + 1} de {totalPages} — mostrando {clientes.length} registros
-        </span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPage((previous) => previous - 1)}
-            disabled={page === 0 || clientesQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
-          >
-            ← Anterior
-          </button>
-          <button
-            onClick={() => setPage((previous) => previous + 1)}
-            disabled={clientes.length < PAGE_SIZE || clientesQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
-          >
-            Próxima →
-          </button>
-        </div>
-      </div>
+          <Separator />
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" onMouseDown={closeModal}>
-          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                {modalMode === 'create' ? 'Novo cliente' : 'Editar cliente'}
-              </h2>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Pagina {page + 1} de {totalPages} - mostrando {clientes.length} registros</p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((previous) => previous - 1)} disabled={page === 0 || clientesQuery.isFetching}>Anterior</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((previous) => previous + 1)} disabled={clientes.length < PAGE_SIZE || clientesQuery.isFetching}>Proxima</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open && !isSaving) closeModal() }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{modalMode === 'create' ? 'Novo cliente' : 'Editar cliente'}</DialogTitle>
+            <DialogDescription>Dados usados em vendas, documentos e relacionamento comercial.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cliente-nome">Nome *</Label>
+              <Input id="cliente-nome" value={formState.nome} onChange={(event) => handleInputChange('nome', event.target.value)} placeholder="Nome do cliente" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-nome">
-                  Nome *
-                </label>
-                <input
-                  id="cliente-nome"
-                  type="text"
-                  value={formState.nome}
-                  onChange={(event) => handleInputChange('nome', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome do cliente"
-                />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="cliente-cpf-cnpj">CPF/CNPJ</Label>
+                <Input id="cliente-cpf-cnpj" value={formState.cpf_cnpj} onChange={(event) => handleInputChange('cpf_cnpj', event.target.value)} placeholder="000.000.000-00" />
               </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-cpf-cnpj">
-                    CPF/CNPJ
-                  </label>
-                  <input
-                    id="cliente-cpf-cnpj"
-                    type="text"
-                    value={formState.cpf_cnpj}
-                    onChange={(event) => handleInputChange('cpf_cnpj', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="000.000.000-00"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-telefone">
-                    Telefone
-                  </label>
-                  <input
-                    id="cliente-telefone"
-                    type="text"
-                    value={formState.telefone}
-                    onChange={(event) => handleInputChange('telefone', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="cliente-telefone">Telefone</Label>
+                <Input id="cliente-telefone" value={formState.telefone} onChange={(event) => handleInputChange('telefone', event.target.value)} placeholder="(00) 00000-0000" />
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-cidade">
-                    Cidade
-                  </label>
-                  <input
-                    id="cliente-cidade"
-                    type="text"
-                    value={formState.cidade}
-                    onChange={(event) => handleInputChange('cidade', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Cidade"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-uf">
-                    UF
-                  </label>
-                  <input
-                    id="cliente-uf"
-                    type="text"
-                    value={formState.uf}
-                    onChange={(event) => handleInputChange('uf', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="UF"
-                  />
-                </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="cliente-cidade">Cidade</Label>
+                <Input id="cliente-cidade" value={formState.cidade} onChange={(event) => handleInputChange('cidade', event.target.value)} placeholder="Cidade" />
               </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="cliente-codigo-legado">
-                  Código legado
-                </label>
-                <input
-                  id="cliente-codigo-legado"
-                  type="text"
-                  value={formState.codigo_legado}
-                  onChange={(event) => handleInputChange('codigo_legado', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Será gerado automaticamente se vazio"
-                  disabled={modalMode === 'edit'}
-                />
+              <div className="space-y-2">
+                <Label htmlFor="cliente-uf">UF</Label>
+                <Input id="cliente-uf" value={formState.uf} onChange={(event) => handleInputChange('uf', event.target.value)} placeholder="UF" />
               </div>
+            </div>
 
-              {formError && (
-                <div className="rounded-md border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/40 px-3 py-2 text-sm text-red-700 dark:text-red-400">
-                  {formError}
-                </div>
-              )}
+            <div className="space-y-2">
+              <Label htmlFor="cliente-codigo-legado">Codigo legado</Label>
+              <Input id="cliente-codigo-legado" value={formState.codigo_legado} onChange={(event) => handleInputChange('codigo_legado', event.target.value)} placeholder="Sera gerado automaticamente se vazio" disabled={modalMode === 'edit'} />
+            </div>
 
-              <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-100 transition hover:bg-gray-100 dark:hover:bg-gray-700"
-                  disabled={isSaving}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700 disabled:opacity-60"
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Salvando...' : modalMode === 'create' ? 'Criar cliente' : 'Salvar alterações'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            {formError && (
+              <Alert variant="destructive">
+                <AlertTitle>Falha ao salvar</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal} disabled={isSaving}>Cancelar</Button>
+              <Button type="submit" disabled={isSaving}>{modalMode === 'create' ? 'Criar cliente' : 'Salvar alteracoes'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

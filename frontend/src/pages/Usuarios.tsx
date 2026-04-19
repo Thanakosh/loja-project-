@@ -1,17 +1,48 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import type { AxiosError } from 'axios'
+import { Pencil, Plus, ShieldCheck, Trash2, UserRound } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 
 import { MANAGEABLE_TABS, getTabLabel, type AppTabId } from '../config/appTabs'
 import { useAuthContext, type AuthenticatedUser } from '../contexts/AuthContext'
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
 import api from '../services/api'
 
-type ModalMode = 'create' | 'edit'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
+type ModalMode = 'create' | 'edit'
 type Usuario = AuthenticatedUser
+
+type PendingAction =
+  | { type: 'toggle-status'; usuario: Usuario }
+  | { type: 'delete'; usuario: Usuario }
+  | null
 
 interface UsuarioPayload {
   username: string
@@ -33,6 +64,9 @@ const emptyForm: UsuarioPayload = {
   allowed_tabs: [],
 }
 
+const checkboxClassName =
+  'h-4 w-4 rounded border border-border bg-background text-primary accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+
 const toFormState = (user: Usuario): UsuarioPayload => ({
   username: user.username ?? '',
   full_name: user.full_name ?? '',
@@ -40,7 +74,7 @@ const toFormState = (user: Usuario): UsuarioPayload => ({
   password: '',
   is_active: user.is_active,
   is_superuser: user.is_superuser,
-  allowed_tabs: user.allowed_tabs,
+  allowed_tabs: user.allowed_tabs ?? [],
 })
 
 const buildPayload = (form: UsuarioPayload): UsuarioPayload => ({
@@ -55,24 +89,29 @@ const buildPayload = (form: UsuarioPayload): UsuarioPayload => ({
 const getErrorMessage = (error: AxiosError<{ detail?: string }>) =>
   error.response?.data?.detail ?? 'Nao foi possivel concluir a operacao.'
 
+const accessSummary = (usuario: Usuario) => {
+  if (usuario.is_superuser) return 'Acesso total'
+  if (!usuario.allowed_tabs || usuario.allowed_tabs.length === 0) return 'Somente dashboard'
+  return usuario.allowed_tabs.map((tabId) => getTabLabel(tabId)).join(', ')
+}
+
 const Usuarios = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { logout, refreshUser, user: currentUser } = useAuthContext()
 
-  const [showModal, setShowModal] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<ModalMode>('create')
   const [editingUserId, setEditingUserId] = useState<number | null>(null)
   const [form, setForm] = useState<UsuarioPayload>(emptyForm)
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
 
   const closeModal = () => {
-    setShowModal(false)
+    setIsModalOpen(false)
     setModalMode('create')
     setEditingUserId(null)
     setForm(emptyForm)
   }
-
-  const modalRef = useAccessibleModal(showModal, closeModal)
 
   const { data, isLoading, isError } = useQuery<{ users: Usuario[]; total: number }>({
     queryKey: ['usuarios'],
@@ -86,14 +125,11 @@ const Usuarios = () => {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
       closeModal()
     },
-    onError: (error: AxiosError<{ detail?: string }>) => {
-      toast.error(getErrorMessage(error))
-    },
+    onError: (error: AxiosError<{ detail?: string }>) => toast.error(getErrorMessage(error)),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ userId, payload }: { userId: number; payload: UsuarioPayload }) =>
-      api.put(`/users/${userId}`, payload),
+    mutationFn: ({ userId, payload }: { userId: number; payload: UsuarioPayload }) => api.put(`/users/${userId}`, payload),
     onSuccess: async (_response, variables) => {
       const editedOwnUser = variables.userId === currentUser?.id
       const credentialsChanged =
@@ -116,9 +152,7 @@ const Usuarios = () => {
 
       closeModal()
     },
-    onError: (error: AxiosError<{ detail?: string }>) => {
-      toast.error(getErrorMessage(error))
-    },
+    onError: (error: AxiosError<{ detail?: string }>) => toast.error(getErrorMessage(error)),
   })
 
   const deleteMutation = useMutation({
@@ -127,23 +161,41 @@ const Usuarios = () => {
       toast.success('Usuario excluido com sucesso.')
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
     },
-    onError: (error: AxiosError<{ detail?: string }>) => {
-      toast.error(getErrorMessage(error))
-    },
+    onError: (error: AxiosError<{ detail?: string }>) => toast.error(getErrorMessage(error)),
   })
+
+  const usuarios = data?.users ?? []
+  const stats = {
+    total: usuarios.length,
+    ativos: usuarios.filter((usuario) => usuario.is_active).length,
+    admins: usuarios.filter((usuario) => usuario.is_superuser).length,
+  }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending
+  const isBusy = isSaving || deleteMutation.isPending
+  const isEditingSelf = modalMode === 'edit' && editingUserId === currentUser?.id
 
   const openCreateModal = () => {
     setModalMode('create')
     setEditingUserId(null)
     setForm(emptyForm)
-    setShowModal(true)
+    setIsModalOpen(true)
   }
 
   const openEditModal = (usuario: Usuario) => {
     setModalMode('edit')
     setEditingUserId(usuario.id)
     setForm(toFormState(usuario))
-    setShowModal(true)
+    setIsModalOpen(true)
+  }
+
+  const handleToggleTab = (tabId: AppTabId) => {
+    setForm((currentForm) => {
+      if (currentForm.allowed_tabs.includes(tabId)) {
+        return { ...currentForm, allowed_tabs: currentForm.allowed_tabs.filter((item) => item !== tabId) }
+      }
+      return { ...currentForm, allowed_tabs: [...currentForm.allowed_tabs, tabId] }
+    })
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -178,353 +230,372 @@ const Usuarios = () => {
     updateMutation.mutate({ userId: editingUserId, payload })
   }
 
-  const handleToggleTab = (tabId: AppTabId) => {
-    setForm((currentForm) => {
-      if (currentForm.allowed_tabs.includes(tabId)) {
-        return {
-          ...currentForm,
-          allowed_tabs: currentForm.allowed_tabs.filter((item) => item !== tabId),
-        }
-      }
+  const confirmPendingAction = () => {
+    if (!pendingAction) return
 
-      return {
-        ...currentForm,
-        allowed_tabs: [...currentForm.allowed_tabs, tabId],
-      }
-    })
-  }
-
-  const handleToggleActive = (usuario: Usuario) => {
-    const actionLabel = usuario.is_active ? 'desativar' : 'reativar'
-    const confirmed = window.confirm(`Deseja ${actionLabel} o usuario ${usuario.username ?? usuario.email}?`)
-    if (!confirmed) {
+    if (pendingAction.type === 'toggle-status') {
+      const usuario = pendingAction.usuario
+      updateMutation.mutate({
+        userId: usuario.id,
+        payload: {
+          ...toFormState(usuario),
+          is_active: !usuario.is_active,
+          password: '',
+        },
+      })
+      setPendingAction(null)
       return
     }
 
-    updateMutation.mutate({
-      userId: usuario.id,
-      payload: {
-        ...toFormState(usuario),
-        is_active: !usuario.is_active,
-        password: '',
-      },
+    deleteMutation.mutate(pendingAction.usuario.id, {
+      onSettled: () => setPendingAction(null),
     })
   }
-
-  const handleDelete = (usuario: Usuario) => {
-    const confirmed = window.confirm(
-      `Excluir permanentemente o usuario ${usuario.username ?? usuario.email}? Essa acao nao pode ser desfeita.`,
-    )
-    if (!confirmed) {
-      return
-    }
-
-    deleteMutation.mutate(usuario.id)
-  }
-
-  const usuarios = data?.users ?? []
-  const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending
-  const isEditingSelf = modalMode === 'edit' && editingUserId === currentUser?.id
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Usuarios</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Edite perfil, status e abas liberadas para cada conta.
+      <AlertDialog open={pendingAction !== null} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <AlertDialogContent size="default">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.type === 'delete' ? 'Excluir usuario' : 'Alterar status do usuario'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.type === 'delete'
+                ? `Excluir permanentemente ${pendingAction.usuario.username ?? pendingAction.usuario.email}? Essa acao nao pode ser desfeita.`
+                : pendingAction
+                  ? `${pendingAction.usuario.is_active ? 'Desativar' : 'Reativar'} ${pendingAction.usuario.username ?? pendingAction.usuario.email}?`
+                  : 'Confirme a acao desejada.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBusy}
+              variant={pendingAction?.type === 'delete' ? 'destructive' : 'default'}
+              onClick={confirmPendingAction}
+            >
+              {pendingAction?.type === 'delete' ? 'Excluir' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Usuarios</h1>
+          <p className="text-sm text-muted-foreground">
+            Edite perfil, status de acesso e abas liberadas para cada conta.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-        >
-          + Novo usuario
-        </button>
+        <Button type="button" onClick={openCreateModal}>
+          <Plus className="size-4" />
+          Novo usuario
+        </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        {isLoading ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando...</div>
-        ) : isError ? (
-          <div className="p-8 text-center text-red-500">Erro ao carregar usuarios.</div>
-        ) : usuarios.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Nenhum usuario cadastrado.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700/50">
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Usuario</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Nome</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">E-mail</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Perfil</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Abas</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Acoes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {usuarios.map((usuario) => {
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Total de contas</CardDescription>
+            <CardTitle>{stats.total}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Usuarios ativos</CardDescription>
+            <CardTitle>{stats.ativos}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Administradores</CardDescription>
+            <CardTitle>{stats.admins}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Contas cadastradas</CardTitle>
+              <CardDescription>Usuarios comuns recebem acesso por abas. Administradores mantem acesso total.</CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{stats.total} usuarios</Badge>
+              {stats.admins > 0 && <Badge variant="secondary">{stats.admins} admins</Badge>}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Usuario</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Perfil</TableHead>
+                <TableHead>Abas</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    Carregando usuarios...
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <Alert variant="destructive">
+                      <AlertTitle>Erro ao carregar usuarios</AlertTitle>
+                      <AlertDescription>Tente novamente em alguns instantes.</AlertDescription>
+                    </Alert>
+                  </TableCell>
+                </TableRow>
+              ) : usuarios.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    Nenhum usuario cadastrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                usuarios.map((usuario) => {
                   const isSelf = usuario.id === currentUser?.id
-                  const accessSummary = usuario.is_superuser
-                    ? 'Acesso total'
-                    : usuario.allowed_tabs.length > 0
-                      ? usuario.allowed_tabs.map((tabId) => getTabLabel(tabId)).join(', ')
-                      : 'Somente dashboard'
 
                   return (
-                    <tr key={usuario.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{usuario.id}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          <span>{usuario.username ?? usuario.email}</span>
-                          {isSelf ? (
-                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                              Voce
-                            </span>
-                          ) : null}
+                    <TableRow key={usuario.id}>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{usuario.username ?? usuario.email}</span>
+                          {isSelf && <Badge variant="secondary">Voce</Badge>}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{usuario.full_name ?? '-'}</td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{usuario.email}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            usuario.is_active
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                          }`}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{usuario.full_name || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={usuario.is_active ? 'secondary' : 'outline'}
+                          className={usuario.is_active ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}
                         >
                           {usuario.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            usuario.is_superuser
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          {usuario.is_superuser ? 'Admin' : 'Usuario'}
-                        </span>
-                      </td>
-                      <td className="max-w-xs px-4 py-3 text-gray-600 dark:text-gray-300">{accessSummary}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => openEditModal(usuario)}
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-                          >
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={usuario.is_superuser ? 'secondary' : 'outline'}>
+                          {usuario.is_superuser ? 'Administrador' : 'Usuario'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-sm text-muted-foreground">{accessSummary(usuario)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(usuario)}>
+                            <Pencil className="size-3.5" />
                             Editar
-                          </button>
-                          <button
-                            onClick={() => handleToggleActive(usuario)}
-                            disabled={isSelf || isMutating}
-                            className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPendingAction({ type: 'toggle-status', usuario })}
+                            disabled={isSelf || isBusy}
                           >
                             {usuario.is_active ? 'Desativar' : 'Reativar'}
-                          </button>
-                          <button
-                            onClick={() => handleDelete(usuario)}
-                            disabled={isSelf || isMutating}
-                            className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setPendingAction({ type: 'delete', usuario })}
+                            disabled={isSelf || isBusy}
                           >
+                            <Trash2 className="size-3.5" />
                             Excluir
-                          </button>
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-      {showModal ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={closeModal}
+      <Dialog open={isModalOpen} onOpenChange={(open) => !open && !isSaving && closeModal()}>
+        <DialogContent
+          className="max-h-[90vh] overflow-hidden p-0 sm:max-w-4xl"
+          onEscapeKeyDown={(event) => {
+            if (isSaving) event.preventDefault()
+          }}
+          onInteractOutside={(event) => {
+            if (isSaving) event.preventDefault()
+          }}
         >
-          <div
-            ref={modalRef}
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {modalMode === 'create' ? 'Novo usuario' : 'Editar usuario'}
-                </h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Admins tem acesso total. Usuarios comuns podem receber abas especificas.
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                aria-label="Fechar modal de usuario"
-                className="text-2xl leading-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-              >
-                ×
-              </button>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>{modalMode === 'create' ? 'Novo usuario' : 'Editar usuario'}</DialogTitle>
+            <DialogDescription>
+              Administradores recebem acesso integral. Usuarios comuns acessam apenas as abas liberadas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              {isEditingSelf && (
+                <Alert>
+                  <ShieldCheck className="size-4" />
+                  <AlertTitle>Conta atual em edicao</AlertTitle>
+                  <AlertDescription>
+                    Alteracoes de e-mail ou senha podem exigir novo login para continuar.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm">Credenciais e perfil</CardTitle>
+                  <CardDescription>Dados principais usados para autenticacao e identificacao.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="usuario-username">Nome de usuario *</Label>
+                    <Input
+                      id="usuario-username"
+                      value={form.username}
+                      onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))}
+                      placeholder="ex: joao.silva"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="usuario-email">E-mail *</Label>
+                    <Input
+                      id="usuario-email"
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="usuario@empresa.com"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="usuario-full-name">Nome completo</Label>
+                    <Input
+                      id="usuario-full-name"
+                      value={form.full_name}
+                      onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
+                      placeholder="Nome exibido no sistema"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="usuario-password">{modalMode === 'create' ? 'Senha *' : 'Nova senha'}</Label>
+                    <Input
+                      id="usuario-password"
+                      type="password"
+                      minLength={modalMode === 'create' ? 6 : undefined}
+                      value={form.password}
+                      onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder={modalMode === 'create' ? 'Defina uma senha' : 'Preencha apenas para alterar'}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm">Permissoes</CardTitle>
+                  <CardDescription>Controle status da conta, perfil administrativo e abas acessiveis.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <label className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.is_active}
+                        onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
+                        className={checkboxClassName}
+                      />
+                      Conta ativa
+                    </label>
+                    <label className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.is_superuser}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            is_superuser: event.target.checked,
+                            allowed_tabs: event.target.checked ? [] : current.allowed_tabs,
+                          }))
+                        }
+                        className={checkboxClassName}
+                        disabled={isEditingSelf}
+                      />
+                      Acesso administrativo total
+                    </label>
+                  </div>
+
+                  <Separator />
+
+                  {form.is_superuser ? (
+                    <Alert>
+                      <UserRound className="size-4" />
+                      <AlertTitle>Acesso completo</AlertTitle>
+                      <AlertDescription>Esta conta tera acesso liberado a todas as areas do sistema.</AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium">Abas liberadas</h3>
+                        <p className="text-sm text-muted-foreground">
+                          O dashboard permanece disponivel mesmo quando nenhuma aba adicional estiver marcada.
+                        </p>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {MANAGEABLE_TABS.map((tab) => (
+                          <label
+                            key={tab.id}
+                            className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={form.allowed_tabs.includes(tab.id)}
+                              onChange={() => handleToggleTab(tab.id)}
+                              className={checkboxClassName}
+                            />
+                            {tab.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label htmlFor="usuario-username" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Nome de usuario
-                  </label>
-                  <input
-                    id="usuario-username"
-                    type="text"
-                    value={form.username}
-                    onChange={(event) => setForm({ ...form, username: event.target.value })}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="ex: joao.silva"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="usuario-email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    E-mail
-                  </label>
-                  <input
-                    id="usuario-email"
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="usuario@empresa.com"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="usuario-full-name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Nome completo
-                  </label>
-                  <input
-                    id="usuario-full-name"
-                    type="text"
-                    value={form.full_name}
-                    onChange={(event) => setForm({ ...form, full_name: event.target.value })}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="Joao Silva"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="usuario-password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {modalMode === 'create' ? 'Senha' : 'Nova senha'}
-                  </label>
-                  <input
-                    id="usuario-password"
-                    type="password"
-                    value={form.password}
-                    onChange={(event) => setForm({ ...form, password: event.target.value })}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder={modalMode === 'create' ? 'Defina uma senha' : 'Preencha so se quiser trocar'}
-                    minLength={modalMode === 'create' ? 6 : undefined}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-5">
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={(event) => setForm({ ...form, is_active: event.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Usuario ativo
-                </label>
-
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={form.is_superuser}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        is_superuser: event.target.checked,
-                        allowed_tabs: event.target.checked ? [] : form.allowed_tabs,
-                      })
-                    }
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    disabled={isEditingSelf}
-                  />
-                  Administrador (acesso total)
-                </label>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Abas liberadas</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    O dashboard fica sempre disponivel. A aba Usuarios continua exclusiva de admins.
-                  </p>
-                </div>
-
-                {form.is_superuser ? (
-                  <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                    Este usuario tera acesso total a todas as areas do sistema.
-                  </div>
-                ) : (
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {MANAGEABLE_TABS.map((tab) => (
-                      <label
-                        key={tab.id}
-                        className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={form.allowed_tabs.includes(tab.id)}
-                          onChange={() => handleToggleTab(tab.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        {tab.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isMutating}
-                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {modalMode === 'create'
-                    ? createMutation.isPending
-                      ? 'Criando...'
-                      : 'Criar usuario'
-                    : updateMutation.isPending
-                      ? 'Salvando...'
-                      : 'Salvar alteracoes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {modalMode === 'create'
+                  ? createMutation.isPending
+                    ? 'Criando...'
+                    : 'Criar usuario'
+                  : updateMutation.isPending
+                    ? 'Salvando...'
+                    : 'Salvar alteracoes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -2,10 +2,21 @@ import { useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FileText, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
 import api from '../services/api'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 type StatusOrcamento = 'aberto' | 'aprovado' | 'cancelado' | 'convertido'
 
@@ -23,33 +34,24 @@ interface ProdutoSugestao {
   unidade_medida?: string | null
 }
 
-// Enum espelhando backend/app/core/enums.py FormaPagamento (int)
 const FormaPagamento = {
   DINHEIRO: 1,
   CARTAO_DEBITO: 2,
   CARTAO_CREDITO: 3,
   PIX: 4,
   BOLETO: 5,
-  PRAZO: 6
+  PRAZO: 6,
 } as const
+
 type FormaPagamentoValue = typeof FormaPagamento[keyof typeof FormaPagamento]
 
 const formaPagamentoLabel: Record<FormaPagamentoValue, string> = {
   1: 'Dinheiro',
-  2: 'Cartão Débito',
-  3: 'Cartão Crédito',
+  2: 'Cartao Debito',
+  3: 'Cartao Credito',
   4: 'PIX',
   5: 'Boleto',
-  6: 'A Prazo'
-}
-
-interface OrcamentoItem {
-  id: number
-  descricao: string
-  quantidade: number
-  preco_unitario: number
-  desconto: number
-  preco_total: number
+  6: 'A prazo',
 }
 
 interface Orcamento {
@@ -62,7 +64,14 @@ interface Orcamento {
   data_criacao: string
   data_validade?: string | null
   venda_id?: number | null
-  itens: OrcamentoItem[]
+  itens: Array<{
+    id: number
+    descricao: string
+    quantidade: number
+    preco_unitario: number
+    desconto: number
+    preco_total: number
+  }>
   total: number
 }
 
@@ -71,6 +80,14 @@ interface OrcamentoListResponse {
   total: number
   page: number
   pages: number
+}
+
+interface ItemFormState {
+  produto_id: number | null
+  descricao: string
+  quantidade: string
+  preco_unitario: string
+  desconto: string
 }
 
 interface OrcamentoFormState {
@@ -82,41 +99,31 @@ interface OrcamentoFormState {
   itens: ItemFormState[]
 }
 
-interface ItemFormState {
-  produto_id: number | null
-  descricao: string
-  quantidade: string
-  preco_unitario: string
-  desconto: string
-}
-
 const PAGE_SIZE = 20
+const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const textareaClassName =
+  'flex min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 
 const statusLabel: Record<StatusOrcamento, string> = {
   aberto: 'Aberto',
   aprovado: 'Aprovado',
   cancelado: 'Cancelado',
-  convertido: 'Convertido'
+  convertido: 'Convertido',
 }
 
 const statusBadgeClass: Record<StatusOrcamento, string> = {
-  aberto: 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
-  aprovado: 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400',
-  cancelado: 'bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400',
-  convertido: 'bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400'
+  aberto: 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+  aprovado: 'bg-primary/10 text-primary',
+  cancelado: 'bg-destructive/10 text-destructive',
+  convertido: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
 }
-
-const moneyFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL'
-})
 
 const createEmptyItem = (): ItemFormState => ({
   produto_id: null,
   descricao: '',
   quantidade: '1',
   preco_unitario: '',
-  desconto: '0'
+  desconto: '0',
 })
 
 const createInitialForm = (): OrcamentoFormState => ({
@@ -125,7 +132,7 @@ const createInitialForm = (): OrcamentoFormState => ({
   desconto_geral: '0',
   data_validade: '',
   observacao: '',
-  itens: [createEmptyItem()]
+  itens: [createEmptyItem()],
 })
 
 const Orcamentos = () => {
@@ -135,58 +142,45 @@ const Orcamentos = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [formState, setFormState] = useState<OrcamentoFormState>(createInitialForm)
   const [formError, setFormError] = useState('')
-
-  // --- Autocomplete cliente ---
   const [clienteSearch, setClienteSearch] = useState('')
   const [showClienteSugestoes, setShowClienteSugestoes] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
-
-  const clientesQuery = useQuery({
-    queryKey: ['clientes-sugestao', clienteSearch],
-    queryFn: async () => {
-      const resp = await api.get('/clientes/', { params: { search: clienteSearch, limit: 8 } })
-      return resp.data as ClienteSugestao[]
-    },
-    enabled: isCreateModalOpen && clienteSearch.length >= 1,
-  })
-
-  // --- Autocomplete produto: search por item ---
   const [produtoSearches, setProdutoSearches] = useState<string[]>([''])
   const [showProdutoSugestoes, setShowProdutoSugestoes] = useState<boolean[]>([false])
   const [activeProdutoIndex, setActiveProdutoIndex] = useState<number | null>(null)
   const [produtoResults, setProdutoResults] = useState<ProdutoSugestao[]>([])
   const produtoSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null)
+  const [convertModal, setConvertModal] = useState<{ orcamentoId: number } | null>(null)
+  const [convertError, setConvertError] = useState('')
+  const [convertForm, setConvertForm] = useState<{ forma_pagamento: FormaPagamentoValue; parcelas: number }>({
+    forma_pagamento: FormaPagamento.PIX,
+    parcelas: 1,
+  })
+
+  const clientesQuery = useQuery({
+    queryKey: ['clientes-sugestao', clienteSearch],
+    queryFn: async () => (await api.get('/clientes/', { params: { search: clienteSearch, limit: 8 } })).data as ClienteSugestao[],
+    enabled: isCreateModalOpen && clienteSearch.length >= 1,
+  })
 
   const orcamentosQuery = useQuery({
     queryKey: ['orcamentos', statusFilter, page],
-    queryFn: async () => {
-      const response = await api.get('/orcamentos/', {
-        params: {
-          page,
-          page_size: PAGE_SIZE,
-          status: statusFilter === 'todos' ? undefined : statusFilter
-        }
-      })
-      return response.data as OrcamentoListResponse
-    },
-    placeholderData: (previousData) => previousData
+    queryFn: async () =>
+      (await api.get('/orcamentos/', { params: { page, page_size: PAGE_SIZE, status: statusFilter === 'todos' ? undefined : statusFilter } })).data as OrcamentoListResponse,
+    placeholderData: (previousData) => previousData,
   })
 
   const createMutation = useMutation({
-    mutationFn: async (payload: unknown) => {
-      const response = await api.post('/orcamentos/', payload)
-      return response.data as Orcamento
-    },
+    mutationFn: async (payload: unknown) => (await api.post('/orcamentos/', payload)).data as Orcamento,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
       setIsCreateModalOpen(false)
       setFormState(createInitialForm())
       setFormError('')
-      toast.success('Orçamento criado com sucesso!')
+      toast.success('Orcamento criado com sucesso!')
     },
-    onError: () => {
-      setFormError('Não foi possível criar o orçamento. Revise os dados e tente novamente.')
-    }
+    onError: () => setFormError('Nao foi possivel criar o orcamento. Revise os dados e tente novamente.'),
   })
 
   const cancelMutation = useMutation({
@@ -195,143 +189,63 @@ const Orcamentos = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
-      toast.success('Orçamento cancelado com sucesso!')
-    }
+      toast.success('Orcamento cancelado com sucesso!')
+    },
   })
-
-  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null)
-
-  const handleExportarPdf = async (orcamento: Orcamento) => {
-    setDownloadingPdfId(orcamento.id)
-    try {
-      const response = await api.get(`/orcamentos/${orcamento.id}/pdf`, {
-        responseType: 'blob',
-      })
-      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `orcamento-${String(orcamento.id).padStart(5, '0')}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Erro ao gerar PDF. Tente novamente.')
-    } finally {
-      setDownloadingPdfId(null)
-    }
-  }
-
-  const [convertModal, setConvertModal] = useState<{ orcamentoId: number } | null>(null)
-  const [convertError, setConvertError] = useState('')
-  const [convertForm, setConvertForm] = useState<{ forma_pagamento: FormaPagamentoValue; parcelas: number }>({
-    forma_pagamento: FormaPagamento.PIX,
-    parcelas: 1
-  })
-
-  const closeConvertModal = () => {
-    if (convertMutation.isPending) {
-      return
-    }
-
-    setConvertModal(null)
-    setConvertError('')
-  }
-
-  const closeCreateModal = () => {
-    if (createMutation.isPending) {
-      return
-    }
-
-    setIsCreateModalOpen(false)
-  }
-
-  const convertModalRef = useAccessibleModal(Boolean(convertModal), closeConvertModal)
-  const createModalRef = useAccessibleModal(isCreateModalOpen, closeCreateModal)
 
   const convertMutation = useMutation({
     mutationFn: async ({ orcamentoId, forma_pagamento, parcelas }: { orcamentoId: number; forma_pagamento: FormaPagamentoValue; parcelas: number }) => {
-      await api.post(`/orcamentos/${orcamentoId}/converter`, {
-        forma_pagamento,
-        parcelas
-      })
+      await api.post(`/orcamentos/${orcamentoId}/converter`, { forma_pagamento, parcelas })
     },
     onError: (error) => {
-      let message = 'Não foi possível converter o orçamento. Tente novamente.'
-
+      let message = 'Nao foi possivel converter o orcamento. Tente novamente.'
       if (isAxiosError(error)) {
-        const apiData = error.response?.data as {
-          message?: unknown
-          detail?: unknown
-          details?: {
-            produto_nome?: string
-            disponivel?: number
-            solicitado?: number
-          }
-        } | undefined
-
+        const apiData = error.response?.data as { message?: unknown; detail?: unknown; details?: { produto_nome?: string; disponivel?: number; solicitado?: number } } | undefined
         const detail = apiData?.message ?? apiData?.detail
-
         if (typeof detail === 'string') {
           if (apiData?.details?.produto_nome) {
-            const disponivel = apiData.details.disponivel ?? 0
-            const solicitado = apiData.details.solicitado ?? 0
-            message = `${detail}: ${apiData.details.produto_nome} (disponível: ${disponivel}, solicitado: ${solicitado}).`
+            message = `${detail}: ${apiData.details.produto_nome} (disponivel: ${apiData.details.disponivel ?? 0}, solicitado: ${apiData.details.solicitado ?? 0}).`
           } else {
             message = detail
           }
         } else if (Array.isArray(detail)) {
-          const parsedDetail = detail
-            .map((item) => {
-              if (typeof item === 'string') {
-                return item
-              }
-              return (item as { msg?: string })?.msg
-            })
-            .filter(Boolean)
-            .join(' | ')
-
-          message = parsedDetail || 'Não foi possível converter o orçamento.'
+          message =
+            detail
+              .map((item) => (typeof item === 'string' ? item : (item as { msg?: string })?.msg))
+              .filter(Boolean)
+              .join(' | ') || 'Nao foi possivel converter o orcamento.'
         }
       }
-
       setConvertError(message)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] })
       setConvertModal(null)
       setConvertError('')
-      toast.success('Orçamento convertido em venda com sucesso!')
-    }
+      toast.success('Orcamento convertido em venda com sucesso!')
+    },
   })
 
   const orcamentos = orcamentosQuery.data?.items ?? []
   const totalPages = Math.max(1, orcamentosQuery.data?.pages ?? 1)
-
-  const totalPreview = useMemo(() => {
-    const descontoGeral = Number(formState.desconto_geral) || 0
-    const subtotal = formState.itens.reduce((accumulator, item) => {
-      const quantidade = Number(item.quantidade) || 0
-      const precoUnitario = Number(item.preco_unitario) || 0
-      const desconto = Number(item.desconto) || 0
-      return accumulator + quantidade * precoUnitario * (1 - desconto / 100)
-    }, 0)
-
-    return Math.max(0, subtotal - descontoGeral)
-  }, [formState])
+  const totalPreview = useMemo(() => Math.max(0, formState.itens.reduce((total, item) => total + (Number(item.quantidade) || 0) * (Number(item.preco_unitario) || 0) * (1 - (Number(item.desconto) || 0) / 100), 0) - (Number(formState.desconto_geral) || 0)), [formState])
 
   const buscarProdutos = (search: string, index: number) => {
     if (produtoSearchTimeout.current) clearTimeout(produtoSearchTimeout.current)
-    if (!search.trim()) { setProdutoResults([]); return }
+    if (!search.trim()) {
+      setProdutoResults([])
+      return
+    }
     produtoSearchTimeout.current = setTimeout(async () => {
       try {
-        const resp = await api.get('/produtos/', { params: { search: search.trim(), page_size: 8 } })
-        // Só atualiza se o índice ainda for o ativo
+        const response = await api.get('/produtos/', { params: { search: search.trim(), page_size: 8 } })
         setActiveProdutoIndex((current) => {
-          if (current === index) setProdutoResults(resp.data.items ?? [])
+          if (current === index) setProdutoResults(response.data.items ?? [])
           return current
         })
-      } catch { /* silencioso */ }
+      } catch {
+        setProdutoResults([])
+      }
     }, 250)
   }
 
@@ -347,21 +261,23 @@ const Orcamentos = () => {
     setIsCreateModalOpen(true)
   }
 
+  const closeCreateModal = () => {
+    if (!createMutation.isPending) setIsCreateModalOpen(false)
+  }
+
+  const closeConvertModal = () => {
+    if (!convertMutation.isPending) {
+      setConvertModal(null)
+      setConvertError('')
+    }
+  }
+
   const handleCreateSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setFormError('')
-
-    if (!formState.cliente_nome.trim()) {
-      setFormError('Informe o nome do cliente para criar o orçamento.')
-      return
-    }
-
-    if (formState.itens.some((item) => !item.descricao.trim())) {
-      setFormError('Todos os itens precisam ter descrição.')
-      return
-    }
-
-    const payload = {
+    if (!formState.cliente_nome.trim()) return setFormError('Informe o nome do cliente para criar o orcamento.')
+    if (formState.itens.some((item) => !item.descricao.trim())) return setFormError('Todos os itens precisam ter descricao.')
+    createMutation.mutate({
       cliente_id: formState.cliente_id || null,
       cliente_nome: formState.cliente_nome.trim(),
       desconto_geral: Number(formState.desconto_geral) || 0,
@@ -372,25 +288,13 @@ const Orcamentos = () => {
         descricao: item.descricao.trim(),
         quantidade: Number(item.quantidade) || 0,
         preco_unitario: Number(item.preco_unitario) || 0,
-        desconto: Number(item.desconto) || 0
-      }))
-    }
-
-    createMutation.mutate(payload)
+        desconto: Number(item.desconto) || 0,
+      })),
+    })
   }
 
   const updateItem = (index: number, field: keyof ItemFormState, value: string) => {
-    setFormState((previous) => ({
-      ...previous,
-      itens: previous.itens.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-            ...item,
-            [field]: value
-          }
-          : item
-      )
-    }))
+    setFormState((previous) => ({ ...previous, itens: previous.itens.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)) }))
   }
 
   const addItem = () => {
@@ -401,9 +305,9 @@ const Orcamentos = () => {
 
   const removeItem = (index: number) => {
     if (formState.itens.length === 1) return
-    setFormState((previous) => ({ ...previous, itens: previous.itens.filter((_, i) => i !== index) }))
-    setProdutoSearches((prev) => prev.filter((_, i) => i !== index))
-    setShowProdutoSugestoes((prev) => prev.filter((_, i) => i !== index))
+    setFormState((previous) => ({ ...previous, itens: previous.itens.filter((_, itemIndex) => itemIndex !== index) }))
+    setProdutoSearches((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+    setShowProdutoSugestoes((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
   }
 
   const selecionarCliente = (cliente: ClienteSugestao) => {
@@ -413,495 +317,421 @@ const Orcamentos = () => {
   }
 
   const selecionarProduto = (index: number, produto: ProdutoSugestao) => {
-    setFormState((prev) => ({
-      ...prev,
-      itens: prev.itens.map((item, i) =>
-        i === index
-          ? { ...item, produto_id: produto.id, descricao: produto.nome, preco_unitario: String(produto.preco_unitario) }
-          : item
-      )
-    }))
-    setProdutoSearches((prev) => prev.map((s, i) => i === index ? produto.nome : s))
-    setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? false : _))
+    setFormState((prev) => ({ ...prev, itens: prev.itens.map((item, itemIndex) => (itemIndex === index ? { ...item, produto_id: produto.id, descricao: produto.nome, preco_unitario: String(produto.preco_unitario) } : item)) }))
+    setProdutoSearches((prev) => prev.map((search, itemIndex) => (itemIndex === index ? produto.nome : search)))
+    setShowProdutoSugestoes((prev) => prev.map((current, itemIndex) => (itemIndex === index ? false : current)))
     setActiveProdutoIndex(null)
   }
 
-  return (
-    <div className="container mx-auto space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Orçamentos</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie propostas comerciais e converta em venda quando necessário.</p>
-        </div>
+  const handleExportarPdf = async (orcamento: Orcamento) => {
+    setDownloadingPdfId(orcamento.id)
+    try {
+      const response = await api.get(`/orcamentos/${orcamento.id}/pdf`, { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `orcamento-${String(orcamento.id).padStart(5, '0')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Erro ao gerar PDF. Tente novamente.')
+    } finally {
+      setDownloadingPdfId(null)
+    }
+  }
 
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Orcamentos</h1>
+          <p className="text-sm text-muted-foreground">Gerencie propostas comerciais e converta em venda quando necessario.</p>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <select
+          <Select
             value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as 'todos' | StatusOrcamento)
+            onValueChange={(value) => {
+              setStatusFilter(value as 'todos' | StatusOrcamento)
               setPage(1)
             }}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="todos">Todos os status</option>
-            <option value="aberto">Abertos</option>
-            <option value="aprovado">Aprovados</option>
-            <option value="cancelado">Cancelados</option>
-            <option value="convertido">Convertidos</option>
-          </select>
-
-          <button
-            onClick={handleOpenModal}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-          >
-            Novo orçamento
-          </button>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os status</SelectItem>
+              <SelectItem value="aberto">Abertos</SelectItem>
+              <SelectItem value="aprovado">Aprovados</SelectItem>
+              <SelectItem value="cancelado">Cancelados</SelectItem>
+              <SelectItem value="convertido">Convertidos</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button type="button" onClick={handleOpenModal}>
+            <Plus className="size-4" />
+            Novo orcamento
+          </Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cliente</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Criação</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-            {orcamentosQuery.isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                  Carregando orçamentos...
-                </td>
-              </tr>
-            ) : orcamentosQuery.isError ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-rose-500 dark:text-rose-400">
-                  Erro ao buscar orçamentos. Tente novamente.
-                </td>
-              </tr>
-            ) : orcamentos.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                  Nenhum orçamento encontrado para o filtro selecionado.
-                </td>
-              </tr>
-            ) : (
-              orcamentos.map((orcamento) => (
-                <tr key={orcamento.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">#{orcamento.id}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{orcamento.cliente_nome ?? 'Cliente não informado'}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass[orcamento.status]}`}>
-                      {statusLabel[orcamento.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{new Date(orcamento.data_criacao).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-emerald-600">{moneyFormatter.format(orcamento.total)}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => cancelMutation.mutate(orcamento.id)}
-                        disabled={orcamento.status !== 'aberto' || cancelMutation.isPending}
-                        className="rounded border border-rose-200 dark:border-rose-700 px-2 py-1 text-xs font-medium text-rose-600 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-900/40 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={() => {
-                          setConvertForm({ forma_pagamento: FormaPagamento.PIX, parcelas: 1 })
-                          setConvertError('')
-                          setConvertModal({ orcamentoId: orcamento.id })
-                        }}
-                        disabled={(orcamento.status !== 'aberto' && orcamento.status !== 'aprovado') || convertMutation.isPending}
-                        className="rounded border border-purple-200 dark:border-purple-700 px-2 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 transition hover:bg-purple-50 dark:hover:bg-purple-900/40 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Converter
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleExportarPdf(orcamento)}
-                        disabled={downloadingPdfId === orcamento.id}
-                        aria-label={`Exportar orcamento ${orcamento.id} em PDF`}
-                        className="rounded border border-emerald-200 dark:border-emerald-700 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-50 dark:hover:bg-emerald-900/40 disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Exportar PDF"
-                      >
-                        {downloadingPdfId === orcamento.id ? '...' : 'PDF'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <button
-          onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-          disabled={page === 1}
-          className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Anterior
-        </button>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Página {page} de {totalPages}
-        </span>
-        <button
-          onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-          disabled={page >= totalPages}
-          className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Próxima
-        </button>
-      </div>
-
-      {convertModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="orcamento-conversao-title"
-          onMouseDown={closeConvertModal}
-        >
-          <div
-            ref={convertModalRef}
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-sm rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
-          >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 id="orcamento-conversao-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100">Converter em Venda</h2>
-              <button onClick={() => setConvertModal(null)} aria-label="Fechar modal de conversão" className="text-2xl text-gray-400 hover:text-gray-600">×</button>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Lista de orcamentos</CardTitle>
+              <CardDescription>Propostas abertas, aprovadas, canceladas ou ja convertidas em venda.</CardDescription>
             </div>
-            <div className="space-y-4 px-6 py-5">
-              <label className="block space-y-1 text-sm" htmlFor="orcamento-conversao-forma-pagamento">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Forma de Pagamento</span>
-                <select
-                  id="orcamento-conversao-forma-pagamento"
-                  value={convertForm.forma_pagamento}
-                  onChange={(e) => setConvertForm(prev => ({ ...prev, forma_pagamento: Number(e.target.value) as FormaPagamentoValue }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([, value]) => (
-                    <option key={value} value={value}>{formaPagamentoLabel[value]}</option>
-                  ))}
-                </select>
-              </label>
-              {convertForm.forma_pagamento === FormaPagamento.PRAZO && (
-                <label className="block space-y-1 text-sm" htmlFor="orcamento-conversao-parcelas">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Número de Parcelas</span>
-                  <input
-                    id="orcamento-conversao-parcelas"
-                    type="number"
-                    min={1}
-                    max={48}
-                    value={convertForm.parcelas}
-                    onChange={(e) => setConvertForm(prev => ({ ...prev, parcelas: Math.max(1, Number(e.target.value)) }))}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </label>
-              )}
-              {convertError && (
-                <div className="rounded-md border border-rose-300/60 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
-                  {convertError}
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setConvertModal(null)
-                    setConvertError('')
-                  }}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => convertMutation.mutate({ orcamentoId: convertModal.orcamentoId, ...convertForm })}
-                  disabled={convertMutation.isPending}
-                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 disabled:opacity-60"
-                >
-                  {convertMutation.isPending ? 'Convertendo...' : 'Confirmar'}
-                </button>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{orcamentosQuery.data?.total ?? 0} registros</Badge>
+              <Badge variant="secondary">Pagina {page} de {totalPages}</Badge>
             </div>
           </div>
-        </div>
-      )}
-
-      {isCreateModalOpen && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Novo orcamento"
-          onMouseDown={closeCreateModal}
-        >
-          <div
-            ref={createModalRef}
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
-          >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Novo orçamento</h2>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                aria-label="Fechar modal de novo orçamento"
-                className="text-2xl text-gray-400 transition hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="space-y-5 px-6 py-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1 text-sm" ref={clienteRef}>
-                  <label htmlFor="orcamento-cliente" className="block font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                  <div className="relative">
-                    <input
-                      id="orcamento-cliente"
-                      value={clienteSearch}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        setClienteSearch(v)
-                        setFormState((prev) => ({ ...prev, cliente_id: null, cliente_nome: v }))
-                        setShowClienteSugestoes(true)
-                      }}
-                      onFocus={() => { if (clienteSearch) setShowClienteSugestoes(true) }}
-                      onBlur={() => setTimeout(() => setShowClienteSugestoes(false), 150)}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Digite para buscar cliente..."
-                    />
-                    {showClienteSugestoes && clientesQuery.data && clientesQuery.data.length > 0 && (
-                      <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {clientesQuery.data.map((c) => (
-                          <li
-                            key={c.id}
-                            onMouseDown={() => selecionarCliente(c)}
-                            className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-800 dark:text-gray-100"
-                          >
-                            <span className="font-medium">{c.nome}</span>
-                            {c.cpf_cnpj && <span className="ml-2 text-xs text-gray-400">{c.cpf_cnpj}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {formState.cliente_id && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ Cliente vinculado (ID {formState.cliente_id})</p>
-                  )}
-                </div>
-
-                <label className="space-y-1 text-sm" htmlFor="orcamento-validade">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Validade</span>
-                  <input
-                    id="orcamento-validade"
-                    type="date"
-                    value={formState.data_validade}
-                    onChange={(event) =>
-                      setFormState((previous) => ({
-                        ...previous,
-                        data_validade: event.target.value
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm" htmlFor="orcamento-desconto-geral">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Desconto geral (R$)</span>
-                  <input
-                    id="orcamento-desconto-geral"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formState.desconto_geral}
-                    onChange={(event) =>
-                      setFormState((previous) => ({
-                        ...previous,
-                        desconto_geral: event.target.value
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </label>
-              </div>
-
-              <label className="block space-y-1 text-sm" htmlFor="orcamento-observacao">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Observação</span>
-                <textarea
-                  id="orcamento-observacao"
-                  value={formState.observacao}
-                  onChange={(event) =>
-                    setFormState((previous) => ({
-                      ...previous,
-                      observacao: event.target.value
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={2}
-                  placeholder="Informações adicionais"
-                />
-              </label>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Itens do orçamento</h3>
-                  <button
-                    type="button"
-                    onClick={addItem}
-                    className="rounded border border-blue-200 dark:border-blue-700 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40"
-                  >
-                    + Adicionar item
-                  </button>
-                </div>
-
-                {formState.itens.map((item, index) => (
-                  <div key={`item-${index}`} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-                    {/* Linha 1: busca de produto + botão remover */}
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <label htmlFor={`orcamento-item-descricao-${index}`} className="sr-only">
-                          Produto ou descriÃ§Ã£o do item {index + 1}
-                        </label>
-                        <input
-                          id={`orcamento-item-descricao-${index}`}
-                          value={produtoSearches[index] ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            setProdutoSearches((prev) => prev.map((s, i) => i === index ? v : s))
-                            updateItem(index, 'descricao', v)
-                            setFormState((prev) => ({
-                              ...prev,
-                              itens: prev.itens.map((it, i) => i === index ? { ...it, produto_id: null } : it)
-                            }))
-                            setActiveProdutoIndex(index)
-                            setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? true : _))
-                            buscarProdutos(v, index)
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Criacao</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orcamentosQuery.isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Carregando orcamentos...</TableCell>
+                </TableRow>
+              ) : orcamentosQuery.isError ? (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <Alert variant="destructive">
+                      <AlertTitle>Erro ao buscar orcamentos</AlertTitle>
+                      <AlertDescription>Tente novamente em alguns instantes.</AlertDescription>
+                    </Alert>
+                  </TableCell>
+                </TableRow>
+              ) : orcamentos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Nenhum orcamento encontrado para o filtro selecionado.</TableCell>
+                </TableRow>
+              ) : (
+                orcamentos.map((orcamento) => (
+                  <TableRow key={orcamento.id}>
+                    <TableCell className="text-muted-foreground">#{orcamento.id}</TableCell>
+                    <TableCell className="font-medium">{orcamento.cliente_nome ?? 'Cliente nao informado'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={statusBadgeClass[orcamento.status]}>
+                        {statusLabel[orcamento.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(orcamento.data_criacao).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className="font-medium text-primary">{moneyFormatter.format(orcamento.total)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => cancelMutation.mutate(orcamento.id)}
+                          disabled={orcamento.status !== 'aberto' || cancelMutation.isPending}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setConvertForm({ forma_pagamento: FormaPagamento.PIX, parcelas: 1 })
+                            setConvertError('')
+                            setConvertModal({ orcamentoId: orcamento.id })
                           }}
-                          onFocus={() => {
-                            setActiveProdutoIndex(index)
-                            if ((produtoSearches[index]?.length ?? 0) >= 1) {
-                              setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? true : _))
-                              buscarProdutos(produtoSearches[index] ?? '', index)
-                            }
-                          }}
-                          onBlur={() => setTimeout(() => {
-                            setShowProdutoSugestoes((prev) => prev.map((_, i) => i === index ? false : _))
-                          }, 150)}
-                          placeholder="Buscar produto ou digitar descrição..."
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        {showProdutoSugestoes[index] && activeProdutoIndex === index && produtoResults.length > 0 && (
-                          <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            {produtoResults.map((p) => (
-                              <li
-                                key={p.id}
-                                onMouseDown={() => selecionarProduto(index, p)}
-                                className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-800 dark:text-gray-100"
-                              >
-                                <span className="font-medium">{p.nome}</span>
-                                <span className="ml-2 text-xs text-gray-400">{moneyFormatter.format(p.preco_unitario)}</span>
-                                {p.unidade_medida && <span className="ml-1 text-xs text-gray-400">/ {p.unidade_medida}</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                          disabled={(orcamento.status !== 'aberto' && orcamento.status !== 'aprovado') || convertMutation.isPending}
+                        >
+                          Converter
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => void handleExportarPdf(orcamento)} disabled={downloadingPdfId === orcamento.id}>
+                          <FileText className="size-3.5" />
+                          {downloadingPdfId === orcamento.id ? 'Gerando...' : 'PDF'}
+                        </Button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        disabled={formState.itens.length === 1}
-                        aria-label={`Remover item ${index + 1} do orcamento`}
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
-                      >
-                        −
-                      </button>
-                    </div>
-                    {item.produto_id && (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">✓ Produto vinculado</p>
-                    )}
-                    {/* Linha 2: qtd, preço, desconto */}
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-quantidade-${index}`}>
-                        <span>Quantidade</span>
-                        <input
-                          id={`orcamento-item-quantidade-${index}`}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.quantidade}
-                          onChange={(event) => updateItem(index, 'quantidade', event.target.value)}
-                          placeholder="Qtd"
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </label>
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-preco-${index}`}>
-                        <span>Preço Unitário (R$)</span>
-                        <input
-                          id={`orcamento-item-preco-${index}`}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.preco_unitario}
-                          onChange={(event) => updateItem(index, 'preco_unitario', event.target.value)}
-                          placeholder="Preço unitário"
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </label>
-                      <label className="space-y-1 text-xs text-gray-600 dark:text-gray-300" htmlFor={`orcamento-item-desconto-${index}`}>
-                        <span>Desconto (%)</span>
-                        <input
-                          id={`orcamento-item-desconto-${index}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={item.desconto}
-                          onChange={(event) => updateItem(index, 'desconto', event.target.value)}
-                          placeholder="Desc.%"
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </section>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-              <div className="rounded-lg bg-gray-50 dark:bg-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                Total estimado: <span className="font-semibold text-emerald-600">{moneyFormatter.format(totalPreview)}</span>
-              </div>
+          <Separator />
 
-              {formError && <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{formError}</p>}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {createMutation.isPending ? 'Salvando...' : 'Salvar orçamento'}
-                </button>
-              </div>
-            </form>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => setPage((previous) => Math.max(1, previous - 1))} disabled={page === 1}>
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">Pagina {page} de {totalPages}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))} disabled={page >= totalPages}>
+              Proxima
+            </Button>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
+      <Dialog open={Boolean(convertModal)} onOpenChange={(open) => !open && closeConvertModal()}>
+        <DialogContent className="p-0 sm:max-w-md" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>Converter em venda</DialogTitle>
+            <DialogDescription>Defina a forma de pagamento antes da conversao.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-5">
+            <div className="space-y-2">
+              <Label htmlFor="orcamento-conversao-forma-pagamento">Forma de pagamento</Label>
+              <Select
+                value={String(convertForm.forma_pagamento)}
+                onValueChange={(value) => setConvertForm((prev) => ({ ...prev, forma_pagamento: Number(value) as FormaPagamentoValue }))}
+              >
+                <SelectTrigger id="orcamento-conversao-forma-pagamento" className="w-full">
+                  <SelectValue placeholder="Selecione a forma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(FormaPagamento) as [string, FormaPagamentoValue][]).map(([, value]) => (
+                    <SelectItem key={value} value={String(value)}>
+                      {formaPagamentoLabel[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {convertForm.forma_pagamento === FormaPagamento.PRAZO && (
+              <div className="space-y-2">
+                <Label htmlFor="orcamento-conversao-parcelas">Numero de parcelas</Label>
+                <Input
+                  id="orcamento-conversao-parcelas"
+                  type="number"
+                  min={1}
+                  max={48}
+                  value={convertForm.parcelas}
+                  onChange={(event) => setConvertForm((prev) => ({ ...prev, parcelas: Math.max(1, Number(event.target.value)) }))}
+                />
+              </div>
+            )}
+            {convertError && (
+              <Alert variant="destructive">
+                <AlertTitle>Falha na conversao</AlertTitle>
+                <AlertDescription>{convertError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeConvertModal}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => convertModal && convertMutation.mutate({ orcamentoId: convertModal.orcamentoId, ...convertForm })}
+              disabled={convertMutation.isPending}
+            >
+              {convertMutation.isPending ? 'Convertendo...' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
+        <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>Novo orcamento</DialogTitle>
+            <DialogDescription>Monte a proposta comercial, selecione cliente e adicione os itens desejados.</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="space-y-5 overflow-y-auto px-6 py-5">
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm">Cabecalho</CardTitle>
+                  <CardDescription>Cliente, validade e dados gerais da proposta.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2" ref={clienteRef}>
+                    <Label htmlFor="orcamento-cliente">Cliente</Label>
+                    <div className="relative">
+                      <Input
+                        id="orcamento-cliente"
+                        value={clienteSearch}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          setClienteSearch(value)
+                          setFormState((prev) => ({ ...prev, cliente_id: null, cliente_nome: value }))
+                          setShowClienteSugestoes(true)
+                        }}
+                        onFocus={() => {
+                          if (clienteSearch) setShowClienteSugestoes(true)
+                        }}
+                        onBlur={() => setTimeout(() => setShowClienteSugestoes(false), 150)}
+                        placeholder="Digite para buscar cliente..."
+                      />
+                      {showClienteSugestoes && clientesQuery.data && clientesQuery.data.length > 0 && (
+                        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+                          {clientesQuery.data.map((cliente) => (
+                            <li key={cliente.id} onMouseDown={() => selecionarCliente(cliente)} className="cursor-pointer px-3 py-2 text-sm hover:bg-muted">
+                              <span className="font-medium">{cliente.nome}</span>
+                              {cliente.cpf_cnpj && <span className="ml-2 text-xs text-muted-foreground">{cliente.cpf_cnpj}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    {formState.cliente_id && <p className="text-xs text-primary">Cliente vinculado (ID {formState.cliente_id})</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="orcamento-validade">Validade</Label>
+                    <Input
+                      id="orcamento-validade"
+                      type="date"
+                      value={formState.data_validade}
+                      onChange={(event) => setFormState((previous) => ({ ...previous, data_validade: event.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="orcamento-desconto-geral">Desconto geral (R$)</Label>
+                    <Input
+                      id="orcamento-desconto-geral"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formState.desconto_geral}
+                      onChange={(event) => setFormState((previous) => ({ ...previous, desconto_geral: event.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm">Observacao</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <textarea
+                    id="orcamento-observacao"
+                    value={formState.observacao}
+                    onChange={(event) => setFormState((previous) => ({ ...previous, observacao: event.target.value }))}
+                    className={textareaClassName}
+                    rows={3}
+                    placeholder="Informacoes adicionais"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card size="sm">
+                <CardHeader className="gap-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm">Itens do orcamento</CardTitle>
+                      <CardDescription>Busque produtos existentes ou informe a descricao manualmente.</CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                      Adicionar item
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formState.itens.map((item, index) => (
+                    <Card size="sm" key={`item-${index}`}>
+                      <CardContent className="space-y-3">
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              id={`orcamento-item-descricao-${index}`}
+                              value={produtoSearches[index] ?? ''}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setProdutoSearches((prev) => prev.map((search, itemIndex) => (itemIndex === index ? value : search)))
+                                updateItem(index, 'descricao', value)
+                                setFormState((prev) => ({
+                                  ...prev,
+                                  itens: prev.itens.map((currentItem, itemIndex) => (itemIndex === index ? { ...currentItem, produto_id: null } : currentItem)),
+                                }))
+                                setActiveProdutoIndex(index)
+                                setShowProdutoSugestoes((prev) => prev.map((current, itemIndex) => (itemIndex === index ? true : current)))
+                                buscarProdutos(value, index)
+                              }}
+                              onFocus={() => {
+                                setActiveProdutoIndex(index)
+                                if ((produtoSearches[index]?.length ?? 0) >= 1) {
+                                  setShowProdutoSugestoes((prev) => prev.map((current, itemIndex) => (itemIndex === index ? true : current)))
+                                  buscarProdutos(produtoSearches[index] ?? '', index)
+                                }
+                              }}
+                              onBlur={() => setTimeout(() => setShowProdutoSugestoes((prev) => prev.map((current, itemIndex) => (itemIndex === index ? false : current))), 150)}
+                              placeholder="Buscar produto ou digitar descricao..."
+                            />
+                            {showProdutoSugestoes[index] && activeProdutoIndex === index && produtoResults.length > 0 && (
+                              <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+                                {produtoResults.map((produto) => (
+                                  <li key={produto.id} onMouseDown={() => selecionarProduto(index, produto)} className="cursor-pointer px-3 py-2 text-sm hover:bg-muted">
+                                    <span className="font-medium">{produto.nome}</span>
+                                    <span className="ml-2 text-xs text-muted-foreground">{moneyFormatter.format(produto.preco_unitario)}</span>
+                                    {produto.unidade_medida && <span className="ml-1 text-xs text-muted-foreground">/ {produto.unidade_medida}</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => removeItem(index)} disabled={formState.itens.length === 1} aria-label={`Remover item ${index + 1} do orcamento`}>
+                            Remover
+                          </Button>
+                        </div>
+                        {item.produto_id && <p className="text-xs text-primary">Produto vinculado</p>}
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`orcamento-item-quantidade-${index}`}>Quantidade</Label>
+                            <Input id={`orcamento-item-quantidade-${index}`} type="number" min="0" step="0.01" value={item.quantidade} onChange={(event) => updateItem(index, 'quantidade', event.target.value)} placeholder="Qtd" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`orcamento-item-preco-${index}`}>Preco unitario (R$)</Label>
+                            <Input id={`orcamento-item-preco-${index}`} type="number" min="0" step="0.01" value={item.preco_unitario} onChange={(event) => updateItem(index, 'preco_unitario', event.target.value)} placeholder="Preco unitario" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`orcamento-item-desconto-${index}`}>Desconto (%)</Label>
+                            <Input id={`orcamento-item-desconto-${index}`} type="number" min="0" max="100" step="0.01" value={item.desconto} onChange={(event) => updateItem(index, 'desconto', event.target.value)} placeholder="Desconto" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card size="sm">
+                <CardContent className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total estimado</span>
+                  <strong className="text-primary">{moneyFormatter.format(totalPreview)}</strong>
+                </CardContent>
+              </Card>
+
+              {formError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Falha ao salvar</AlertTitle>
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeCreateModal}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Salvando...' : 'Salvar orcamento'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

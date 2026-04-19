@@ -7,6 +7,9 @@ import { API_BASE_URL } from '../config/api'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 const apiV2 = axios.create({ baseURL: `${API_BASE_URL}/api/v2` })
 apiV2.interceptors.request.use((config) => {
   const token = getToken()
@@ -101,9 +104,9 @@ const AbaRankingFornecedores = () => {
   const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const criterioLabels = {
-    valor_total: { label: 'Valor Total', icon: '💰' },
-    total_notas: { label: 'Nº de Notas', icon: '🧾' },
-    total_itens: { label: 'Nº de Itens', icon: '📦' },
+    valor_total: { label: 'Valor Total', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â°' },
+    total_notas: { label: 'NÃƒâ€šÃ‚Âº de Notas', icon: 'ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â¾' },
+    total_itens: { label: 'NÃƒâ€šÃ‚Âº de Itens', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¦' },
   }
 
   return (
@@ -141,14 +144,14 @@ const AbaRankingFornecedores = () => {
           onClick={() => refetch()}
           className="ml-auto rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
-          🔄 Atualizar
+          ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ Atualizar
         </button>
       </div>
 
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            🏆 Ranking de Fornecedores — por {criterioLabels[criterio].label}
+            ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬Â  Ranking de Fornecedores ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â por {criterioLabels[criterio].label}
           </h3>
           {data && (
             <span className="text-xs text-gray-500 dark:text-gray-400">{data.total} fornecedor(es) com dados</span>
@@ -164,7 +167,7 @@ const AbaRankingFornecedores = () => {
 
         {isError && (
           <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-            Erro ao carregar ranking. Verifique se o servidor está rodando.
+            Erro ao carregar ranking. Verifique se o servidor estÃƒÆ’Ã‚Â¡ rodando.
           </div>
         )}
 
@@ -187,7 +190,7 @@ const AbaRankingFornecedores = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {data.fornecedores.map((f, i) => {
                   const scorePct = Math.round(f.score_confiabilidade * 100)
-                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                  const medal = i === 0 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â¡' : i === 1 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã‹â€ ' : i === 2 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â°' : null
                   return (
                     <tr key={f.fornecedor_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -239,8 +242,8 @@ const formatDateTime = (dateStr: string | null) => {
 
 const FORMAS_PAGAMENTO: Record<number, string> = {
   1: 'Dinheiro',
-  2: 'Débito',
-  3: 'Crédito',
+  2: 'DÃƒÆ’Ã‚Â©bito',
+  3: 'CrÃƒÆ’Ã‚Â©dito',
   4: 'PIX',
   5: 'Boleto',
   6: 'A Prazo'
@@ -310,7 +313,7 @@ const AbaVendas = () => {
     <div className="space-y-6">
       <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data InÃƒÆ’Ã‚Â­cio</label>
           <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500" required />
         </div>
@@ -336,7 +339,7 @@ const AbaVendas = () => {
         {[
           { label: 'Total de Vendas', value: formatCurrency(resumo.total), color: 'text-emerald-600 dark:text-emerald-400' },
           { label: 'Quantidade', value: resumo.qtd, color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Ticket Médio', value: formatCurrency(resumo.ticket), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Ticket MÃƒÆ’Ã‚Â©dio', value: formatCurrency(resumo.ticket), color: 'text-blue-600 dark:text-blue-400' },
           { label: 'Total Descontos', value: formatCurrency(resumo.descontos), color: 'text-red-500 dark:text-red-400' },
         ].map((card, idx) => (
           <div key={idx} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -352,7 +355,7 @@ const AbaVendas = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NÃƒÆ’Ã‚Âºmero</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Itens</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Desconto</th>
@@ -363,7 +366,7 @@ const AbaVendas = () => {
               {isLoading ? (
                 <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
               ) : vendas.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no período.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no perÃƒÆ’Ã‚Â­odo.</td></tr>
               ) : (
                 vendas.map(v => (
                   <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
@@ -391,7 +394,7 @@ const AbaVendas = () => {
           </table>
         </div>
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Página {data?.page || 1} de {totalPages || 1} — {totalRegistros} registros</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">PÃƒÆ’Ã‚Â¡gina {data?.page || 1} de {totalPages || 1} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {totalRegistros} registros</span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -407,7 +410,7 @@ const AbaVendas = () => {
               disabled={isLoading || (totalPages > 0 && page >= totalPages)}
               className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Próxima
+              PrÃƒÆ’Ã‚Â³xima
             </button>
           </div>
         </div>
@@ -454,7 +457,7 @@ const AbaEstoque = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow w-full md:w-1/3 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do Mínimo</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do MÃƒÆ’Ã‚Â­nimo</p>
         <p className="text-3xl font-bold mt-1 text-red-600 dark:text-red-400">{isError ? '-' : (data?.total || 0)}</p>
       </div>
 
@@ -465,9 +468,9 @@ const AbaEstoque = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estoque Atual</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mínimo</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Déficit</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Última Movimentação</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">MÃƒÆ’Ã‚Â­nimo</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DÃƒÆ’Ã‚Â©ficit</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ÃƒÆ’Ã…Â¡ltima MovimentaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -476,7 +479,7 @@ const AbaEstoque = () => {
               ) : isError ? (
                 <tr><td colSpan={5} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar os itens de estoque.</td></tr>
               ) : data?.items.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto com estoque crítico.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto com estoque crÃƒÆ’Ã‚Â­tico.</td></tr>
               ) : (
                 data?.items.map(item => {
                   const deficit = item.estoque_minimo - item.quantidade_atual
@@ -586,7 +589,7 @@ const AbaResumoMes = () => {
                 { start_date: dataInicioMes, end_date: dataHoje }
               )
             } catch {
-              toast.error('Erro ao gerar PDF do resumo do mês. Tente novamente.')
+              toast.error('Erro ao gerar PDF do resumo do mÃƒÆ’Ã‚Âªs. Tente novamente.')
             } finally {
               setDownloadingPdf(false)
             }
@@ -602,9 +605,9 @@ const AbaResumoMes = () => {
         {[
           { label: 'Faturamento Bruto', value: formatCurrency(resumo?.total_bruto || 0), color: 'text-gray-900 dark:text-gray-100' },
           { label: 'Descontos', value: formatCurrency(resumo?.total_descontos || 0), color: 'text-red-500 dark:text-red-400' },
-          { label: 'Faturamento Líquido', value: formatCurrency(resumo?.total_liquido || 0), color: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Nº Vendas', value: resumo?.quantidade_vendas || 0, color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Ticket Médio', value: formatCurrency(resumo?.ticket_medio || 0), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Faturamento LÃƒÆ’Ã‚Â­quido', value: formatCurrency(resumo?.total_liquido || 0), color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'NÃƒâ€šÃ‚Âº Vendas', value: resumo?.quantidade_vendas || 0, color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Ticket MÃƒÆ’Ã‚Â©dio', value: formatCurrency(resumo?.ticket_medio || 0), color: 'text-blue-600 dark:text-blue-400' },
         ].map((c, i) => (
           <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{c.label}</p>
@@ -614,10 +617,10 @@ const AbaResumoMes = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Faturamento Diário - {new Date(dataInicioMes + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Faturamento DiÃƒÆ’Ã‚Â¡rio - {new Date(dataInicioMes + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
         <div className="h-64 flex items-end justify-between gap-1 w-full">
           {isLoading ? (
-            <div className="w-full text-center text-gray-500 pt-20">Processando gráfico...</div>
+            <div className="w-full text-center text-gray-500 pt-20">Processando grÃƒÆ’Ã‚Â¡fico...</div>
           ) : vendasPorDia.data.length === 0 ? (
             <div className="w-full text-center text-gray-500 pt-20">Nenhum dado para exibir.</div>
           ) : (
@@ -736,7 +739,7 @@ const AbaItensMaisVendidos = () => {
     <div className="space-y-6">
       <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data InÃƒÆ’Ã‚Â­cio</label>
           <input
             type="date"
             value={dataInicio}
@@ -780,10 +783,10 @@ const AbaItensMaisVendidos = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posição</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">PosiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidades Vendidas</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nº de Vendas</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NÃƒâ€šÃ‚Âº de Vendas</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -792,7 +795,7 @@ const AbaItensMaisVendidos = () => {
               ) : isError ? (
                 <tr><td colSpan={4} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar itens mais vendidos.</td></tr>
               ) : top10.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum item vendido no período.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum item vendido no perÃƒÆ’Ã‚Â­odo.</td></tr>
               ) : (
                 top10.map((item, index) => (
                   <tr key={`${item.nome}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
@@ -813,71 +816,62 @@ const AbaItensMaisVendidos = () => {
 
 const Relatorios = () => {
   const [activeTab, setActiveTab] = useState<Tab>('vendas')
+  const tabs: Array<{ value: Tab; label: string }> = [
+    { value: 'vendas', label: 'Vendas por Periodo' },
+    { value: 'estoque', label: 'Estoque Baixo' },
+    { value: 'resumo', label: 'Resumo do Mes' },
+    { value: 'itens-mais-vendidos', label: 'Itens Mais Vendidos' },
+    { value: 'ranking-fornecedores', label: 'Ranking Fornecedores' },
+  ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Relatórios</h1>
-      </div>
-
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('vendas')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'vendas'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as Tab)}
+      className="space-y-6"
+    >
+      <Card className="border-border/60 bg-card/95">
+        <CardHeader className="gap-4">
+          <div className="space-y-1">
+            <CardTitle>Relatorios</CardTitle>
+            <CardDescription>
+              Consolide vendas, estoque e indicadores mensais no mesmo painel.
+            </CardDescription>
+          </div>
+          <TabsList
+            variant="line"
+            className="h-auto w-full flex-wrap items-start justify-start gap-2 rounded-none border-b bg-transparent p-0"
           >
-            Vendas por Período
-          </button>
-          <button
-            onClick={() => setActiveTab('estoque')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'estoque'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Estoque Baixo
-          </button>
-          <button
-            onClick={() => setActiveTab('resumo')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'resumo'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Resumo do Mês
-          </button>
-          <button
-            onClick={() => setActiveTab('itens-mais-vendidos')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'itens-mais-vendidos'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Itens Mais Vendidos
-          </button>
-          <button
-            onClick={() => setActiveTab('ranking-fornecedores')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'ranking-fornecedores'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            🏆 Ranking Fornecedores
-          </button>
-        </nav>
-      </div>
-
-      <div className="mt-4">
-        {activeTab === 'vendas' && <AbaVendas />}
-        {activeTab === 'estoque' && <AbaEstoque />}
-        {activeTab === 'resumo' && <AbaResumoMes />}
-        {activeTab === 'itens-mais-vendidos' && <AbaItensMaisVendidos />}
-        {activeTab === 'ranking-fornecedores' && <AbaRankingFornecedores />}
-      </div>
-    </div>
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="min-h-9 flex-none rounded-md px-3 py-2 text-sm"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <TabsContent value="vendas" className="mt-0">
+            <AbaVendas />
+          </TabsContent>
+          <TabsContent value="estoque" className="mt-0">
+            <AbaEstoque />
+          </TabsContent>
+          <TabsContent value="resumo" className="mt-0">
+            <AbaResumoMes />
+          </TabsContent>
+          <TabsContent value="itens-mais-vendidos" className="mt-0">
+            <AbaItensMaisVendidos />
+          </TabsContent>
+          <TabsContent value="ranking-fornecedores" className="mt-0">
+            <AbaRankingFornecedores />
+          </TabsContent>
+        </CardContent>
+      </Card>
+    </Tabs>
   )
 }
 
