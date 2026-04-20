@@ -213,7 +213,7 @@ const PDVScreen = () => {
   const [saleResult, setSaleResult] = useState<VendaPDVRead | null>(null)
   const [politicasDesconto, setPoliticasDesconto] = useState<Record<number, FaixaDesconto[]>>({})
 
-  // Verificaçãoo de preço mínimo
+  // Verificacao de preco minimo
   const [alertasPreco, setAlertasPreco] = useState<AlertaPrecoMinimo[]>([])
   const [showPrecoModal, setShowPrecoModal] = useState(false)
   const [checkingPreco, setCheckingPreco] = useState(false)
@@ -754,7 +754,7 @@ const PDVScreen = () => {
 
     const payload = buildPayload()
 
-    // Verificaçãoo de preço mínimo antes de finalizar
+    // Verificacao de preco minimo antes de finalizar
     setCheckingPreco(true)
     try {
       const res = await api.post('/pdv/verificar-preco', {
@@ -770,7 +770,7 @@ const PDVScreen = () => {
         return
       }
     } catch {
-      // Se a verificaçãoo falhar, prossegue sem bloquear
+      // Se a verificacao falhar, prossegue sem bloquear
     }
     setCheckingPreco(false)
 
@@ -937,7 +937,7 @@ const PDVScreen = () => {
                 </p>
                 {selectedClient.observacao ? (
                   <p className="text-xs rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-1 text-amber-700 dark:text-amber-300">
-                    Observaçãoo atual: {selectedClient.observacao}
+                    Observacao atual: {selectedClient.observacao}
                   </p>
                 ) : null}
               </div>
@@ -949,7 +949,7 @@ const PDVScreen = () => {
       </div>
 
       <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalizaçãoo</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalizacao</h2>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmitSale}>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -1241,13 +1241,13 @@ const PDVScreen = () => {
               ) : null}
 
               <label className="block">
-                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observaçãoo</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observacao</span>
                 <textarea
                   value={observacao}
                   onChange={(event) => setObservacao(event.target.value)}
                   rows={3}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                  placeholder="Observaçãoo opcional"
+                  placeholder="Observacao opcional"
                 />
               </label>
 
@@ -1260,7 +1260,7 @@ const PDVScreen = () => {
                       value={autorizacaoTerceiroNome}
                       onChange={(event) => setAutorizacaoTerceiroNome(event.target.value)}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                      placeholder="Ex.: Zé Eletricista"
+                      placeholder="Ex.: Ze Eletricista"
                     />
                   </label>
                   <label className="block">
@@ -1274,7 +1274,7 @@ const PDVScreen = () => {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observaçãoo da autorizaçãoo</span>
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observacao da autorizacao</span>
                     <textarea
                       value={autorizacaoTerceiroObservacao}
                       onChange={(event) => setAutorizacaoTerceiroObservacao(event.target.value)}
@@ -1295,7 +1295,7 @@ const PDVScreen = () => {
             disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco || Boolean(paymentValidationError)}
             className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {checkingPreco ? 'Verificando preços...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
+            {checkingPreco ? 'Verificando precos...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
           </button>
         </form>
       </section>

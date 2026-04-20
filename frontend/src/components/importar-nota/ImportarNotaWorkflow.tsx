@@ -210,7 +210,7 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                     {/* Sem problemas */}
                     {fatoresFalha.length === 0 && validacaoCruzada.length === 0 && (
                         <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                            OK Nenhuma inconsist?ncia detectada na nota fiscal.
+                            OK Nenhuma inconsistencia detectada na nota fiscal.
                         </p>
                     )}
 
@@ -323,7 +323,7 @@ const TabImportar = () => {
         setItens(mapped)
         setStep('review')
 
-        // Disparar verificaçãoo de IA logo após carregar os itens
+        // Disparar verifica??o de IA logo ap?s carregar os itens
         if (mapped.length > 0) {
             setTimeout(() => {
                 void runAiCheckRef.current(mapped)
@@ -633,7 +633,7 @@ const TabImportar = () => {
                 {step !== 'upload' && (
                     <button type="button" onClick={handleReset}
                         className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 transition hover:bg-gray-50 dark:hover:bg-gray-700">
-                        Nova Importaçãoo
+                        Nova Importacao
                     </button>
                 )}
             </div>
@@ -771,7 +771,7 @@ const TabImportar = () => {
                     {/* Tabela de itens */}
                     <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
-                            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Itens para Importaçãoo</h3>
+                            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Itens para Importacao</h3>
                             <button type="button" onClick={addItem} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700">+ Adicionar Item</button>
                         </div>
                         <div className="overflow-x-auto">
@@ -779,7 +779,7 @@ const TabImportar = () => {
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
                                         <th className="px-3 py-3"><input type="checkbox" checked={allSelected} onChange={e => toggleSelectAll(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" /></th>
-                                        {['Produto', 'Qtd', 'Unidade', 'Preço Unit.', 'NCM', 'Subtotal', 'Status IA', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
+                                        {['Produto', 'Qtd', 'Unidade', 'Pre?o Unit.', 'NCM', 'Subtotal', 'Status IA', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -847,7 +847,7 @@ const TabImportar = () => {
                             {itens.some(i => !i.aiStatus) && !aiChecking && (
                                 <button type="button" onClick={() => runAiCheck(itens)}
                                     className="rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 transition hover:bg-blue-50 flex items-center gap-2">
-                                    Reverificar IA
+                                    Re-verificar IA
                                 </button>
                             )}
                             <button type="button" onClick={handleImport}
