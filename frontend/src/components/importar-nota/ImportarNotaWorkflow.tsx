@@ -8,9 +8,9 @@ import ModalDuplicatas from '../ModalDuplicatas'
 import api from '../../services/api'
 import type { DuplicateResolution, SimilarItem } from '../../types/importacaoNota'
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-   TYPES
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+// Types
+
+
 interface ItemExtraido {
     key: string
     nome: string
@@ -85,9 +85,9 @@ interface OCRTaskStatus {
     error?: string
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-   HELPERS
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+// Helpers
+
+
 const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 let keyCounter = 0
 const nextKey = () => `item-${++keyCounter}`
@@ -107,23 +107,23 @@ function detectFileKind(file: File): FileKind {
     return 'unknown'
 }
 const FILE_KIND_LABELS: Record<FileKind, { icon: string; label: string }> = {
-    xml: { icon: 'Ã°Å¸â€œâ€¹', label: 'XML de NFe' },
-    unknown: { icon: 'Ã¢Ââ€œ', label: 'Desconhecido' },
+    xml: { icon: 'XML', label: 'XML de NFe' },
+    unknown: { icon: '?', label: 'Desconhecido' },
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-   MODAL DE CONFIRMAÃƒâ€¡ÃƒÆ’O DE DUPLICATAS SIMILARES
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+// Modal de confirmacao de duplicatas similares
+
+
 const CLASSIFICACAO_CONFIG = {
-    baixo: { emoji: 'Ã°Å¸Å¸Â¢', label: 'Baixo Risco', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200', badge: 'bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200' },
-    medio: { emoji: 'Ã°Å¸Å¸Â¡', label: 'Risco MÃƒÂ©dio', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200' },
-    alto: { emoji: 'Ã°Å¸â€Â´', label: 'Alto Risco', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-800 dark:text-red-200', badge: 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' },
+    baixo: { emoji: 'OK', label: 'Baixo Risco', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200', badge: 'bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200' },
+    medio: { emoji: 'AL', label: 'Risco Medio', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200' },
+    alto: { emoji: 'CR', label: 'Alto Risco', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-800 dark:text-red-200', badge: 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' },
 } as const
 
 const SEVERIDADE_CONFIG = {
-    erro: { emoji: 'Ã¢ÂÅ’', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-700 dark:text-red-300' },
-    alerta: { emoji: 'Ã¢Å¡Â Ã¯Â¸Â', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-700 dark:text-amber-300' },
-    info: { emoji: 'Ã¢â€žÂ¹Ã¯Â¸Â', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700', text: 'text-blue-700 dark:text-blue-300' },
+    erro: { emoji: '!', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700', text: 'text-red-700 dark:text-red-300' },
+    alerta: { emoji: '!', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', text: 'text-amber-700 dark:text-amber-300' },
+    info: { emoji: 'i', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700', text: 'text-blue-700 dark:text-blue-300' },
 } as const
 
 interface PainelAuditoriaFiscalProps {
@@ -153,21 +153,21 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">{config.emoji}</span>
                     <div className="text-left">
-                        <h3 className={`text-sm font-semibold ${config.text}`}>Auditoria Fiscal Ã¢â‚¬â€ {config.label}</h3>
+                        <h3 className={`text-sm font-semibold ${config.text}`}>Auditoria Fiscal - {config.label}</h3>
                         <p className={`text-xs mt-0.5 ${config.text} opacity-75`}>
-                            Score: {auditoria?.score ?? 0}/100 Ã‚Â· ConfianÃƒÂ§a: {Math.round((auditoria?.confianca ?? 0) * 100)}%
-                            {validacaoCruzada.length > 0 && ` Ã‚Â· ${validacaoCruzada.length} verificaÃƒÂ§ÃƒÂ£o(ÃƒÂµes)`}
+                            Score: {auditoria?.score ?? 0}/100 - Confianca: {Math.round((auditoria?.confianca ?? 0) * 100)}%
+                            {validacaoCruzada.length > 0 && ` - ${validacaoCruzada.length} verificacoes`}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     {erros.length > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-800 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-200">{erros.length} erro(s)</span>}
                     {alertas.length > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-800 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-200">{alertas.length} alerta(s)</span>}
-                    <span className={`text-sm ${config.text} transition-transform ${expandido ? 'rotate-180' : ''}`}>Ã¢â€“Â¼</span>
+                    <span className={`text-sm ${config.text} transition-transform ${expandido ? "rotate-180" : ""}`}>v</span>
                 </div>
             </button>
 
-            {/* ConteÃƒÂºdo expandido */}
+            {/* Conteudo expandido */}
             {expandido && (
                 <div className="px-5 pb-4 space-y-3 border-t border-gray-200/50 dark:border-gray-700/50 pt-3">
                     {/* Fatores de risco do engine */}
@@ -177,7 +177,7 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                             <div className="space-y-1.5">
                                 {fatoresFalha.map((f, i) => (
                                     <div key={i} className="flex items-start gap-2 rounded-lg bg-white/60 dark:bg-gray-800/60 px-3 py-2 text-sm">
-                                        <span className="text-red-500 mt-0.5">Ã¢Å¡Â Ã¯Â¸Â</span>
+                                        <span className="text-red-500 mt-0.5">!</span>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-gray-700 dark:text-gray-200">{f.regra.replace(/_/g, ' ')}</p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{f.detalhe}</p>
@@ -189,10 +189,10 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                         </div>
                     )}
 
-                    {/* ValidaÃƒÂ§ÃƒÂ£o cruzada */}
+                    {/* Validacao cruzada */}
                     {validacaoCruzada.length > 0 && (
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">ValidaÃƒÂ§ÃƒÂ£o cruzada</h4>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Validacao cruzada</h4>
                             <div className="space-y-1.5">
                                 {validacaoCruzada.map((v, i) => {
                                     const sev = SEVERIDADE_CONFIG[v.severidade] ?? SEVERIDADE_CONFIG.info
@@ -210,12 +210,12 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                     {/* Sem problemas */}
                     {fatoresFalha.length === 0 && validacaoCruzada.length === 0 && (
                         <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                            Ã¢Å“â€¦ Nenhuma inconsistÃƒÂªncia detectada na nota fiscal.
+                            OK Nenhuma inconsist?ncia detectada na nota fiscal.
                         </p>
                     )}
 
                     <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">
-                        Motor v{auditoria?.versao_engine ?? '?'} Ã‚Â· {infos.length > 0 ? `${infos.length} informativo(s)` : 'Sem informativos'}
+                        Motor v{auditoria?.versao_engine ?? "?"} - {infos.length > 0 ? `${infos.length} informativo(s)` : "Sem informativos"}
                     </p>
                 </div>
             )}
@@ -223,16 +223,16 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
     )
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-   COMPONENT
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+// Component
+
+
 const ImportarNota = () => {
     return (
         <div className="container mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Importar Nota Fiscal</h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Importe o XML da NFe, revise os itens extraÃƒÂ­dos e cadastre os produtos no estoque
+                    Importe o XML da NFe, revise os itens extraidos e cadastre os produtos no estoque
                 </p>
             </div>
             <TabImportar />
@@ -240,9 +240,9 @@ const ImportarNota = () => {
     )
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-   TAB: IMPORTAR XML
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+// Tab: importar XML
+
+
 const TabImportar = () => {
     const [file, setFile] = useState<File | null>(null)
     const [fileKind, setFileKind] = useState<FileKind>('unknown')
@@ -277,7 +277,7 @@ const TabImportar = () => {
 
     const handleFileSelect = useCallback((selectedFile: File) => {
         const kind = detectFileKind(selectedFile)
-        if (kind === 'unknown') { toast.error('Arquivo nÃƒÂ£o suportado. Envie o XML da NFe.'); return }
+        if (kind === 'unknown') { toast.error('Arquivo não suportado. Envie o XML da NFe.'); return }
         setFile(selectedFile); setFileKind(kind); setErrorMsg(null)
     }, [])
 
@@ -323,7 +323,7 @@ const TabImportar = () => {
         setItens(mapped)
         setStep('review')
 
-        // Disparar verificaÃƒÂ§ÃƒÂ£o de IA logo apÃƒÂ³s carregar os itens
+        // Disparar verificaçãoo de IA logo após carregar os itens
         if (mapped.length > 0) {
             setTimeout(() => {
                 void runAiCheckRef.current(mapped)
@@ -331,7 +331,7 @@ const TabImportar = () => {
         }
     }, [])
 
-    /* Ã¢â€â‚¬Ã¢â€â‚¬ VerificaÃƒÂ§ÃƒÂ£o de IA para todos os itens Ã¢â€â‚¬Ã¢â€â‚¬ */
+    // Verificacao de IA para todos os itens
     const runAiCheck = useCallback(async (itemsList: ItemExtraido[]) => {
         setAiChecking(true)
         const atualizados = [...itemsList]
@@ -442,12 +442,12 @@ const TabImportar = () => {
             try {
                 const res = await api.get(`/ocr/status/${taskId}`); const data = res.data as OCRTaskStatus
                 setTaskStatus(data.status)
-                if (data.status === 'completed' && data.result) { handleTaskCompleted(data); toast.success('Processamento concluÃƒÂ­do!') }
+                if (data.status === 'completed' && data.result) { handleTaskCompleted(data); toast.success('Processamento concluído!') }
                 if (data.status === 'failed') { setErrorMsg(data.error || 'Falha.'); toast.error(data.error || 'Falha.'); setStep('upload') }
             } catch (err: unknown) {
                 if (isAxiosError(err) && err.response?.status === 404) {
                     if (pollingRef.current) clearInterval(pollingRef.current)
-                    setErrorMsg('Tarefa nÃƒÂ£o encontrada. Reenvie o arquivo.'); toast.error('Tarefa perdida.'); setStep('upload')
+                    setErrorMsg('Tarefa não encontrada. Reenvie o arquivo.'); toast.error('Tarefa perdida.'); setStep('upload')
                 }
             }
         }
@@ -501,7 +501,7 @@ const TabImportar = () => {
     const importMutation = useMutation({
         mutationFn: async (items: ItemExtraido[]) => {
             const produtos = items.map(item => ({
-                nome: item.nome, fornecedor: item.fornecedor || fornecedorGlobal || 'NÃƒÂ£o informado',
+                nome: item.nome, fornecedor: item.fornecedor || fornecedorGlobal || 'Não informado',
                 preco_unitario: item.preco_unitario, preco_liquido: item.preco_unitario,
                 codigo_ncm: item.codigo_ncm || undefined, codigo_barras: item.codigo_barras || undefined,
                 unidade: item.unidade || 'UN', numero_nota: numeroNota || undefined,
@@ -541,12 +541,12 @@ const TabImportar = () => {
             ? err.response?.data?.detail ?? 'Erro ao importar.' : 'Erro ao importar.'),
     })
 
-    /* Ã¢â€â‚¬Ã¢â€â‚¬ Fluxo de importaÃƒÂ§ÃƒÂ£o com verificaÃƒÂ§ÃƒÂ£o de IA Ã¢â€â‚¬Ã¢â€â‚¬ */
+    // Fluxo de importacao com verificacao de IA
     const handleImport = async () => {
         if (selectedItems.length === 0) { toast.error('Selecione pelo menos um item.'); return }
         if (selectedItems.some(i => !i.nome.trim())) { toast.error('Todos os itens devem ter um nome.'); return }
 
-        // Coletar itens SIMILARES (nÃƒÂ£o exatos) que precisam de confirmaÃƒÂ§ÃƒÂ£o
+        // Coletar itens similares que precisam de confirmacao
         const itensSimilares: SimilarItem[] = selectedItems
             .filter(i => i.aiStatus === 'similar')
             .map(i => ({
@@ -559,14 +559,14 @@ const TabImportar = () => {
             }))
 
         if (itensSimilares.length > 0) {
-            // Mostrar modal de confirmaÃƒÂ§ÃƒÂ£o
+            // Mostrar modal de confirmacao
             pendingImportRef.current = selectedItems
             setModalItens(itensSimilares)
             setShowModal(true)
             return
         }
 
-        // Sem similares problemÃƒÂ¡ticos Ã¢â€ â€™ importar direto
+        // Sem similares problematicos: importar direto
         importMutation.mutate(selectedItems)
     }
 
@@ -606,10 +606,10 @@ const TabImportar = () => {
     }
 
     const steps = [
-        { id: 'upload', label: '1. Upload', icon: 'Ã°Å¸â€œÂ¤' },
-        { id: 'processing', label: '2. Processando', icon: 'Ã¢Å¡â„¢Ã¯Â¸Â' },
-        { id: 'review', label: '3. RevisÃƒÂ£o', icon: 'Ã¢Å“ÂÃ¯Â¸Â' },
-        { id: 'done', label: '4. ConcluÃƒÂ­do', icon: 'Ã¢Å“â€¦' },
+        { id: 'upload', label: '1. Upload', icon: '1' },
+        { id: 'processing', label: '2. Processando', icon: '2' },
+        { id: 'review', label: '3. Revisao', icon: '3' },
+        { id: 'done', label: '4. Concluido', icon: '4' },
     ]
     const stepIndex = steps.findIndex(s => s.id === step)
 
@@ -633,7 +633,7 @@ const TabImportar = () => {
                 {step !== 'upload' && (
                     <button type="button" onClick={handleReset}
                         className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 transition hover:bg-gray-50 dark:hover:bg-gray-700">
-                        Nova ImportaÃƒÂ§ÃƒÂ£o
+                        Nova Importaçãoo
                     </button>
                 )}
             </div>
@@ -679,10 +679,10 @@ const TabImportar = () => {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-3xl">Ã°Å¸â€œÂ¤</div>
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-3xl">XML</div>
                                 <p className="text-lg font-medium text-gray-700 dark:text-gray-200">Arraste o XML da NFe aqui</p>
                                 <p className="text-sm text-gray-500">ou clique para selecionar</p>
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">Ã°Å¸â€œâ€¹ XML de NFe</span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">XML de NFe</span>
                             </div>
                         )}
                     </div>
@@ -692,7 +692,7 @@ const TabImportar = () => {
                             <button type="button" onClick={handleReset} className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50">Limpar</button>
                             <button type="button" onClick={handleUpload} disabled={uploadMutation.isPending}
                                 className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow transition hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                {uploadMutation.isPending ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Enviando...</> : <>Ã°Å¸â€œâ€¹ Processar XML</>}
+                                {uploadMutation.isPending ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Enviando...</> : <>Processar XML</>}
                             </button>
                         </div>
                     )}
@@ -706,16 +706,16 @@ const TabImportar = () => {
                     <div className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Dados da Nota Fiscal</h2>
-                            {fornecedorStatus === 'novo' && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">Ã¢Å“â€¦ Fornecedor novo cadastrado</span>}
-                            {fornecedorStatus === 'existente' && <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">Ã°Å¸â€Â Fornecedor jÃƒÂ¡ cadastrado</span>}
+                            {fornecedorStatus === "novo" && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">Novo fornecedor cadastrado</span>}
+                            {fornecedorStatus === "existente" && <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">Fornecedor ja cadastrado</span>}
                         </div>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {[
                                 { label: 'Fornecedor', val: fornecedorGlobal, set: setFornecedorGlobal, ph: 'Nome do fornecedor' },
                                 { label: 'Nome Fantasia', val: nomeFantasiaFornecedor, set: setNomeFantasiaFornecedor, ph: 'Nome fantasia' },
                                 { label: 'CNPJ', val: cnpjFornecedor, set: setCnpjFornecedor, ph: '00.000.000/0000-00' },
-                                { label: 'NÃ‚Âº Nota', val: numeroNota, set: setNumeroNota, ph: 'NÃƒÂºmero da nota' },
-                                { label: 'Data EmissÃƒÂ£o', val: dataEmissaoNota, set: setDataEmissaoNota, ph: 'YYYY-MM-DD' },
+                                { label: 'Numero Nota', val: numeroNota, set: setNumeroNota, ph: 'Numero da nota' },
+                                { label: 'Data Emissao', val: dataEmissaoNota, set: setDataEmissaoNota, ph: 'YYYY-MM-DD' },
                             ].map(f => (
                                 <div key={f.label}>
                                     <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">{f.label}</label>
@@ -737,14 +737,14 @@ const TabImportar = () => {
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"><p className="text-xs text-gray-500">Selecionados</p><p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{selectedItems.length}</p></div>
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"><p className="text-xs text-gray-500">Valor estimado</p><p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{moneyFormatter.format(selectedItems.reduce((s, i) => s + i.preco_unitario * i.quantidade, 0))}</p></div>
                         <div className={`rounded-lg p-4 shadow ${aiChecking ? 'bg-blue-50 dark:bg-blue-900/20' : aiSimilares > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : aiExatos > 0 ? 'bg-sky-50 dark:bg-sky-900/20' : 'bg-white dark:bg-gray-800'}`}>
-                            <p className="text-xs text-gray-500">IA Ã¢â‚¬â€ VerificaÃƒÂ§ÃƒÂ£o</p>
+                            <p className="text-xs text-gray-500">IA - Verificacao</p>
                             {aiChecking
                                 ? <p className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mt-1"><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /> Verificando...</p>
                                 : aiSimilares > 0
-                                    ? <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mt-1">Ã¢Å¡Â Ã¯Â¸Â {aiSimilares} nome(s) parecido(s)</p>
+                                    ? <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mt-1">Alerta: {aiSimilares} nome(s) parecido(s)</p>
                                     : aiExatos > 0
-                                        ? <p className="text-sm font-semibold text-sky-700 dark:text-sky-300 mt-1">Ã°Å¸â€â€ž {aiExatos} jÃƒÂ¡ no estoque</p>
-                                        : <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-1">Ã¢Å“â€¦ Sem duplicatas</p>
+                                        ? <p className="text-sm font-semibold text-sky-700 dark:text-sky-300 mt-1">{aiExatos} ja no estoque</p>
+                                        : <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-1">OK Sem duplicatas</p>
                             }
                         </div>
                     </div>
@@ -756,12 +756,12 @@ const TabImportar = () => {
                     {!aiChecking && (aiExatos > 0 || aiSimilares > 0) && (
                         <div className="rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4">
                             <div className="flex items-start gap-3">
-                                <span className="text-xl">Ã°Å¸Â¤â€“</span>
+                                <span className="text-xl">IA</span>
                                 <div className="flex-1">
-                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">AnÃƒÂ¡lise de IA</p>
+                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">Analise de IA</p>
                                     <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-0.5">
-                                        {aiExatos > 0 && <li>Ã¢â‚¬Â¢ <strong>{aiExatos} item(s) com nome idÃƒÂªntico</strong> ao jÃƒÂ¡ existente Ã¢â‚¬â€ o estoque serÃƒÂ¡ somado automaticamente, sem criar duplicata.</li>}
-                                        {aiSimilares > 0 && <li>Ã¢â‚¬Â¢ <strong>{aiSimilares} item(s) com nome similar</strong> Ã¢â‚¬â€ vocÃƒÂª serÃƒÂ¡ alertado antes de confirmar a importaÃƒÂ§ÃƒÂ£o.</li>}
+                                        {aiExatos > 0 && <li>- <strong>{aiExatos} item(s) com nome identico</strong> ao ja existente - o estoque sera somado automaticamente, sem criar duplicata.</li>}
+                                        {aiSimilares > 0 && <li>- <strong>{aiSimilares} item(s) com nome similar</strong> - voce sera alertado antes de confirmar a importacao.</li>}
                                     </ul>
                                 </div>
                             </div>
@@ -771,7 +771,7 @@ const TabImportar = () => {
                     {/* Tabela de itens */}
                     <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
-                            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Itens para ImportaÃƒÂ§ÃƒÂ£o</h3>
+                            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Itens para Importaçãoo</h3>
                             <button type="button" onClick={addItem} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700">+ Adicionar Item</button>
                         </div>
                         <div className="overflow-x-auto">
@@ -779,7 +779,7 @@ const TabImportar = () => {
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
                                         <th className="px-3 py-3"><input type="checkbox" checked={allSelected} onChange={e => toggleSelectAll(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" /></th>
-                                        {['Produto', 'Qtd', 'Unidade', 'PreÃƒÂ§o Unit.', 'NCM', 'Subtotal', 'Status IA', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
+                                        {['Produto', 'Qtd', 'Unidade', 'Preço Unit.', 'NCM', 'Subtotal', 'Status IA', ''].map(h => <th key={h} className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">{h}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -808,7 +808,7 @@ const TabImportar = () => {
                                                     <span className="flex items-center gap-1 text-xs text-blue-500"><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />verificando</span>
                                                 )}
                                                 {item.aiStatus === 'ok' && (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Ã¢Å“â€¦ Novo</span>
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Novo</span>
                                                 )}
                                                 {item.aiStatus === 'duplicata_exata' && (
                                                     <div className="max-w-[220px]">
@@ -823,10 +823,10 @@ const TabImportar = () => {
                                                     </div>
                                                 )}
                                                 {!item.aiStatus && (
-                                                    <span className="text-xs text-gray-300 dark:text-gray-600">Ã¢â‚¬â€</span>
+                                                    <span className="text-xs text-gray-300 dark:text-gray-600">-</span>
                                                 )}
                                             </td>
-                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} aria-label={`Remover item ${item.nome}`} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">Ã¢Å“â€¢</button></td>
+                                            <td className="px-3 py-2"><button type="button" onClick={() => removeItem(item.key)} aria-label={`Remover item ${item.nome}`} className="rounded p-1 text-red-500 transition hover:bg-red-50 dark:hover:bg-red-900/30">Remover</button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -836,8 +836,8 @@ const TabImportar = () => {
 
                     <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                         <div className="flex items-start gap-3">
-                            <span className="text-xl">Ã¢Å¡Â Ã¯Â¸Â</span>
-                            <p className="text-sm text-amber-800 dark:text-amber-200">Revise nomes, quantidades, preÃƒÂ§os e NCM antes de importar. Itens desmarcados nÃƒÂ£o serÃƒÂ£o importados.</p>
+                            <span className="text-xl">!</span>
+                            <p className="text-sm text-amber-800 dark:text-amber-200">Revise nomes, quantidades, precos e NCM antes de importar. Itens desmarcados nao serao importados.</p>
                         </div>
                     </div>
 
@@ -847,7 +847,7 @@ const TabImportar = () => {
                             {itens.some(i => !i.aiStatus) && !aiChecking && (
                                 <button type="button" onClick={() => runAiCheck(itens)}
                                     className="rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 transition hover:bg-blue-50 flex items-center gap-2">
-                                    Ã°Å¸Â¤â€“ Re-verificar IA
+                                    Reverificar IA
                                 </button>
                             )}
                             <button type="button" onClick={handleImport}
@@ -857,7 +857,7 @@ const TabImportar = () => {
                                     ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Importando...</>
                                     : aiChecking
                                         ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Verificando IA...</>
-                                        : <>Ã¢Å“â€¦ Importar {selectedItems.length} {selectedItems.length === 1 ? 'Produto' : 'Produtos'}</>
+                                        : <>Importar {selectedItems.length} {selectedItems.length === 1 ? "Produto" : "Produtos"}</>
                                 }
                             </button>
                         </div>
@@ -868,13 +868,13 @@ const TabImportar = () => {
             {/* STEP 4: Done */}
             {step === 'done' && (
                 <div className="flex flex-col items-center justify-center space-y-6 rounded-lg bg-white p-12 shadow dark:bg-gray-800">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-4xl">Ã¢Å“â€¦</div>
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-4xl">OK</div>
                     <div className="text-center">
-                        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">ImportaÃƒÂ§ÃƒÂ£o ConcluÃƒÂ­da!</h2>
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Produtos novos foram cadastrados e os jÃƒÂ¡ existentes tiveram o estoque atualizado.</p>
+                        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Importacao Concluida!</h2>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Produtos novos foram cadastrados e os ja existentes tiveram o estoque atualizado.</p>
                     </div>
                     <div className="flex gap-3">
-                        <button type="button" onClick={handleReset} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700">Ã°Å¸â€œÂ¤ Importar Outra Nota</button>
+                        <button type="button" onClick={handleReset} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700">Importar Outra Nota</button>
                         <Link to="/produtos" className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition hover:bg-gray-50">Ver Produtos</Link>
                     </div>
                 </div>

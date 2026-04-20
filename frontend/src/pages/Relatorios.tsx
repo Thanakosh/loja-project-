@@ -104,9 +104,9 @@ const AbaRankingFornecedores = () => {
   const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const criterioLabels = {
-    valor_total: { label: 'Valor Total', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â°' },
-    total_notas: { label: 'NÃƒâ€šÃ‚Âº de Notas', icon: 'ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â¾' },
-    total_itens: { label: 'NÃƒâ€šÃ‚Âº de Itens', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¦' },
+    valor_total: { label: 'Valor Total', icon: '$' },
+    total_notas: { label: 'Numero de Notas', icon: '#' },
+    total_itens: { label: 'Numero de Itens', icon: '*' },
   }
 
   return (
@@ -144,14 +144,14 @@ const AbaRankingFornecedores = () => {
           onClick={() => refetch()}
           className="ml-auto rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
-          ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ Atualizar
+          Atualizar
         </button>
       </div>
 
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬Â  Ranking de Fornecedores ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â por {criterioLabels[criterio].label}
+            Ranking de Fornecedores por {criterioLabels[criterio].label}
           </h3>
           {data && (
             <span className="text-xs text-gray-500 dark:text-gray-400">{data.total} fornecedor(es) com dados</span>
@@ -167,7 +167,7 @@ const AbaRankingFornecedores = () => {
 
         {isError && (
           <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-            Erro ao carregar ranking. Verifique se o servidor estÃƒÆ’Ã‚Â¡ rodando.
+            Erro ao carregar ranking. Verifique se o servidor esta rodando.
           </div>
         )}
 
@@ -190,7 +190,7 @@ const AbaRankingFornecedores = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {data.fornecedores.map((f, i) => {
                   const scorePct = Math.round(f.score_confiabilidade * 100)
-                  const medal = i === 0 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â¡' : i === 1 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã‹â€ ' : i === 2 ? 'ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â°' : null
+                  const medal = i < 3 ? `#${i + 1}` : null
                   return (
                     <tr key={f.fornecedor_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -242,8 +242,8 @@ const formatDateTime = (dateStr: string | null) => {
 
 const FORMAS_PAGAMENTO: Record<number, string> = {
   1: 'Dinheiro',
-  2: 'DÃƒÆ’Ã‚Â©bito',
-  3: 'CrÃƒÆ’Ã‚Â©dito',
+  2: 'Débito',
+  3: 'Crédito',
   4: 'PIX',
   5: 'Boleto',
   6: 'A Prazo'
@@ -313,7 +313,7 @@ const AbaVendas = () => {
     <div className="space-y-6">
       <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data InÃƒÆ’Ã‚Â­cio</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
           <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-blue-500 focus:border-blue-500" required />
         </div>
@@ -339,7 +339,7 @@ const AbaVendas = () => {
         {[
           { label: 'Total de Vendas', value: formatCurrency(resumo.total), color: 'text-emerald-600 dark:text-emerald-400' },
           { label: 'Quantidade', value: resumo.qtd, color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Ticket MÃƒÆ’Ã‚Â©dio', value: formatCurrency(resumo.ticket), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Ticket Médio', value: formatCurrency(resumo.ticket), color: 'text-blue-600 dark:text-blue-400' },
           { label: 'Total Descontos', value: formatCurrency(resumo.descontos), color: 'text-red-500 dark:text-red-400' },
         ].map((card, idx) => (
           <div key={idx} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -355,7 +355,7 @@ const AbaVendas = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NÃƒÆ’Ã‚Âºmero</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Itens</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagamento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Desconto</th>
@@ -366,7 +366,7 @@ const AbaVendas = () => {
               {isLoading ? (
                 <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
               ) : vendas.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no perÃƒÆ’Ã‚Â­odo.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhuma venda no período.</td></tr>
               ) : (
                 vendas.map(v => (
                   <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
@@ -394,7 +394,7 @@ const AbaVendas = () => {
           </table>
         </div>
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">PÃƒÆ’Ã‚Â¡gina {data?.page || 1} de {totalPages || 1} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {totalRegistros} registros</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Pagina {data?.page || 1} de {totalPages || 1} - {totalRegistros} registros</span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -410,7 +410,7 @@ const AbaVendas = () => {
               disabled={isLoading || (totalPages > 0 && page >= totalPages)}
               className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              PrÃƒÆ’Ã‚Â³xima
+              Próxima
             </button>
           </div>
         </div>
@@ -457,7 +457,7 @@ const AbaEstoque = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow w-full md:w-1/3 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do MÃƒÆ’Ã‚Â­nimo</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Produtos Abaixo do Mínimo</p>
         <p className="text-3xl font-bold mt-1 text-red-600 dark:text-red-400">{isError ? '-' : (data?.total || 0)}</p>
       </div>
 
@@ -468,9 +468,9 @@ const AbaEstoque = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estoque Atual</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">MÃƒÆ’Ã‚Â­nimo</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DÃƒÆ’Ã‚Â©ficit</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ÃƒÆ’Ã…Â¡ltima MovimentaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mínimo</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Déficit</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">áltima Movimentaçãoo</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -479,7 +479,7 @@ const AbaEstoque = () => {
               ) : isError ? (
                 <tr><td colSpan={5} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar os itens de estoque.</td></tr>
               ) : data?.items.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto com estoque crÃƒÆ’Ã‚Â­tico.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto com estoque crítico.</td></tr>
               ) : (
                 data?.items.map(item => {
                   const deficit = item.estoque_minimo - item.quantidade_atual
@@ -589,7 +589,7 @@ const AbaResumoMes = () => {
                 { start_date: dataInicioMes, end_date: dataHoje }
               )
             } catch {
-              toast.error('Erro ao gerar PDF do resumo do mÃƒÆ’Ã‚Âªs. Tente novamente.')
+              toast.error('Erro ao gerar PDF do resumo do mês. Tente novamente.')
             } finally {
               setDownloadingPdf(false)
             }
@@ -605,9 +605,9 @@ const AbaResumoMes = () => {
         {[
           { label: 'Faturamento Bruto', value: formatCurrency(resumo?.total_bruto || 0), color: 'text-gray-900 dark:text-gray-100' },
           { label: 'Descontos', value: formatCurrency(resumo?.total_descontos || 0), color: 'text-red-500 dark:text-red-400' },
-          { label: 'Faturamento LÃƒÆ’Ã‚Â­quido', value: formatCurrency(resumo?.total_liquido || 0), color: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'NÃƒâ€šÃ‚Âº Vendas', value: resumo?.quantidade_vendas || 0, color: 'text-gray-900 dark:text-gray-100' },
-          { label: 'Ticket MÃƒÆ’Ã‚Â©dio', value: formatCurrency(resumo?.ticket_medio || 0), color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Faturamento Líquido', value: formatCurrency(resumo?.total_liquido || 0), color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Nº Vendas', value: resumo?.quantidade_vendas || 0, color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Ticket Médio', value: formatCurrency(resumo?.ticket_medio || 0), color: 'text-blue-600 dark:text-blue-400' },
         ].map((c, i) => (
           <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{c.label}</p>
@@ -617,10 +617,10 @@ const AbaResumoMes = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Faturamento DiÃƒÆ’Ã‚Â¡rio - {new Date(dataInicioMes + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Faturamento Diário - {new Date(dataInicioMes + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
         <div className="h-64 flex items-end justify-between gap-1 w-full">
           {isLoading ? (
-            <div className="w-full text-center text-gray-500 pt-20">Processando grÃƒÆ’Ã‚Â¡fico...</div>
+            <div className="w-full text-center text-gray-500 pt-20">Processando gráfico...</div>
           ) : vendasPorDia.data.length === 0 ? (
             <div className="w-full text-center text-gray-500 pt-20">Nenhum dado para exibir.</div>
           ) : (
@@ -739,7 +739,7 @@ const AbaItensMaisVendidos = () => {
     <div className="space-y-6">
       <form onSubmit={handleGerar} className="flex flex-wrap items-end gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data InÃƒÆ’Ã‚Â­cio</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
           <input
             type="date"
             value={dataInicio}
@@ -783,10 +783,10 @@ const AbaItensMaisVendidos = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">PosiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posiçãoo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidades Vendidas</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NÃƒâ€šÃ‚Âº de Vendas</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nº de Vendas</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -795,7 +795,7 @@ const AbaItensMaisVendidos = () => {
               ) : isError ? (
                 <tr><td colSpan={4} className="px-6 py-4 text-center text-red-500 dark:text-red-400">Erro ao carregar itens mais vendidos.</td></tr>
               ) : top10.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum item vendido no perÃƒÆ’Ã‚Â­odo.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum item vendido no período.</td></tr>
               ) : (
                 top10.map((item, index) => (
                   <tr key={`${item.nome}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">

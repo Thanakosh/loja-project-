@@ -59,15 +59,15 @@ interface PoliticaDescontoProduto {
   faixas: FaixaDesconto[]
 }
 
-/** Dada uma lista de faixas e a quantidade, retorna o desconto mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ximo permitido ou null (sem polÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­tica = livre). */
+/** Dada uma lista de faixas e a quantidade, retorna o desconto máximo permitido ou null (sem política = livre). */
 const getDescontoMaximo = (faixas: FaixaDesconto[] | undefined, quantidade: number): number | null => {
   if (!faixas || faixas.length === 0) return null
-  // Faixas ordenadas desc por qtd_minima para pegar a maior faixa aplicÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡vel
+  // Faixas ordenadas desc por qtd_minima para pegar a maior faixa aplicável
   const sorted = [...faixas].sort((a, b) => b.qtd_minima - a.qtd_minima)
   for (const f of sorted) {
     if (quantidade >= f.qtd_minima) return f.desconto_maximo_percentual
   }
-  return 0 // quantidade abaixo da menor faixa ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ sem desconto
+  return 0 // quantidade abaixo da menor faixa, sem desconto
 }
 
 const permiteFracionado = (produto: Produto) => produto.permite_fracionado === true
@@ -151,8 +151,8 @@ interface AlertaPrecoMinimo {
 
 const paymentOptions = [
   { value: 1, label: 'Dinheiro' },
-  { value: 2, label: 'CartÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o DÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©bito' },
-  { value: 3, label: 'CartÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o CrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dito' },
+  { value: 2, label: 'Cartão Débito' },
+  { value: 3, label: 'Cartão Crédito' },
   { value: 4, label: 'PIX' },
   { value: 5, label: 'Boleto' },
   { value: 6, label: 'A Prazo' }
@@ -163,7 +163,7 @@ const moneyFormatter = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL'
 })
 
-const formatPayment = (value: number) => paymentOptions.find((option) => option.value === value)?.label ?? 'NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o informado'
+const formatPayment = (value: number) => paymentOptions.find((option) => option.value === value)?.label ?? 'Não informado'
 
 interface PaymentRow {
   id: string
@@ -213,13 +213,13 @@ const PDVScreen = () => {
   const [saleResult, setSaleResult] = useState<VendaPDVRead | null>(null)
   const [politicasDesconto, setPoliticasDesconto] = useState<Record<number, FaixaDesconto[]>>({})
 
-  // VerificaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de preÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§o mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nimo
+  // Verificaçãoo de preço mínimo
   const [alertasPreco, setAlertasPreco] = useState<AlertaPrecoMinimo[]>([])
   const [showPrecoModal, setShowPrecoModal] = useState(false)
   const [checkingPreco, setCheckingPreco] = useState(false)
   const pendingSalePayloadRef = useRef<VendaPDVCreate | null>(null)
 
-  // Busca bulk de polÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­ticas de desconto quando o carrinho muda
+  // Busca bulk de políticas de desconto quando o carrinho muda
   const cartProductIds = useMemo(() => cartItems.map((i) => i.produto.id), [cartItems])
   useEffect(() => {
     if (cartProductIds.length === 0) {
@@ -240,14 +240,14 @@ const PDVScreen = () => {
           for (const p of data) {
             next[p.produto_id] = p.faixas
           }
-          // Marcar produtos sem polÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­tica retornada
+          // Marcar produtos sem política retornada
           for (const id of idsToFetch) {
             if (!(id in next)) next[id] = []
           }
           return next
         })
       } catch {
-        // silencioso ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â desconto livre em caso de falha
+        // silencioso: desconto livre em caso de falha
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -341,12 +341,12 @@ const PDVScreen = () => {
             })
             .filter(Boolean)
             .join(' | ')
-          setSubmitError(parsedDetail || 'NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­vel finalizar a venda.')
+          setSubmitError(parsedDetail || 'Não foi possível finalizar a venda.')
           return
         }
       }
 
-      setSubmitError('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­vel finalizar a venda. Tente novamente.')
+      setSubmitError('Não foi possível finalizar a venda. Tente novamente.')
     }
   })
 
@@ -502,7 +502,7 @@ const PDVScreen = () => {
       const result = response.data as ProdutoListResponse
       const produto = result.items?.[0]
       if (!produto) {
-        toast.error('CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digo de barras nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado')
+        toast.error('Código de barras não encontrado')
         return
       }
 
@@ -510,12 +510,12 @@ const PDVScreen = () => {
       setBarcodeInput('')
       barcodeRef.current?.focus()
     } catch {
-      toast.error('Falha ao buscar cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digo de barras')
+      toast.error('Falha ao buscar código de barras')
       barcodeRef.current?.focus()
     }
   }
 
-  // Atalho global F2 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ foco no campo de cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digo de barras
+  // Atalho global F2 para foco no campo de codigo de barras
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
@@ -528,14 +528,14 @@ const PDVScreen = () => {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Detecta rajada de scanner ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â se digitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o chega em ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°Ãƒâ€šÃ‚Â¤80ms limpa texto antigo
+  // Detecta rajada de scanner: se a digitacao chegar em menos de 80 ms, limpa o texto antigo
   const handleBarcodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const now = Date.now()
     const elapsed = now - lastKeystrokeRef.current
     lastKeystrokeRef.current = now
 
     if (elapsed > 500 && barcodeInput.length > 0) {
-      // Primeira tecla apÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³s pausa longa e campo jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ tem texto ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ scanner novo, limpa
+      // Primeira tecla apos pausa longa com texto no campo: assume novo scanner e limpa
       setBarcodeInput(e.target.value.slice(-1))
     } else {
       setBarcodeInput(e.target.value)
@@ -628,7 +628,7 @@ const PDVScreen = () => {
       window.open(url, '_blank', 'noopener,noreferrer')
       window.setTimeout(() => URL.revokeObjectURL(url), 15000)
     } catch {
-      toast.error('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­vel gerar o comprovante em PDF')
+      toast.error('Não foi possível gerar o comprovante em PDF')
     }
   }
 
@@ -754,7 +754,7 @@ const PDVScreen = () => {
 
     const payload = buildPayload()
 
-    // VerificaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de preÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§o mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nimo antes de finalizar
+    // Verificaçãoo de preço mínimo antes de finalizar
     setCheckingPreco(true)
     try {
       const res = await api.post('/pdv/verificar-preco', {
@@ -770,7 +770,7 @@ const PDVScreen = () => {
         return
       }
     } catch {
-      // Se a verificaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o falhar, prossegue sem bloquear
+      // Se a verificaçãoo falhar, prossegue sem bloquear
     }
     setCheckingPreco(false)
 
@@ -781,15 +781,15 @@ const PDVScreen = () => {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">PDV</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Registre vendas rÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡pidas e acompanhe o total em tempo real.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Registre vendas rápidas e acompanhe o total em tempo real.</p>
       </header>
 
       {!caixaQuery.isLoading && !caixaAberto && (
         <div className="flex items-center gap-3 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-yellow-800 dark:text-yellow-300">
-          <span className="text-xl">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â</span>
+          <span className="text-xl">!</span>
           <div>
-            <p className="font-semibold text-sm">Caixa nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ aberto</p>
-            <p className="text-xs">As vendas serÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o bloqueadas. <a href="/caixa" className="underline font-medium">Abrir o caixa agora ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</a></p>
+            <p className="font-semibold text-sm">Caixa nao esta aberto</p>
+            <p className="text-xs">As vendas serao bloqueadas. <a href="/caixa" className="underline font-medium">Abrir o caixa agora</a></p>
           </div>
         </div>
       )}
@@ -813,7 +813,7 @@ const PDVScreen = () => {
 
           <div className="mt-0.5 space-y-0.5">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="codigo-barras">
-              LanÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ar por cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digo de barras
+              Lançar por código de barras
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -837,7 +837,7 @@ const PDVScreen = () => {
                 onClick={() => void handleBarcodeSubmit()}
                 className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
               >
-                LanÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ar
+                Lançar
               </button>
             </div>
           </div>
@@ -859,7 +859,7 @@ const PDVScreen = () => {
                   <div>
                     <p className="font-medium text-gray-800 dark:text-gray-100">{produto.nome}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {moneyFormatter.format(produto.preco_unitario)} ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ Estoque: {formatQuantidade(produto, produto.estoque_atual)}
+                      {moneyFormatter.format(produto.preco_unitario)} - Estoque: {formatQuantidade(produto, produto.estoque_atual)}
                     </p>
                   </div>
                   {produto.estoque_atual <= 0 ? (
@@ -901,7 +901,7 @@ const PDVScreen = () => {
                   aria-label="Limpar cliente selecionado"
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-100"
                 >
-                  ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢
+                  Limpar
                 </button>
               ) : null}
 
@@ -937,7 +937,7 @@ const PDVScreen = () => {
                 </p>
                 {selectedClient.observacao ? (
                   <p className="text-xs rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-1 text-amber-700 dark:text-amber-300">
-                    ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o atual: {selectedClient.observacao}
+                    Observaçãoo atual: {selectedClient.observacao}
                   </p>
                 ) : null}
               </div>
@@ -949,7 +949,7 @@ const PDVScreen = () => {
       </div>
 
       <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalizaçãoo</h2>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmitSale}>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -958,7 +958,7 @@ const PDVScreen = () => {
                 <tr>
                   <th className="px-3 py-2 text-left">Produto</th>
                   <th className="px-3 py-2 text-left">Qtd</th>
-                  <th className="px-3 py-2 text-left">PreÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§o Unit.</th>
+                  <th className="px-3 py-2 text-left">Preço Unit.</th>
                   <th className="px-3 py-2 text-left">Desc %</th>
                   <th className="px-3 py-2 text-left">Total</th>
                   <th className="px-3 py-2 text-left">Remover</th>
@@ -1045,7 +1045,7 @@ const PDVScreen = () => {
                               />
                               {maxDesc !== null && (
                                 <p className={`text-xs mt-0.5 ${excedido ? 'text-rose-500 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
-                                  mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡x {maxDesc}%
+                                  máx {maxDesc}%
                                 </p>
                               )}
                             </div>
@@ -1060,7 +1060,7 @@ const PDVScreen = () => {
                           aria-label={`Remover ${item.produto.nome} do carrinho`}
                           className="rounded-md px-2 py-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/40"
                         >
-                          ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢
+                          Remover
                         </button>
                       </td>
                     </tr>
@@ -1241,13 +1241,13 @@ const PDVScreen = () => {
               ) : null}
 
               <label className="block">
-                <span className="mb-1 block text-gray-700 dark:text-gray-300">ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observaçãoo</span>
                 <textarea
                   value={observacao}
                   onChange={(event) => setObservacao(event.target.value)}
                   rows={3}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                  placeholder="ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o opcional"
+                  placeholder="Observaçãoo opcional"
                 />
               </label>
 
@@ -1260,7 +1260,7 @@ const PDVScreen = () => {
                       value={autorizacaoTerceiroNome}
                       onChange={(event) => setAutorizacaoTerceiroNome(event.target.value)}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                      placeholder="Ex.: ZÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© Eletricista"
+                      placeholder="Ex.: Zé Eletricista"
                     />
                   </label>
                   <label className="block">
@@ -1274,7 +1274,7 @@ const PDVScreen = () => {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-gray-700 dark:text-gray-300">ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o da autorizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o</span>
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observaçãoo da autorizaçãoo</span>
                     <textarea
                       value={autorizacaoTerceiroObservacao}
                       onChange={(event) => setAutorizacaoTerceiroObservacao(event.target.value)}
@@ -1295,12 +1295,12 @@ const PDVScreen = () => {
             disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco || Boolean(paymentValidationError)}
             className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {checkingPreco ? 'Verificando preÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§os...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
+            {checkingPreco ? 'Verificando preços...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
           </button>
         </form>
       </section>
 
-      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Modal de alerta de preÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§o mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­nimo ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
+      {/* Modal de alerta de preco minimo */}
             <Dialog
         open={showPrecoModal && alertasPreco.length > 0}
         onOpenChange={(open) => {
