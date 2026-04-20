@@ -25,6 +25,14 @@ export interface BackendProduct {
   ativo: boolean
 }
 
+export interface BackendSupplier {
+  id: number
+  razao_social: string
+  nome_fantasia?: string | null
+  cnpj: string
+  ativo: boolean
+}
+
 export interface BackendCash {
   id: number
   status: 'aberto' | 'fechado'
@@ -192,6 +200,27 @@ export const fetchProductByName = async (
 
   return (
     products.items?.find((product) => product.nome.trim().toLowerCase() === normalizedName)
+    ?? null
+  )
+}
+
+export const fetchSupplierByCnpj = async (
+  request: APIRequestContext,
+  token: string,
+  cnpj: string,
+): Promise<BackendSupplier | null> => {
+  const suppliersResponse = await request.get(buildUrl('/api/v1/fornecedores/'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  expect(suppliersResponse.ok()).toBeTruthy()
+
+  const suppliers = await suppliersResponse.json() as BackendSupplier[]
+  const normalizedCnpj = cnpj.replace(/\D/g, '')
+
+  return (
+    suppliers.find((supplier) => supplier.cnpj.replace(/\D/g, '') === normalizedCnpj)
     ?? null
   )
 }
