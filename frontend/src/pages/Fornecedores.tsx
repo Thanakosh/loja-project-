@@ -1,10 +1,27 @@
 import { useMemo, useState } from 'react'
+import { Pencil, Plus, Search } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 import api from '../services/api'
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
 import type { Fornecedor, FornecedorPayload } from '../types/fornecedores'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const PAGE_SIZE = 20
 
@@ -12,57 +29,11 @@ const removeNonDigits = (value: string) => value.replace(/\D/g, '')
 
 const formatCnpj = (value: string) => {
   const digits = removeNonDigits(value).slice(0, 14)
-
   return digits
     .replace(/^(\d{2})(\d)/, '$1.$2')
     .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
     .replace(/\.(\d{3})(\d)/, '.$1/$2')
     .replace(/(\d{4})(\d)/, '$1-$2')
-}
-
-const normalizePayload = (formData: FormState): FornecedorPayload => {
-  const payload: FornecedorPayload = {
-    razao_social: formData.nome.trim(),
-    cnpj: removeNonDigits(formData.cnpj)
-  }
-
-  const email = formData.email.trim()
-  const telefone = formData.telefone.trim()
-  const nomeFantasia = formData.contato.trim()
-  const endereco = formData.endereco.trim()
-  const cidade = formData.cidade.trim()
-  const uf = formData.uf.trim().toUpperCase()
-  const cep = formData.cep.trim()
-
-  if (email) {
-    payload.email = email
-  }
-
-  if (telefone) {
-    payload.telefone = telefone
-  }
-
-  if (nomeFantasia) {
-    payload.nome_fantasia = nomeFantasia
-  }
-
-  if (endereco) {
-    payload.endereco = endereco
-  }
-
-  if (cidade) {
-    payload.cidade = cidade
-  }
-
-  if (uf) {
-    payload.uf = uf
-  }
-
-  if (cep) {
-    payload.cep = cep
-  }
-
-  return payload
 }
 
 type ModalMode = 'create' | 'edit'
@@ -88,7 +59,32 @@ const emptyFormState: FormState = {
   endereco: '',
   cidade: '',
   uf: '',
-  cep: ''
+  cep: '',
+}
+
+const normalizePayload = (formData: FormState): FornecedorPayload => {
+  const payload: FornecedorPayload = {
+    razao_social: formData.nome.trim(),
+    cnpj: removeNonDigits(formData.cnpj),
+  }
+
+  const email = formData.email.trim()
+  const telefone = formData.telefone.trim()
+  const nomeFantasia = formData.contato.trim()
+  const endereco = formData.endereco.trim()
+  const cidade = formData.cidade.trim()
+  const uf = formData.uf.trim().toUpperCase()
+  const cep = formData.cep.trim()
+
+  if (email) payload.email = email
+  if (telefone) payload.telefone = telefone
+  if (nomeFantasia) payload.nome_fantasia = nomeFantasia
+  if (endereco) payload.endereco = endereco
+  if (cidade) payload.cidade = cidade
+  if (uf) payload.uf = uf
+  if (cep) payload.cep = cep
+
+  return payload
 }
 
 const Fornecedores = () => {
@@ -109,12 +105,12 @@ const Fornecedores = () => {
         params: {
           skip: page * PAGE_SIZE,
           limit: PAGE_SIZE,
-          search: searchTerm || undefined
-        }
+          search: searchTerm || undefined,
+        },
       })
       return response.data as Fornecedor[]
     },
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
   })
 
   const fornecedores = fornecedoresQuery.data ?? []
@@ -124,14 +120,12 @@ const Fornecedores = () => {
       const response = await api.post('/fornecedores/', payload)
       return response.data as Fornecedor
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
       closeModal()
       toast.success('Fornecedor criado com sucesso!')
     },
-    onError: () => {
-      setFormError('Não foi possível criar o fornecedor. Verifique os dados e tente novamente.')
-    }
+    onError: () => setFormError('Nao foi possivel criar o fornecedor. Verifique os dados e tente novamente.'),
   })
 
   const updateMutation = useMutation({
@@ -139,28 +133,29 @@ const Fornecedores = () => {
       const response = await api.put(`/fornecedores/${id}`, payload)
       return response.data as Fornecedor
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['fornecedores'] })
       closeModal()
       toast.success('Fornecedor atualizado com sucesso!')
     },
-    onError: () => {
-      setFormError('Não foi possível atualizar o fornecedor. Verifique os dados e tente novamente.')
-    }
+    onError: () => setFormError('Nao foi possivel atualizar o fornecedor. Verifique os dados e tente novamente.'),
   })
 
   const isSaving = createMutation.isPending || updateMutation.isPending
-  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
   const totalEstimado = useMemo(() => {
-    if (fornecedores.length < PAGE_SIZE) {
-      return page * PAGE_SIZE + fornecedores.length
-    }
-
+    if (fornecedores.length < PAGE_SIZE) return page * PAGE_SIZE + fornecedores.length
     return (page + 2) * PAGE_SIZE
   }, [fornecedores.length, page])
 
   const totalPages = Math.max(1, Math.ceil(totalEstimado / PAGE_SIZE))
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingFornecedor(null)
+    setFormError('')
+    setFormState(emptyFormState)
+  }
 
   const openCreateModal = () => {
     setModalMode('create')
@@ -182,38 +177,22 @@ const Fornecedores = () => {
       endereco: fornecedor.endereco ?? '',
       cidade: fornecedor.cidade ?? '',
       uf: fornecedor.uf ?? '',
-      cep: fornecedor.cep ?? ''
+      cep: fornecedor.cep ?? '',
     })
     setFormError('')
     setIsModalOpen(true)
   }
 
-  function closeModal() {
-    setIsModalOpen(false)
-    setEditingFornecedor(null)
-    setFormError('')
-    setFormState(emptyFormState)
-  }
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setPage(0)
-    setSearchTerm(searchInput.trim())
-  }
-
   const handleInputChange = (field: keyof FormState, value: string) => {
     if (field === 'cnpj') {
-      setFormState((previous) => ({
-        ...previous,
-        cnpj: formatCnpj(value)
-      }))
+      setFormState((previous) => ({ ...previous, cnpj: formatCnpj(value) }))
       return
     }
-
-    setFormState((previous) => ({
-      ...previous,
-      [field]: value
-    }))
+    if (field === 'uf') {
+      setFormState((previous) => ({ ...previous, uf: value.slice(0, 2).toUpperCase() }))
+      return
+    }
+    setFormState((previous) => ({ ...previous, [field]: value }))
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -221,14 +200,12 @@ const Fornecedores = () => {
     setFormError('')
 
     const cnpjDigits = removeNonDigits(formState.cnpj)
-
     if (!formState.nome.trim()) {
       setFormError('Informe o nome do fornecedor.')
       return
     }
-
     if (cnpjDigits.length !== 14) {
-      setFormError('O CNPJ deve conter 14 dígitos.')
+      setFormError('O CNPJ deve conter 14 digitos.')
       return
     }
 
@@ -240,7 +217,7 @@ const Fornecedores = () => {
     }
 
     if (!editingFornecedor) {
-      setFormError('Fornecedor inválido para edição.')
+      setFormError('Fornecedor invalido para edicao.')
       return
     }
 
@@ -248,257 +225,169 @@ const Fornecedores = () => {
   }
 
   return (
-    <div className="container mx-auto">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Fornecedores</h1>
-        <div className="flex flex-wrap gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={searchInput}
-              placeholder="Buscar por nome ou CNPJ"
-              onChange={(event) => setSearchInput(event.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-            >
-              Buscar
-            </button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Fornecedores</h1>
+          <p className="text-sm text-muted-foreground">Mantenha os parceiros comerciais usados em importacao, compras e auditoria fiscal.</p>
+        </div>
+        <Button type="button" onClick={openCreateModal}>
+          <Plus className="size-4" />
+          Novo fornecedor
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Busca</CardTitle>
+          <CardDescription>Procure por razao social, nome fantasia ou CNPJ.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              setPage(0)
+              setSearchTerm(searchInput.trim())
+            }}
+            className="contents"
+          >
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar por nome ou CNPJ" className="pl-9" />
+            </div>
+            <Button type="submit" variant="outline">Buscar</Button>
           </form>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
-          >
-            + Novo Fornecedor
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Razão Social</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CNPJ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nome Fantasia</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
-            </tr>
-          </thead>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Lista de fornecedores</CardTitle>
+              <CardDescription>{fornecedoresQuery.isFetching && !fornecedoresQuery.isLoading ? 'Atualizando resultados...' : 'Cadastro usado em compras e importacao de notas.'}</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline">Pagina {page + 1} de {totalPages}</Badge>
+              <Badge variant="outline">{fornecedores.length} registros</Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Razao social</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Nome fantasia</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fornecedoresQuery.isLoading ? (
+                <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Carregando...</TableCell></TableRow>
+              ) : fornecedoresQuery.isError ? (
+                <TableRow><TableCell colSpan={4}><Alert variant="destructive"><AlertTitle>Erro ao carregar fornecedores</AlertTitle><AlertDescription>Tente novamente em alguns instantes.</AlertDescription></Alert></TableCell></TableRow>
+              ) : fornecedores.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Nenhum fornecedor encontrado.</TableCell></TableRow>
+              ) : (
+                fornecedores.map((fornecedor) => (
+                  <TableRow key={fornecedor.id}>
+                    <TableCell className="font-medium">{fornecedor.razao_social || fornecedor.nome_fantasia || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatCnpj(fornecedor.cnpj || '')}</TableCell>
+                    <TableCell className="text-muted-foreground">{fornecedor.nome_fantasia || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(fornecedor)}>
+                        <Pencil className="size-3.5" />
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-            {fornecedoresQuery.isLoading ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-4 text-center">Carregando...</td>
-              </tr>
-            ) : fornecedoresQuery.isError ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-red-600">Erro ao carregar fornecedores.</td>
-              </tr>
-            ) : fornecedores.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum fornecedor encontrado.</td>
-              </tr>
-            ) : (
-              fornecedores.map((fornecedor) => (
-                <tr key={fornecedor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{fornecedor.razao_social || fornecedor.nome_fantasia || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatCnpj(fornecedor.cnpj || '')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    {fornecedor.nome_fantasia || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(fornecedor)}
-                      className="rounded border border-blue-600 px-3 py-1 text-blue-600 transition hover:bg-blue-50"
-                    >
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          <Separator />
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Página {page + 1} de {totalPages} — mostrando {fornecedores.length} registros
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
-            disabled={page === 0 || fornecedoresQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
-          >
-            ← Anterior
-          </button>
-          <button
-            type="button"
-            onClick={() => setPage((current) => current + 1)}
-            disabled={fornecedores.length < PAGE_SIZE || fornecedoresQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
-          >
-            Próxima →
-          </button>
-        </div>
-      </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Pagina {page + 1} de {totalPages} - mostrando {fornecedores.length} registros</p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || fornecedoresQuery.isFetching}>Anterior</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => current + 1)} disabled={fornecedores.length < PAGE_SIZE || fornecedoresQuery.isFetching}>Proxima</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3" role="dialog" aria-modal="true" onMouseDown={closeModal}>
-          <div ref={modalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-xl rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl">
-            <div className="mb-4 flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {modalMode === 'create' ? 'Novo Fornecedor' : 'Editar Fornecedor'}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                aria-label="Fechar modal de fornecedor"
-                className="text-gray-500 transition hover:text-gray-700 dark:text-gray-300"
-                disabled={isSaving}
-              >
-                ✕
-              </button>
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open && !isSaving) closeModal() }}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{modalMode === 'create' ? 'Novo fornecedor' : 'Editar fornecedor'}</DialogTitle>
+            <DialogDescription>Cadastro comercial e fiscal do parceiro para compras e importacao.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fornecedor-nome">Razao social *</Label>
+              <Input id="fornecedor-nome" value={formState.nome} onChange={(event) => handleInputChange('nome', event.target.value)} placeholder="Razao social" required />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Razão Social *</label>
-                <input
-                  type="text"
-                  value={formState.nome}
-                  onChange={(event) => handleInputChange('nome', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Razão social"
-                  required
-                />
+            <div className="space-y-2">
+              <Label htmlFor="fornecedor-cnpj">CNPJ *</Label>
+              <Input id="fornecedor-cnpj" value={formState.cnpj} onChange={(event) => handleInputChange('cnpj', event.target.value)} placeholder="00.000.000/0000-00" maxLength={18} required />
+              <p className="text-xs text-muted-foreground">Digite os 14 digitos do CNPJ.</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor-telefone">Telefone</Label>
+                <Input id="fornecedor-telefone" value={formState.telefone} onChange={(event) => handleInputChange('telefone', event.target.value)} placeholder="(00) 00000-0000" />
               </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">CNPJ *</label>
-                <input
-                  type="text"
-                  value={formState.cnpj}
-                  onChange={(event) => handleInputChange('cnpj', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="00.000.000/0000-00"
-                  maxLength={18}
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">Digite os 14 dígitos do CNPJ.</p>
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor-contato">Nome fantasia</Label>
+                <Input id="fornecedor-contato" value={formState.contato} onChange={(event) => handleInputChange('contato', event.target.value)} placeholder="Nome fantasia" />
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
-                  <input
-                    type="text"
-                    value={formState.telefone}
-                    onChange={(event) => handleInputChange('telefone', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="fornecedor-email">E-mail</Label>
+              <Input id="fornecedor-email" type="email" value={formState.email} onChange={(event) => handleInputChange('email', event.target.value)} placeholder="contato@fornecedor.com.br" />
+            </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Fantasia</label>
-                  <input
-                    type="text"
-                    value={formState.contato}
-                    onChange={(event) => handleInputChange('contato', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nome fantasia"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="fornecedor-endereco">Endereco</Label>
+              <Input id="fornecedor-endereco" value={formState.endereco} onChange={(event) => handleInputChange('endereco', event.target.value)} placeholder="Rua, numero" />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_100px_140px]">
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor-cidade">Cidade</Label>
+                <Input id="fornecedor-cidade" value={formState.cidade} onChange={(event) => handleInputChange('cidade', event.target.value)} placeholder="Cidade" />
               </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
-                <input
-                  type="email"
-                  value={formState.email}
-                  onChange={(event) => handleInputChange('email', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="contato@fornecedor.com.br"
-                />
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor-uf">UF</Label>
+                <Input id="fornecedor-uf" value={formState.uf} onChange={(event) => handleInputChange('uf', event.target.value)} placeholder="UF" maxLength={2} />
               </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Endereço</label>
-                <input
-                  type="text"
-                  value={formState.endereco}
-                  onChange={(event) => handleInputChange('endereco', event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Rua, número"
-                />
+              <div className="space-y-2">
+                <Label htmlFor="fornecedor-cep">CEP</Label>
+                <Input id="fornecedor-cep" value={formState.cep} onChange={(event) => handleInputChange('cep', event.target.value)} placeholder="00000000" />
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_100px_140px]">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Cidade</label>
-                  <input
-                    type="text"
-                    value={formState.cidade}
-                    onChange={(event) => handleInputChange('cidade', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Cidade"
-                  />
-                </div>
+            {formError && (
+              <Alert variant="destructive">
+                <AlertTitle>Falha ao salvar</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">UF</label>
-                  <input
-                    type="text"
-                    value={formState.uf}
-                    onChange={(event) => handleInputChange('uf', event.target.value.slice(0, 2).toUpperCase())}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="UF"
-                    maxLength={2}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">CEP</label>
-                  <input
-                    type="text"
-                    value={formState.cep}
-                    onChange={(event) => handleInputChange('cep', event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="00000000"
-                  />
-                </div>
-              </div>
-
-              {formError ? <p className="text-sm font-medium text-red-600 dark:text-red-400">{formError}</p> : null}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  disabled={isSaving}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-70"
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Salvando...' : modalMode === 'create' ? 'Criar fornecedor' : 'Salvar alterações'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal} disabled={isSaving}>Cancelar</Button>
+              <Button type="submit" disabled={isSaving}>{modalMode === 'create' ? 'Criar fornecedor' : 'Salvar alteracoes'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

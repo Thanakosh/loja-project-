@@ -7,6 +7,9 @@ import { API_BASE_URL } from '../config/api'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 const apiV2 = axios.create({ baseURL: `${API_BASE_URL}/api/v2` })
 apiV2.interceptors.request.use((config) => {
   const token = getToken()
@@ -101,9 +104,9 @@ const AbaRankingFornecedores = () => {
   const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const criterioLabels = {
-    valor_total: { label: 'Valor Total', icon: '💰' },
-    total_notas: { label: 'Nº de Notas', icon: '🧾' },
-    total_itens: { label: 'Nº de Itens', icon: '📦' },
+    valor_total: { label: 'Valor Total', icon: '$' },
+    total_notas: { label: 'Numero de Notas', icon: '#' },
+    total_itens: { label: 'Numero de Itens', icon: '*' },
   }
 
   return (
@@ -141,14 +144,14 @@ const AbaRankingFornecedores = () => {
           onClick={() => refetch()}
           className="ml-auto rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
-          🔄 Atualizar
+          Atualizar
         </button>
       </div>
 
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            🏆 Ranking de Fornecedores — por {criterioLabels[criterio].label}
+            Ranking de Fornecedores por {criterioLabels[criterio].label}
           </h3>
           {data && (
             <span className="text-xs text-gray-500 dark:text-gray-400">{data.total} fornecedor(es) com dados</span>
@@ -164,7 +167,7 @@ const AbaRankingFornecedores = () => {
 
         {isError && (
           <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-            Erro ao carregar ranking. Verifique se o servidor está rodando.
+            Erro ao carregar ranking. Verifique se o servidor esta rodando.
           </div>
         )}
 
@@ -187,7 +190,7 @@ const AbaRankingFornecedores = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {data.fornecedores.map((f, i) => {
                   const scorePct = Math.round(f.score_confiabilidade * 100)
-                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                  const medal = i < 3 ? `#${i + 1}` : null
                   return (
                     <tr key={f.fornecedor_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -391,7 +394,7 @@ const AbaVendas = () => {
           </table>
         </div>
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Página {data?.page || 1} de {totalPages || 1} — {totalRegistros} registros</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Pagina {data?.page || 1} de {totalPages || 1} - {totalRegistros} registros</span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -465,9 +468,9 @@ const AbaEstoque = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estoque Atual</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mínimo</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Déficit</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Última Movimentação</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Minimo</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deficit</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ultima Movimentacao</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -780,10 +783,10 @@ const AbaItensMaisVendidos = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posição</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Posicao</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidades Vendidas</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nº de Vendas</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">No de Vendas</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -813,71 +816,62 @@ const AbaItensMaisVendidos = () => {
 
 const Relatorios = () => {
   const [activeTab, setActiveTab] = useState<Tab>('vendas')
+  const tabs: Array<{ value: Tab; label: string }> = [
+    { value: 'vendas', label: 'Vendas por Periodo' },
+    { value: 'estoque', label: 'Estoque Baixo' },
+    { value: 'resumo', label: 'Resumo do Mes' },
+    { value: 'itens-mais-vendidos', label: 'Itens Mais Vendidos' },
+    { value: 'ranking-fornecedores', label: 'Ranking Fornecedores' },
+  ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Relatórios</h1>
-      </div>
-
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('vendas')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'vendas'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as Tab)}
+      className="space-y-6"
+    >
+      <Card className="border-border/60 bg-card/95">
+        <CardHeader className="gap-4">
+          <div className="space-y-1">
+            <CardTitle>Relatorios</CardTitle>
+            <CardDescription>
+              Consolide vendas, estoque e indicadores mensais no mesmo painel.
+            </CardDescription>
+          </div>
+          <TabsList
+            variant="line"
+            className="h-auto w-full flex-wrap items-start justify-start gap-2 rounded-none border-b bg-transparent p-0"
           >
-            Vendas por Período
-          </button>
-          <button
-            onClick={() => setActiveTab('estoque')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'estoque'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Estoque Baixo
-          </button>
-          <button
-            onClick={() => setActiveTab('resumo')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'resumo'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Resumo do Mês
-          </button>
-          <button
-            onClick={() => setActiveTab('itens-mais-vendidos')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'itens-mais-vendidos'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            Itens Mais Vendidos
-          </button>
-          <button
-            onClick={() => setActiveTab('ranking-fornecedores')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'ranking-fornecedores'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-              }`}
-          >
-            🏆 Ranking Fornecedores
-          </button>
-        </nav>
-      </div>
-
-      <div className="mt-4">
-        {activeTab === 'vendas' && <AbaVendas />}
-        {activeTab === 'estoque' && <AbaEstoque />}
-        {activeTab === 'resumo' && <AbaResumoMes />}
-        {activeTab === 'itens-mais-vendidos' && <AbaItensMaisVendidos />}
-        {activeTab === 'ranking-fornecedores' && <AbaRankingFornecedores />}
-      </div>
-    </div>
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="min-h-9 flex-none rounded-md px-3 py-2 text-sm"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <TabsContent value="vendas" className="mt-0">
+            <AbaVendas />
+          </TabsContent>
+          <TabsContent value="estoque" className="mt-0">
+            <AbaEstoque />
+          </TabsContent>
+          <TabsContent value="resumo" className="mt-0">
+            <AbaResumoMes />
+          </TabsContent>
+          <TabsContent value="itens-mais-vendidos" className="mt-0">
+            <AbaItensMaisVendidos />
+          </TabsContent>
+          <TabsContent value="ranking-fornecedores" className="mt-0">
+            <AbaRankingFornecedores />
+          </TabsContent>
+        </CardContent>
+      </Card>
+    </Tabs>
   )
 }
 

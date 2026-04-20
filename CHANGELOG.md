@@ -57,6 +57,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - CI: workflow `frontend-e2e` agora tambem executa um job integrado com PostgreSQL 16, `alembic upgrade head` e fluxo real de frontend+backend para o PDV.
 - Docs: adicionados release notes desktop, checklist de entrega ao cliente e arquivo de evidencias do gate de instalacao limpa.
 - Backend: endpoints legados de contas a receber, estoque (v1), fornecedores, orcamento e LLM migrados para `BusinessException`, padronizando `code`, `message`, `details` e `trace_id` nas respostas de erro.
+- Frontend: design system com `shadcn/ui` inicializado, tema semantico emerald configurado e migracao visual inicial das telas de Login e Dashboard.
 
 ###  Adicionado
 - Backend: engine deterministico de custo e preco minimo (`app/fiscal/cost_calculator.py`) com regra explicita de bloqueio para sugestoes abaixo do preco minimo absoluto e auditoria por `versao_motor`.
@@ -109,6 +110,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 ###  Documentacao
 - Plano tecnico em `RECOMENDACOES_TECNICAS.md` atualizado de semanas para passos, com status inicial da execucao das melhorias.
+- Adicionado `docs/design-system.md` com tokens, componentes instalados e padroes de uso do frontend.
 
 ###  Infraestrutura
 - Split de requirements core/ocr (`backend/requirements.txt` e `backend/requirements-ocr.txt`).

@@ -3,6 +3,16 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
 import api from '../../services/api'
 
 interface Produto {
@@ -57,7 +67,7 @@ const getDescontoMaximo = (faixas: FaixaDesconto[] | undefined, quantidade: numb
   for (const f of sorted) {
     if (quantidade >= f.qtd_minima) return f.desconto_maximo_percentual
   }
-  return 0 // quantidade abaixo da menor faixa → sem desconto
+  return 0 // quantidade abaixo da menor faixa, sem desconto
 }
 
 const permiteFracionado = (produto: Produto) => produto.permite_fracionado === true
@@ -203,7 +213,7 @@ const PDVScreen = () => {
   const [saleResult, setSaleResult] = useState<VendaPDVRead | null>(null)
   const [politicasDesconto, setPoliticasDesconto] = useState<Record<number, FaixaDesconto[]>>({})
 
-  // Verificação de preço mínimo
+  // Verificacao de preco minimo
   const [alertasPreco, setAlertasPreco] = useState<AlertaPrecoMinimo[]>([])
   const [showPrecoModal, setShowPrecoModal] = useState(false)
   const [checkingPreco, setCheckingPreco] = useState(false)
@@ -237,7 +247,7 @@ const PDVScreen = () => {
           return next
         })
       } catch {
-        // silencioso — desconto livre em caso de falha
+        // silencioso: desconto livre em caso de falha
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -505,7 +515,7 @@ const PDVScreen = () => {
     }
   }
 
-  // Atalho global F2 → foco no campo de código de barras
+  // Atalho global F2 para foco no campo de codigo de barras
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
@@ -518,14 +528,14 @@ const PDVScreen = () => {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Detecta rajada de scanner — se digitação chega em ≤80ms limpa texto antigo
+  // Detecta rajada de scanner: se a digitacao chegar em menos de 80 ms, limpa o texto antigo
   const handleBarcodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const now = Date.now()
     const elapsed = now - lastKeystrokeRef.current
     lastKeystrokeRef.current = now
 
     if (elapsed > 500 && barcodeInput.length > 0) {
-      // Primeira tecla após pausa longa e campo já tem texto → scanner novo, limpa
+      // Primeira tecla apos pausa longa com texto no campo: assume novo scanner e limpa
       setBarcodeInput(e.target.value.slice(-1))
     } else {
       setBarcodeInput(e.target.value)
@@ -744,7 +754,7 @@ const PDVScreen = () => {
 
     const payload = buildPayload()
 
-    // Verificação de preço mínimo antes de finalizar
+    // Verificacao de preco minimo antes de finalizar
     setCheckingPreco(true)
     try {
       const res = await api.post('/pdv/verificar-preco', {
@@ -760,7 +770,7 @@ const PDVScreen = () => {
         return
       }
     } catch {
-      // Se a verificação falhar, prossegue sem bloquear
+      // Se a verificacao falhar, prossegue sem bloquear
     }
     setCheckingPreco(false)
 
@@ -776,10 +786,10 @@ const PDVScreen = () => {
 
       {!caixaQuery.isLoading && !caixaAberto && (
         <div className="flex items-center gap-3 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-yellow-800 dark:text-yellow-300">
-          <span className="text-xl">⚠️</span>
+          <span className="text-xl">!</span>
           <div>
-            <p className="font-semibold text-sm">Caixa não está aberto</p>
-            <p className="text-xs">As vendas serão bloqueadas. <a href="/caixa" className="underline font-medium">Abrir o caixa agora →</a></p>
+            <p className="font-semibold text-sm">Caixa nao esta aberto</p>
+            <p className="text-xs">As vendas serao bloqueadas. <a href="/caixa" className="underline font-medium">Abrir o caixa agora</a></p>
           </div>
         </div>
       )}
@@ -849,7 +859,7 @@ const PDVScreen = () => {
                   <div>
                     <p className="font-medium text-gray-800 dark:text-gray-100">{produto.nome}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {moneyFormatter.format(produto.preco_unitario)} • Estoque: {formatQuantidade(produto, produto.estoque_atual)}
+                      {moneyFormatter.format(produto.preco_unitario)} - Estoque: {formatQuantidade(produto, produto.estoque_atual)}
                     </p>
                   </div>
                   {produto.estoque_atual <= 0 ? (
@@ -891,7 +901,7 @@ const PDVScreen = () => {
                   aria-label="Limpar cliente selecionado"
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-100"
                 >
-                  ✕
+                  Limpar
                 </button>
               ) : null}
 
@@ -927,7 +937,7 @@ const PDVScreen = () => {
                 </p>
                 {selectedClient.observacao ? (
                   <p className="text-xs rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-1 text-amber-700 dark:text-amber-300">
-                    Observação atual: {selectedClient.observacao}
+                    Observacao atual: {selectedClient.observacao}
                   </p>
                 ) : null}
               </div>
@@ -939,7 +949,7 @@ const PDVScreen = () => {
       </div>
 
       <section className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalização</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Carrinho e finalizacao</h2>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmitSale}>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -1050,7 +1060,7 @@ const PDVScreen = () => {
                           aria-label={`Remover ${item.produto.nome} do carrinho`}
                           className="rounded-md px-2 py-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/40"
                         >
-                          ✕
+                          Remover
                         </button>
                       </td>
                     </tr>
@@ -1231,13 +1241,13 @@ const PDVScreen = () => {
               ) : null}
 
               <label className="block">
-                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observação</span>
+                <span className="mb-1 block text-gray-700 dark:text-gray-300">Observacao</span>
                 <textarea
                   value={observacao}
                   onChange={(event) => setObservacao(event.target.value)}
                   rows={3}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                  placeholder="Observação opcional"
+                  placeholder="Observacao opcional"
                 />
               </label>
 
@@ -1250,7 +1260,7 @@ const PDVScreen = () => {
                       value={autorizacaoTerceiroNome}
                       onChange={(event) => setAutorizacaoTerceiroNome(event.target.value)}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2"
-                      placeholder="Ex.: Zé Eletricista"
+                      placeholder="Ex.: Ze Eletricista"
                     />
                   </label>
                   <label className="block">
@@ -1264,7 +1274,7 @@ const PDVScreen = () => {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observação da autorização</span>
+                    <span className="mb-1 block text-gray-700 dark:text-gray-300">Observacao da autorizacao</span>
                     <textarea
                       value={autorizacaoTerceiroObservacao}
                       onChange={(event) => setAutorizacaoTerceiroObservacao(event.target.value)}
@@ -1285,120 +1295,149 @@ const PDVScreen = () => {
             disabled={cartItems.length === 0 || vendaMutation.isPending || checkingPreco || Boolean(paymentValidationError)}
             className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {checkingPreco ? 'Verificando preços...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
+            {checkingPreco ? 'Verificando precos...' : vendaMutation.isPending ? 'Finalizando...' : 'Finalizar Venda'}
           </button>
         </form>
       </section>
 
-      {/* ── Modal de alerta de preço mínimo ────────────────────────── */}
-      {showPrecoModal && alertasPreco.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
-            <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-6 py-4 flex items-center gap-3">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <h2 className="text-base font-semibold text-amber-900 dark:text-amber-100">Alerta de preço mínimo</h2>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                  {alertasPreco.length === 1 ? '1 produto está' : `${alertasPreco.length} produtos estão`} com preço abaixo do custo mínimo calculado.
-                </p>
+      {/* Modal de alerta de preco minimo */}
+            <Dialog
+        open={showPrecoModal && alertasPreco.length > 0}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowPrecoModal(false)
+            setAlertasPreco([])
+            pendingSalePayloadRef.current = null
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0" showCloseButton={false}>
+          <DialogHeader className="gap-3 border-b border-amber-200 bg-amber-50 px-6 py-4 dark:border-amber-700 dark:bg-amber-900/30">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-800 dark:bg-amber-800/60 dark:text-amber-100">
+                IA
+              </div>
+              <div className="space-y-1">
+                <DialogTitle className="text-amber-900 dark:text-amber-100">
+                  Alerta de preco minimo
+                </DialogTitle>
+                <DialogDescription className="text-xs text-amber-700 dark:text-amber-300">
+                  {alertasPreco.length === 1 ? '1 produto esta' : `${alertasPreco.length} produtos estao`} com preco abaixo do custo minimo calculado.
+                </DialogDescription>
               </div>
             </div>
+          </DialogHeader>
 
-            <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-2">
-              {alertasPreco.map((alerta) => (
-                <div key={alerta.produto_id} className="rounded-xl border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-lg mt-0.5">🔴</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 dark:text-gray-100 truncate">{alerta.produto_nome}</p>
-                      <div className="grid grid-cols-3 gap-2 mt-1.5 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">Praticado</p>
-                          <p className="font-semibold text-red-600 dark:text-red-400">{moneyFormatter.format(alerta.preco_praticado)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">Mínimo</p>
-                          <p className="font-semibold text-gray-700 dark:text-gray-300">{moneyFormatter.format(alerta.preco_minimo)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">Prejuízo</p>
-                          <p className="font-semibold text-red-600 dark:text-red-400">-{moneyFormatter.format(alerta.prejuizo_estimado)}</p>
-                        </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto px-6 py-4">
+            {alertasPreco.map((alerta) => (
+              <div
+                key={alerta.produto_id}
+                className="rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/20"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 text-lg text-red-600 dark:text-red-300">!</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-gray-800 dark:text-gray-100">{alerta.produto_nome}</p>
+                    <div className="mt-1.5 grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Praticado</p>
+                        <p className="font-semibold text-red-600 dark:text-red-400">
+                          {moneyFormatter.format(alerta.preco_praticado)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Minimo</p>
+                        <p className="font-semibold text-gray-700 dark:text-gray-300">
+                          {moneyFormatter.format(alerta.preco_minimo)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Prejuizo</p>
+                        <p className="font-semibold text-red-600 dark:text-red-400">
+                          -{moneyFormatter.format(alerta.prejuizo_estimado)}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => { setShowPrecoModal(false); setAlertasPreco([]); pendingSalePayloadRef.current = null }}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition"
-              >
-                ← Corrigir preços
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (pendingSalePayloadRef.current) confirmSale(pendingSalePayloadRef.current) }}
-                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition"
-              >
-                Vender mesmo assim
-              </button>
-            </div>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
 
-      {saleResult ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Venda concluída</h3>
-            <div className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-              <p>
-                Número da venda: <strong>{saleResult.numero_legado ?? saleResult.id}</strong>
-              </p>
-              <p>
-                Total: <strong>{moneyFormatter.format(Number(saleResult.total ?? totalVenda))}</strong>
-              </p>
-              <p>
-                Forma de pagamento: <strong>{saleResult.forma_pagamento_label ?? formatPayment(saleResult.forma_pagamento ?? paymentRows[0]?.forma_pagamento ?? 1)}</strong>
-              </p>
-              {saleResult.pagamentos && saleResult.pagamentos.length > 0 ? (
-                <div className="space-y-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2">
-                  {saleResult.pagamentos.map((pagamento, index) => (
-                    <p key={`${pagamento.forma_pagamento}-${index}`}>
-                      {(pagamento.forma_pagamento_label ?? formatPayment(pagamento.forma_pagamento))}: <strong>{moneyFormatter.format(pagamento.valor)}</strong>
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {(saleResult.troco ?? 0) > 0 ? (
-                <p>
-                  Troco: <strong>{moneyFormatter.format(Number(saleResult.troco ?? 0))}</strong>
-                </p>
-              ) : null}
-            </div>
-
-            <button
+          <DialogFooter className="gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-700/50">
+            <Button
               type="button"
+              variant="outline"
+              onClick={() => {
+                setShowPrecoModal(false)
+                setAlertasPreco([])
+                pendingSalePayloadRef.current = null
+              }}
+            >
+              Corrigir precos
+            </Button>
+            <Button
+              type="button"
+              className="bg-amber-600 hover:bg-amber-700"
+              onClick={() => {
+                if (pendingSalePayloadRef.current) confirmSale(pendingSalePayloadRef.current)
+              }}
+            >
+              Vender mesmo assim
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+            <Dialog open={Boolean(saleResult)} onOpenChange={(open) => !open && resetSale()}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0" showCloseButton={false}>
+          <DialogHeader className="gap-2 border-b px-5 py-4">
+            <DialogTitle>Venda concluida</DialogTitle>
+            <DialogDescription>
+              Revise os dados da venda e gere o comprovante antes de iniciar o proximo atendimento.
+            </DialogDescription>
+          </DialogHeader>
+
+          {saleResult ? (
+            <div className="space-y-4 px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="space-y-2">
+                <p>
+                  Numero da venda: <strong>{saleResult.numero_legado ?? saleResult.id}</strong>
+                </p>
+                <p>
+                  Total: <strong>{moneyFormatter.format(Number(saleResult.total ?? totalVenda))}</strong>
+                </p>
+                <p>
+                  Forma de pagamento: <strong>{saleResult.forma_pagamento_label ?? formatPayment(saleResult.forma_pagamento ?? paymentRows[0]?.forma_pagamento ?? 1)}</strong>
+                </p>
+                {saleResult.pagamentos && saleResult.pagamentos.length > 0 ? (
+                  <div className="space-y-1 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-700/50">
+                    {saleResult.pagamentos.map((pagamento, index) => (
+                      <p key={`${pagamento.forma_pagamento}-${index}`}>
+                        {(pagamento.forma_pagamento_label ?? formatPayment(pagamento.forma_pagamento))}: <strong>{moneyFormatter.format(pagamento.valor)}</strong>
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-700/50">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
               onClick={() => void imprimirComprovantePdf()}
-              className="mt-4 w-full rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 font-semibold text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
             >
               Gerar comprovante (PDF)
-            </button>
-
-            <button
-              type="button"
-              onClick={resetSale}
-              className="mt-5 w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white transition hover:bg-emerald-700"
-            >
+            </Button>
+            <Button type="button" onClick={resetSale}>
               Nova Venda
-            </button>
-          </div>
-        </div>
-      ) : null}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

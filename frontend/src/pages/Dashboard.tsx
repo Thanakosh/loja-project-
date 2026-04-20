@@ -8,15 +8,30 @@ import { useEstoqueAlertas } from '../hooks/useEstoque'
 import { useFiscalRiskDashboard } from '../hooks/useDashboard'
 import type { FiscalRiskDashboardResumo } from '../types/dashboard'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   }).format(value)
 
-const CardSkeleton = () => <div className="h-7 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+const CardSkeleton = () => <Skeleton className="h-7 w-24" />
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
+
+const ScoreBar = ({ score }: { score: number }) => (
+  <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+    <div
+      className={`h-full rounded-full transition-all ${score >= 61 ? 'bg-destructive' : score >= 31 ? 'bg-amber-500' : 'bg-primary'}`}
+      style={{ width: `${score}%` }}
+    />
+  </div>
+)
 
 const FiscalResumoCard = ({
   titulo,
@@ -28,61 +43,58 @@ const FiscalResumoCard = ({
   const score = clampPercent(resumo.score_medio)
 
   return (
-    <article className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{titulo}</h3>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{resumo.periodo_rotulo}</p>
-        </div>
-        <span className="rounded-full bg-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-          {resumo.notas_risco_alto} alto
-        </span>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-[120px_1fr]">
-        <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
-          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Score</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{score.toFixed(1)}</p>
-        </div>
-        <div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-            <div
-              className={`h-full rounded-full transition-all ${score >= 61 ? 'bg-red-500' : score >= 31 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-              style={{ width: `${score}%` }}
-            />
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-sm">{titulo}</CardTitle>
+            <CardDescription className="mt-1">{resumo.periodo_rotulo}</CardDescription>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
-              <p className="text-gray-500 dark:text-gray-400">Notas</p>
-              <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{resumo.total_notas}</p>
-            </div>
-            <div className="rounded-lg bg-white p-3 dark:bg-gray-800">
-              <p className="text-gray-500 dark:text-gray-400">Risco alto</p>
-              <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{resumo.notas_risco_alto}</p>
+          <Badge variant="secondary">{resumo.notas_risco_alto} alto</Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-[120px_1fr]">
+          <div className="rounded-lg bg-muted p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Score</p>
+            <p className="mt-1 text-2xl font-semibold">{score.toFixed(1)}</p>
+          </div>
+          <div>
+            <ScoreBar score={score} />
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-muted-foreground">Notas</p>
+                <p className="mt-1 text-lg font-semibold">{resumo.total_notas}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-muted-foreground">Risco alto</p>
+                <p className="mt-1 text-lg font-semibold">{resumo.notas_risco_alto}</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Top alertas</h4>
+        <Separator className="my-4" />
+
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top alertas</h4>
         {resumo.top_fornecedores_alertas.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhuma nota deste tipo ainda.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nenhuma nota deste tipo ainda.</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {resumo.top_fornecedores_alertas.map((fornecedor, index) => (
               <li
                 key={`${titulo}-${fornecedor.nome}-${index}`}
-                className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm dark:bg-gray-800"
+                className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm"
               >
-                <span className="font-medium text-gray-800 dark:text-gray-100">{fornecedor.nome}</span>
-                <span className="text-gray-500 dark:text-gray-300">{fornecedor.alertas} alertas</span>
+                <span className="font-medium">{fornecedor.nome}</span>
+                <span className="text-muted-foreground">{fornecedor.alertas} alertas</span>
               </li>
             ))}
           </ul>
         )}
-      </div>
-    </article>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -135,187 +147,204 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Dashboard</h1>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-        >
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <Button onClick={handleRefresh}>
           Atualizar
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Vendas Hoje</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-            {vendasHojeQuery.isLoading ? (
-              <CardSkeleton />
-            ) : vendasHojeQuery.isError ? (
-              '--'
-            ) : (
-              formatCurrency(vendasHojeQuery.data ?? 0)
-            )}
-          </div>
-        </article>
+        <Card>
+          <CardHeader>
+            <CardDescription>Vendas Hoje</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {vendasHojeQuery.isLoading ? (
+                <CardSkeleton />
+              ) : vendasHojeQuery.isError ? (
+                '--'
+              ) : (
+                formatCurrency(vendasHojeQuery.data ?? 0)
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Vendas do Mes</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-            {vendasMesQuery.isLoading ? (
-              <CardSkeleton />
-            ) : vendasMesQuery.isError ? (
-              '--'
-            ) : (
-              formatCurrency(vendasMesQuery.data ?? 0)
-            )}
-          </div>
-        </article>
+        <Card>
+          <CardHeader>
+            <CardDescription>Vendas do Mes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {vendasMesQuery.isLoading ? (
+                <CardSkeleton />
+              ) : vendasMesQuery.isError ? (
+                '--'
+              ) : (
+                formatCurrency(vendasMesQuery.data ?? 0)
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <article className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Orcamentos Abertos</p>
-          <div className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-            {orcamentosAbertosQuery.isLoading ? (
-              <CardSkeleton />
-            ) : orcamentosAbertosQuery.isError ? (
-              '--'
-            ) : (
-              orcamentosAbertosQuery.data ?? 0
-            )}
-          </div>
-        </article>
+        <Card>
+          <CardHeader>
+            <CardDescription>Orcamentos Abertos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {orcamentosAbertosQuery.isLoading ? (
+                <CardSkeleton />
+              ) : orcamentosAbertosQuery.isError ? (
+                '--'
+              ) : (
+                orcamentosAbertosQuery.data ?? 0
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <article
-          className={`rounded-lg bg-white dark:bg-gray-800 p-4 shadow ${estoqueAlertas.length > 0 ? 'border border-red-200 dark:border-red-700' : ''
-            }`}
-        >
-          <p className={`text-sm ${estoqueAlertas.length > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-            Alertas de Estoque
-          </p>
-          <div className={`mt-2 text-2xl font-semibold ${estoqueAlertas.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-100'}`}>
-            {estoqueAlertasQuery.isLoading ? (
-              <CardSkeleton />
-            ) : estoqueAlertasQuery.isError ? (
-              '--'
-            ) : (
-              estoqueAlertas.length
+        <Card className={estoqueAlertas.length > 0 ? 'ring-destructive/30' : ''}>
+          <CardHeader>
+            <CardDescription className={estoqueAlertas.length > 0 ? 'text-destructive' : ''}>
+              Alertas de Estoque
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-semibold ${estoqueAlertas.length > 0 ? 'text-destructive' : ''}`}>
+              {estoqueAlertasQuery.isLoading ? (
+                <CardSkeleton />
+              ) : estoqueAlertasQuery.isError ? (
+                '--'
+              ) : (
+                estoqueAlertas.length
+              )}
+            </div>
+            {!produtosQuery.isLoading && !produtosQuery.isError && (
+              <p className="mt-2 text-xs text-muted-foreground">Total de produtos: {produtosQuery.data ?? 0}</p>
             )}
-          </div>
-          {!produtosQuery.isLoading && !produtosQuery.isError && (
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Total de produtos: {produtosQuery.data ?? 0}</p>
-          )}
-        </article>
+          </CardContent>
+        </Card>
       </div>
 
-      <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Saude Fiscal</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {fiscalDashboard?.periodo_rotulo ?? 'ultimas notas importadas'}
-            </p>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Saude Fiscal</CardTitle>
+          <CardDescription>
+            {fiscalDashboard?.periodo_rotulo ?? 'ultimas notas importadas'}
+          </CardDescription>
           {fiscalDashboard && fiscalDashboard.total_notas > 0 && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-              {fiscalDashboard.notas_risco_alto} com risco alto
-            </span>
+            <CardAction>
+              <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+                {fiscalDashboard.notas_risco_alto} com risco alto
+              </Badge>
+            </CardAction>
           )}
-        </div>
+        </CardHeader>
 
-        {fiscalDashboardQuery.isLoading ? (
-          <div className="space-y-3">
-            <CardSkeleton />
-            <div className="h-2 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          </div>
-        ) : fiscalDashboardQuery.isError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">Erro ao carregar indicadores fiscais.</p>
-        ) : !fiscalDashboard || fiscalDashboard.total_notas === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-            Nenhuma nota importada ainda para calcular a saude fiscal.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr]">
-              <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/30">
-                <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Score medio</p>
-                <p className="mt-2 text-3xl font-semibold text-emerald-900 dark:text-emerald-100">{fiscalScore.toFixed(1)}</p>
+        <CardContent>
+          {fiscalDashboardQuery.isLoading ? (
+            <div className="space-y-3">
+              <CardSkeleton />
+              <Skeleton className="h-2 w-full" />
+            </div>
+          ) : fiscalDashboardQuery.isError ? (
+            <p className="text-sm text-destructive">Erro ao carregar indicadores fiscais.</p>
+          ) : !fiscalDashboard || fiscalDashboard.total_notas === 0 ? (
+            <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
+              Nenhuma nota importada ainda para calcular a saude fiscal.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr]">
+                <div className="rounded-xl bg-primary/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-primary">Score medio</p>
+                  <p className="mt-2 text-3xl font-semibold">{fiscalScore.toFixed(1)}</p>
+                </div>
+                <div>
+                  <div className="h-3 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all ${fiscalScore >= 61 ? 'bg-destructive' : fiscalScore >= 31 ? 'bg-amber-500' : 'bg-primary'}`}
+                      style={{ width: `${fiscalScore}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                    <div className="rounded-lg bg-muted p-3">
+                      <p className="text-muted-foreground">Notas analisadas</p>
+                      <p className="mt-1 text-lg font-semibold">{fiscalDashboard.total_notas}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-3">
+                      <p className="text-muted-foreground">Risco alto</p>
+                      <p className="mt-1 text-lg font-semibold">{fiscalDashboard.notas_risco_alto}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              <Separator />
+
               <div>
-                <div className="h-3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div
-                    className={`h-full rounded-full transition-all ${fiscalScore >= 61 ? 'bg-red-500' : fiscalScore >= 31 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                    style={{ width: `${fiscalScore}%` }}
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                  <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60">
-                    <p className="text-gray-500 dark:text-gray-400">Notas analisadas</p>
-                    <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{fiscalDashboard.total_notas}</p>
-                  </div>
-                  <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60">
-                    <p className="text-gray-500 dark:text-gray-400">Risco alto</p>
-                    <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-gray-100">{fiscalDashboard.notas_risco_alto}</p>
-                  </div>
-                </div>
+                <h3 className="text-sm font-semibold">Top fornecedores com alertas</h3>
+                <ul className="mt-3 space-y-2">
+                  {fiscalDashboard.top_fornecedores_alertas.map((fornecedor, index) => (
+                    <li
+                      key={`${fornecedor.nome}-${index}`}
+                      className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">{fornecedor.nome}</span>
+                      <span className="text-muted-foreground">{fornecedor.alertas} alertas</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <FiscalResumoCard titulo="Notas de Entrada" resumo={fiscalDashboard.entradas} />
+                <FiscalResumoCard titulo="Notas de Saida" resumo={fiscalDashboard.saidas} />
               </div>
             </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Top fornecedores com alertas</h3>
-              <ul className="mt-3 space-y-2">
-                {fiscalDashboard.top_fornecedores_alertas.map((fornecedor, index) => (
-                  <li
-                    key={`${fornecedor.nome}-${index}`}
-                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-700/60"
-                  >
-                    <span className="font-medium text-gray-800 dark:text-gray-100">{fornecedor.nome}</span>
-                    <span className="text-gray-500 dark:text-gray-300">{fornecedor.alertas} alertas</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <FiscalResumoCard titulo="Notas de Entrada" resumo={fiscalDashboard.entradas} />
-              <FiscalResumoCard titulo="Notas de Saida" resumo={fiscalDashboard.saidas} />
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </CardContent>
+      </Card>
 
       {estoqueAlertas.length > 0 && (
-        <section className="rounded-lg bg-white dark:bg-gray-800 p-5 shadow">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Produtos com Estoque Baixo</h2>
-            <button
-              type="button"
-              onClick={() => navigate('/estoque')}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-            >
-              Ver Estoque
-            </button>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Produtos com Estoque Baixo</CardTitle>
+            <CardAction>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/estoque')}
+              >
+                Ver Estoque
+              </Button>
+            </CardAction>
+          </CardHeader>
 
-          <ul className="space-y-2">
-            {estoqueAlertas.map((alerta, index) => {
-              const nomeProduto = alerta.nome_produto ?? alerta.nome ?? alerta.produto_nome ?? `Produto ${index + 1}`
-              const estoqueAtual = alerta.quantidade_atual ?? alerta.estoque_atual ?? 0
-              const estoqueMinimo = alerta.estoque_minimo ?? alerta.quantidade_minima ?? 0
+          <CardContent>
+            <ul className="space-y-2">
+              {estoqueAlertas.map((alerta, index) => {
+                const nomeProduto = alerta.nome_produto ?? alerta.nome ?? alerta.produto_nome ?? `Produto ${index + 1}`
+                const estoqueAtual = alerta.quantidade_atual ?? alerta.estoque_atual ?? 0
+                const estoqueMinimo = alerta.estoque_minimo ?? alerta.quantidade_minima ?? 0
 
-              return (
-                <li
-                  key={alerta.id ?? alerta.produto_id ?? `${nomeProduto}-${index}`}
-                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
-                >
-                  <span className="font-medium text-gray-800 dark:text-gray-100">{nomeProduto}</span>
-                  <span className="ml-2 text-gray-600 dark:text-gray-400">
-                    Estoque: {estoqueAtual} / Minimo: {estoqueMinimo}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
+                return (
+                  <li
+                    key={alerta.id ?? alerta.produto_id ?? `${nomeProduto}-${index}`}
+                    className="flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium">{nomeProduto}</span>
+                    <span className="text-muted-foreground">
+                      Estoque: {estoqueAtual} / Minimo: {estoqueMinimo}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

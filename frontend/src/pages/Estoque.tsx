@@ -1,10 +1,22 @@
 import axios from 'axios'
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowUpDown, Boxes, History, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
+
 import { API_BASE_URL } from '../config/api'
 import api from '../services/api'
 import { getToken } from '../utils/auth'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const apiV2 = axios.create({ baseURL: `${API_BASE_URL}/api/v2` })
 apiV2.interceptors.request.use((config) => {
@@ -40,12 +52,26 @@ interface NovaMovimentacao {
 }
 
 const PAGE_SIZE = 50
+const textareaClassName =
+  'flex min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
-const inputCls = 'w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2'
+const movementTypeLabel: Record<NovaMovimentacao['tipo'], string> = {
+  entrada: 'Entrada',
+  saida: 'Saida',
+  ajuste: 'Ajuste de saldo',
+  devolucao: 'Devolucao',
+}
+
+const movementBadgeClassName = (tipo: Movimentacao['tipo']) => {
+  if (tipo === 'entrada' || tipo === 'devolucao') return 'bg-primary/10 text-primary'
+  if (tipo === 'saida') return 'bg-destructive/10 text-destructive'
+  return 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+}
 
 const Estoque = () => {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -54,55 +80,55 @@ const Estoque = () => {
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null)
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([])
   const [loadingMov, setLoadingMov] = useState(false)
+  const [kardexError, setKardexError] = useState('')
   const [isNovaMovOpen, setIsNovaMovOpen] = useState(false)
-  const [novaMov, setNovaMov] = useState<NovaMovimentacao>({ produto_id: 0, tipo: 'entrada', quantidade: 0, motivo: '' })
+  const [novaMov, setNovaMov] = useState<NovaMovimentacao>({
+    produto_id: 0,
+    tipo: 'entrada',
+    quantidade: 0,
+    motivo: '',
+  })
   const [submittingMov, setSubmittingMov] = useState(false)
 
-  const handleCloseNovaMov = () => {
-    setIsNovaMovOpen(false)
-    setSelectedProduto(null)
-  }
+  const fetchProdutos = useCallback(
+    async (newPage = 1, search = searchTerm) => {
+      setLoading(true)
+      setListError('')
+      try {
+        const response = await api.get('/produtos', {
+          params: { page: newPage, page_size: PAGE_SIZE, incluir_inativos: true, search: search || undefined },
+        })
+        const data = response.data
+        setProdutos(data.items ?? data)
+        if (data.pages) setTotalPages(data.pages)
+      } catch (error) {
+        console.error('Erro ao buscar produtos', error)
+        setListError('Nao foi possivel carregar os produtos para o controle de estoque.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchTerm],
+  )
 
-  const closeKardex = () => {
-    setKardexProduto(null)
-    setMovimentacoes([])
-  }
-
-  const kardexModalRef = useAccessibleModal(Boolean(kardexProduto), closeKardex)
-  const novaMovModalRef = useAccessibleModal(isNovaMovOpen, handleCloseNovaMov)
-
-  const fetchProdutos = useCallback(async (newPage = 1, search = searchTerm) => {
-    setLoading(true)
-    try {
-      const response = await api.get('/produtos', { params: { page: newPage, page_size: PAGE_SIZE, incluir_inativos: true, search: search || undefined } })
-      const data = response.data
-      setProdutos(data.items ?? data)
-      if (data.pages) setTotalPages(data.pages)
-    } catch (error) {
-      console.error('Erro ao buscar produtos', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [searchTerm])
-
-  const fetchKardex = async (produtoId: number) => {
+  const fetchKardex = useCallback(async (produtoId: number) => {
     setLoadingMov(true)
+    setKardexError('')
     try {
       const response = await apiV2.get(`/estoque/historico/${produtoId}`)
       const data = response.data
       setMovimentacoes(Array.isArray(data) ? data : (data.items ?? []))
     } catch (error) {
       console.error('Erro ao buscar kardex', error)
+      setKardexError('Nao foi possivel carregar o historico deste produto.')
     } finally {
       setLoadingMov(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchProdutos(page, searchTerm) }, [page, searchTerm, fetchProdutos])
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); setPage(1); setSearchTerm(searchInput.trim())
-  }
+  useEffect(() => {
+    void fetchProdutos(page, searchTerm)
+  }, [page, searchTerm, fetchProdutos])
 
   useEffect(() => {
     const normalizedSearch = searchInput.trim()
@@ -116,269 +142,373 @@ const Estoque = () => {
     return () => clearTimeout(timeoutId)
   }, [searchInput, searchTerm])
 
+  const resumo = useMemo(
+    () => ({
+      registrosPagina: produtos.length,
+      saldoPagina: produtos.reduce((total, produto) => total + (produto.estoque_atual ?? 0), 0),
+    }),
+    [produtos],
+  )
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setSearchTerm(searchInput.trim())
+  }
+
+  const closeKardex = () => {
+    setKardexProduto(null)
+    setMovimentacoes([])
+    setKardexError('')
+  }
+
+  const handleCloseNovaMov = () => {
+    setIsNovaMovOpen(false)
+    setSelectedProduto(null)
+  }
+
   const handleOpenKardex = (produto: Produto) => {
     setKardexProduto(produto)
-    fetchKardex(produto.id)
+    void fetchKardex(produto.id)
   }
 
   const handleOpenNovaMov = (produto: Produto) => {
+    setSelectedProduto(produto)
     setNovaMov({ produto_id: produto.id, tipo: 'entrada', quantidade: 0, motivo: '' })
-    setSelectedProduto(produto); setIsNovaMovOpen(true)
+    setIsNovaMovOpen(true)
   }
 
-  const handleSubmitMov = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmitMov = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
     if (novaMov.quantidade <= 0) {
       toast.error('A quantidade deve ser maior que zero.')
       return
     }
+
     setSubmittingMov(true)
     try {
       await apiV2.post('/estoque/transacao', novaMov)
-      toast.success('Movimentação registrada com sucesso!')
-      fetchProdutos(page)
-      if (kardexProduto && kardexProduto.id === novaMov.produto_id) fetchKardex(novaMov.produto_id)
-      setIsNovaMovOpen(false)
-      setSelectedProduto(null)
+      toast.success('Movimentacao registrada com sucesso.')
+      void fetchProdutos(page)
+      if (kardexProduto && kardexProduto.id === novaMov.produto_id) void fetchKardex(novaMov.produto_id)
+      handleCloseNovaMov()
     } catch (error) {
-      console.error('Erro ao registrar movimentação', error)
-      toast.error('Erro ao registrar movimentação. Verifique os dados.')
+      console.error('Erro ao registrar movimentacao', error)
+      toast.error('Erro ao registrar movimentacao. Verifique os dados.')
     } finally {
       setSubmittingMov(false)
     }
   }
 
   return (
-    <div className="container mx-auto relative">
-      {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Estoque</h1>
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Buscar por nome"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
-            Buscar
-          </button>
-          {searchTerm && (
-            <button type="button" onClick={() => { setSearchInput(''); setSearchTerm(''); setPage(1) }}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-              Limpar
-            </button>
-          )}
-        </form>
-      </div>
-
-      {/* Tabela */}
-      <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
-        <table className="min-w-[760px] divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              {['Produto', 'Código', 'Unidade', 'Saldo Atual', 'Ações'].map(h => (
-                <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {loading ? (
-              <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
-            ) : produtos.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto encontrado.</td></tr>
-            ) : (
-              produtos.map((produto) => (
-                <tr key={produto.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{produto.nome}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{produto.codigo_barras || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{produto.unidade}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-blue-600 dark:text-blue-400">{produto.estoque_atual ?? 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-3">
-                      <button onClick={() => handleOpenNovaMov(produto)} aria-label={`Ajustar estoque de ${produto.nome}`} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-medium">
-                        Ajustar
-                      </button>
-                      <span className="text-gray-300 dark:text-gray-600">|</span>
-                      <button onClick={() => handleOpenKardex(produto)} aria-label={`Ver kardex de ${produto.nome}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
-                        Ver Kardex
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Paginação */}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Página {page} de {totalPages} — mostrando {produtos.length} registros
-        </span>
-        <div className="flex gap-2">
-          <button onClick={() => setPage(p => p - 1)} disabled={page === 1 || loading}
-            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700">
-            ← Anterior
-          </button>
-          <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages || loading}
-            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700">
-            Próxima →
-          </button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Estoque</h1>
+          <p className="text-sm text-muted-foreground">
+            Controle saldo, ajuste de movimentos e acompanhe o historico de cada produto.
+          </p>
         </div>
       </div>
 
-      {/* Modal Kardex */}
-      {kardexProduto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="estoque-kardex-title"
-          onMouseDown={closeKardex}
-        >
-          <div
-            ref={kardexModalRef}
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl dark:bg-gray-800"
-          >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 id="estoque-kardex-title" className="text-xl font-bold text-gray-800 dark:text-gray-100">Kardex: {kardexProduto.nome}</h2>
-              <div className="flex gap-2">
-                <button onClick={() => handleOpenNovaMov(kardexProduto)}
-                  className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition font-medium mr-2">
-                  + Novo Lançamento
-                </button>
-                <button onClick={closeKardex}
-                  aria-label="Fechar modal de kardex"
-                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl leading-none">
-                  ×
-                </button>
-              </div>
-            </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Produtos nesta pagina</CardDescription>
+            <CardTitle>{resumo.registrosPagina}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription>Saldo acumulado da pagina</CardDescription>
+            <CardTitle>{resumo.saldoPagina}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
-              {loadingMov ? (
-                <p className="text-center text-gray-500 dark:text-gray-400">Carregando movimentações...</p>
-              ) : movimentacoes.length === 0 ? (
-                <p className="text-center text-gray-500 dark:text-gray-400">Nenhuma movimentação encontrada.</p>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Busca</CardTitle>
+              <CardDescription>Localize um produto antes de registrar ajustes ou consultar o kardex.</CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">Pagina {page} de {totalPages}</Badge>
+              {searchTerm && <Badge variant="secondary">Busca: {searchTerm}</Badge>}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSearchSubmit} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Buscar por nome"
+                className="pl-9"
+              />
+            </div>
+            <Button type="submit" variant="outline">
+              Buscar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSearchInput('')
+                setSearchTerm('')
+                setPage(1)
+              }}
+              disabled={!searchTerm && !searchInput}
+            >
+              Limpar
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Saldo atual</CardTitle>
+              <CardDescription>Os ajustes alimentam a trilha de estoque v2 via transacoes.</CardDescription>
+            </div>
+            <Badge variant="outline">Page size {PAGE_SIZE}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produto</TableHead>
+                <TableHead>Codigo</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead>Saldo atual</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    Carregando produtos...
+                  </TableCell>
+                </TableRow>
+              ) : listError ? (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <Alert variant="destructive">
+                      <AlertTitle>Erro ao carregar estoque</AlertTitle>
+                      <AlertDescription>{listError}</AlertDescription>
+                    </Alert>
+                  </TableCell>
+                </TableRow>
+              ) : produtos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    Nenhum produto encontrado.
+                  </TableCell>
+                </TableRow>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Data</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tipo</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Motivo</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-green-600 dark:text-green-400 uppercase">Entrada</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-red-600 dark:text-red-400 uppercase">Saída</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {movimentacoes.map((mov) => {
-                      const isEntrada = mov.quantidade > 0
-                      return (
-                        <tr key={mov.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">
-                            {new Date(mov.data_transacao).toLocaleString('pt-BR')}
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${mov.tipo === 'entrada' || mov.tipo === 'devolucao'
-                                ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
-                                : mov.tipo === 'saida'
-                                  ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
-                                  : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
-                              }`}>
-                              {mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{mov.motivo ?? '-'}</td>
-                          <td className="px-4 py-2 text-sm text-right text-green-600 dark:text-green-400 font-medium">
-                            {isEntrada ? `+${mov.quantidade}` : '-'}
-                          </td>
-                          <td className="px-4 py-2 text-sm text-right text-red-600 dark:text-red-400 font-medium">
-                            {!isEntrada ? `${mov.quantidade}` : '-'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                  </table>
-                </div>
+                produtos.map((produto) => (
+                  <TableRow key={produto.id}>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium">{produto.nome}</div>
+                        <p className="text-xs text-muted-foreground">Preco atual: {produto.preco_unitario.toFixed(2)}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{produto.codigo_barras || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{produto.unidade || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={(produto.estoque_atual ?? 0) <= 0 ? 'border-destructive/40 text-destructive' : ''}>
+                        {produto.estoque_atual ?? 'N/A'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleOpenNovaMov(produto)}>
+                          <ArrowUpDown className="size-3.5" />
+                          Ajustar
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleOpenKardex(produto)}>
+                          <History className="size-3.5" />
+                          Ver kardex
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
+          <Separator />
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Pagina {page} de {totalPages} - mostrando {produtos.length} registros
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1 || loading}>
+                Anterior
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => current + 1)} disabled={page >= totalPages || loading}>
+                Proxima
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={kardexProduto !== null} onOpenChange={(open) => !open && closeKardex()}>
+        <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-5xl" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-1">
+                <DialogTitle>Kardex: {kardexProduto?.nome}</DialogTitle>
+                <DialogDescription>Historico consolidado de entradas, saidas, devolucoes e ajustes.</DialogDescription>
+              </div>
+              {kardexProduto && (
+                <Button type="button" onClick={() => handleOpenNovaMov(kardexProduto)}>
+                  <Boxes className="size-4" />
+                  Novo lancamento
+                </Button>
               )}
             </div>
+          </DialogHeader>
 
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-right">
-              <button onClick={closeKardex}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-                Fechar
-              </button>
-            </div>
+          <div className="space-y-4 overflow-y-auto px-6 py-5">
+            {loadingMov ? (
+              <p className="py-10 text-center text-muted-foreground">Carregando movimentacoes...</p>
+            ) : kardexError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Erro ao carregar kardex</AlertTitle>
+                <AlertDescription>{kardexError}</AlertDescription>
+              </Alert>
+            ) : movimentacoes.length === 0 ? (
+              <Alert>
+                <AlertTitle>Nenhuma movimentacao encontrada</AlertTitle>
+                <AlertDescription>Este produto ainda nao possui historico registrado.</AlertDescription>
+              </Alert>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead className="text-right">Entrada</TableHead>
+                    <TableHead className="text-right">Saida</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movimentacoes.map((movimentacao) => {
+                    const isEntrada = movimentacao.quantidade > 0
+                    return (
+                      <TableRow key={movimentacao.id}>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(movimentacao.data_transacao).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={movementBadgeClassName(movimentacao.tipo)}>
+                            {movementTypeLabel[movimentacao.tipo]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{movimentacao.motivo || '-'}</TableCell>
+                        <TableCell className="text-right text-primary">
+                          {isEntrada ? `+${movimentacao.quantidade}` : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-destructive">
+                          {!isEntrada ? movimentacao.quantidade : '-'}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Modal Nova Movimentação */}
-      {isNovaMovOpen && selectedProduto && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Lancar movimentacao de estoque"
-          onMouseDown={handleCloseNovaMov}
-        >
-          <div
-            ref={novaMovModalRef}
-            tabIndex={-1}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-md rounded-lg bg-white shadow-2xl dark:bg-gray-800"
-          >
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Lançar Movimentação</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedProduto.nome}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeKardex}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isNovaMovOpen && selectedProduto !== null} onOpenChange={(open) => !open && handleCloseNovaMov()}>
+        <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-lg" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>Lancar movimentacao</DialogTitle>
+            <DialogDescription>{selectedProduto?.nome}</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmitMov} className="flex min-h-0 flex-1 flex-col">
+            <div className="space-y-4 overflow-y-auto px-6 py-5">
+              <div className="space-y-2">
+                <Label htmlFor="movimentacao-tipo">Tipo</Label>
+                <Select
+                  value={novaMov.tipo}
+                  onValueChange={(value) => setNovaMov((current) => ({ ...current, tipo: value as NovaMovimentacao['tipo'] }))}
+                >
+                  <SelectTrigger id="movimentacao-tipo" className="w-full">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entrada">Entrada</SelectItem>
+                    <SelectItem value="saida">Saida</SelectItem>
+                    <SelectItem value="ajuste">Ajuste de saldo</SelectItem>
+                    <SelectItem value="devolucao">Devolucao</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="movimentacao-quantidade">Quantidade</Label>
+                <Input
+                  id="movimentacao-quantidade"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={novaMov.quantidade || ''}
+                  onChange={(event) =>
+                    setNovaMov((current) => ({
+                      ...current,
+                      quantidade: Number.parseInt(event.target.value, 10) || 0,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="movimentacao-motivo">Motivo / observacao</Label>
+                <textarea
+                  id="movimentacao-motivo"
+                  value={novaMov.motivo}
+                  onChange={(event) => setNovaMov((current) => ({ ...current, motivo: event.target.value }))}
+                  className={textareaClassName}
+                  rows={4}
+                  placeholder="Ex: nota fiscal 123, ajuste contabil, produto danificado..."
+                />
+              </div>
             </div>
 
-            <form onSubmit={handleSubmitMov} className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Movimentação</label>
-                <select value={novaMov.tipo} onChange={(e) => setNovaMov({ ...novaMov, tipo: e.target.value as NovaMovimentacao['tipo'] })}
-                  className={inputCls} required>
-                  <option value="entrada">Entrada</option>
-                  <option value="saida">Saída</option>
-                  <option value="ajuste">Ajuste de Saldo</option>
-                  <option value="devolucao">Devolução</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade</label>
-                <input type="number" min="1" step="1" value={novaMov.quantidade || ''}
-                  onChange={(e) => setNovaMov({ ...novaMov, quantidade: parseInt(e.target.value) || 0 })}
-                  className={inputCls} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo / Observação</label>
-                <textarea value={novaMov.motivo} onChange={(e) => setNovaMov({ ...novaMov, motivo: e.target.value })}
-                  className={inputCls} rows={3}
-                  placeholder="Ex: Nota fiscal 123, Ajuste contábil, Produto danificado..." />
-              </div>
-
-              <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={handleCloseNovaMov} disabled={submittingMov}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={submittingMov}
-                  className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
-                  {submittingMov ? 'Salvando...' : 'Confirmar Lançamento'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCloseNovaMov} disabled={submittingMov}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submittingMov}>
+                {submittingMov ? 'Salvando...' : 'Confirmar lancamento'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

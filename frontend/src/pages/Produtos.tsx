@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 
 import {
   useCategoriasArvore,
@@ -11,12 +12,29 @@ import {
   useReactivateProduto,
   useUpdateProduto,
 } from '../hooks/useProdutos'
-import { useAccessibleModal } from '../hooks/useAccessibleModal'
-import type {
-  CategoriaTreeNode,
-  Produto,
-  ProdutoFormPayload,
-} from '../types/produtos'
+import type { CategoriaTreeNode, Produto, ProdutoFormPayload } from '../types/produtos'
+import { AiFeedback, type AiResult } from './produtos/AiFeedback'
+import { DeleteProdutoDialog } from './produtos/DeleteProdutoDialog'
+import { ProductTableSkeleton } from './produtos/ProductTableSkeleton'
+
+import { cn } from '@/lib/utils'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface FormState {
   nome: string
@@ -43,215 +61,107 @@ interface FormErrors {
   preco_liquido?: string
 }
 
-// ── Tipos de IA ──
-type AiStatus = 'idle' | 'checking' | 'duplicata_exata' | 'similar' | 'ok'
-
-interface DuplicateCandidate {
-  produto_id: number
-  produto_nome: string
-  similaridade: number
-  nivel: 'duplicata' | 'alerta'
-}
-
-interface AiResult {
-  status: AiStatus
-  candidato?: DuplicateCandidate
-}
-
 type ModalMode = 'create' | 'edit'
 
 const PAGE_SIZE = 50
+const FILTER_ALL = '__all__'
+const CATEGORY_NONE = '__none__'
 
 const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
 const emptyFormState: FormState = {
-  nome: '', fornecedor: '', preco_unitario: '', preco_liquido: '',
-  estoque_minimo: '0', quantidade_inicial: '0', unidade: '', unidade_medida: 'UN',
-  codigo_ncm: '', descricao: '', categoria_id: '', preco_custo: '',
-  preco_varejo: '', preco_atacado: '', qtd_minima_atacado: ''
+  nome: '',
+  fornecedor: '',
+  preco_unitario: '',
+  preco_liquido: '',
+  estoque_minimo: '0',
+  quantidade_inicial: '0',
+  unidade: '',
+  unidade_medida: 'UN',
+  codigo_ncm: '',
+  descricao: '',
+  categoria_id: '',
+  preco_custo: '',
+  preco_varejo: '',
+  preco_atacado: '',
+  qtd_minima_atacado: '',
 }
 
-const inputCls = 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+const textareaClassName =
+  'flex min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
-// ── Feedback de IA ──
-const AiFeedback = ({ result }: { result: AiResult }) => {
-  if (result.status === 'idle') return null
+const categoriaLabel = (nome: string, level: number) => `${'-- '.repeat(level)}${nome}`
 
-  if (result.status === 'checking') {
-    return (
-      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-500 dark:text-blue-400">
-        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-        Verificando duplicatas...
-      </div>
-    )
+const fieldError = (message?: string) =>
+  message ? <p className="mt-1 text-xs text-destructive">{message}</p> : null
+
+const flattenCategorias = (
+  nodes: CategoriaTreeNode[],
+  level = 0,
+): Array<{ id: number; nome: string; level: number }> =>
+  nodes.flatMap((node) => [
+    { id: node.id, nome: node.nome, level },
+    ...flattenCategorias(node.children ?? [], level + 1),
+  ])
+
+const nomeInputToneClass = (aiResult: AiResult) => {
+  if (aiResult.status === 'duplicata_exata') {
+    return 'border-sky-400 focus-visible:border-sky-500 focus-visible:ring-sky-500/20'
   }
-
-  if (result.status === 'ok') {
-    return (
-      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-        <span>✅</span>
-        <span>Nome disponível — nenhum produto parecido encontrado.</span>
-      </div>
-    )
+  if (aiResult.status === 'similar' && aiResult.candidato?.nivel === 'duplicata') {
+    return 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20'
   }
-
-  if (result.status === 'duplicata_exata' && result.candidato) {
-    return (
-      <div className="mt-1.5 rounded-lg border border-sky-200 dark:border-sky-700 bg-sky-50 dark:bg-sky-900/30 px-3 py-2">
-        <div className="flex items-start gap-2">
-          <span className="text-base">🔄</span>
-          <div>
-            <p className="text-xs font-semibold text-sky-800 dark:text-sky-200">Produto já existe no estoque</p>
-            <p className="text-xs text-sky-700 dark:text-sky-300 mt-0.5">
-              <span className="font-medium">"{result.candidato.produto_nome}"</span> — ao salvar, a quantidade será somada ao estoque existente.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+  if (aiResult.status === 'similar') {
+    return 'border-amber-400 focus-visible:border-amber-500 focus-visible:ring-amber-500/20'
   }
-
-  if (result.status === 'similar' && result.candidato) {
-    const pct = Math.round(result.candidato.similaridade * 100)
-    const forte = result.candidato.nivel === 'duplicata'
-    return (
-      <div className={`mt-1.5 rounded-lg border px-3 py-2 ${forte ? 'border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'}`}>
-        <div className="flex items-start gap-2">
-          <span className="text-base">{forte ? '🔴' : '⚠️'}</span>
-          <div>
-            <p className={`text-xs font-semibold ${forte ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200'}`}>
-              {forte ? 'Possível duplicata detectada' : 'Nome parecido encontrado'} · {pct}% similar
-            </p>
-            <p className={`text-xs mt-0.5 ${forte ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
-              Já existe: <span className="font-medium">"{result.candidato.produto_nome}"</span>. Verifique antes de salvar.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return null
+  return ''
 }
 
-// ── Modal de confirmação de exclusão permanente ──
-interface ModalExclusaoProps {
-  produto: Produto
-  onConfirmar: () => void
-  onCancelar: () => void
-  isPending: boolean
+const buildPayload = (formState: FormState, modalMode: ModalMode): ProdutoFormPayload => {
+  const payload: ProdutoFormPayload = {
+    nome: formState.nome.trim(),
+    fornecedor: formState.fornecedor.trim(),
+    preco_unitario: Number(formState.preco_unitario),
+    preco_liquido: Number(formState.preco_liquido),
+    estoque_minimo: Math.max(0, Number(formState.estoque_minimo) || 0),
+  }
+
+  if (modalMode === 'create') payload.quantidade_inicial = Math.max(0, Number(formState.quantidade_inicial) || 0)
+  if (formState.unidade.trim()) payload.unidade = formState.unidade.trim()
+
+  payload.unidade_medida = (formState.unidade_medida || 'UN').trim().toUpperCase()
+
+  if (formState.codigo_ncm.trim()) payload.codigo_ncm = formState.codigo_ncm.trim()
+  if (formState.descricao.trim()) payload.descricao = formState.descricao.trim()
+  if (formState.categoria_id) payload.categoria_id = Number(formState.categoria_id)
+  if (formState.preco_custo !== '') payload.preco_custo = Number(formState.preco_custo)
+  if (formState.preco_varejo !== '') payload.preco_varejo = Number(formState.preco_varejo)
+  if (formState.preco_atacado !== '') payload.preco_atacado = Number(formState.preco_atacado)
+  if (formState.qtd_minima_atacado !== '') payload.qtd_minima_atacado = Number(formState.qtd_minima_atacado)
+
+  return payload
 }
 
-const ModalExclusao = ({ produto, onConfirmar, onCancelar, isPending }: ModalExclusaoProps) => {
-  const [confirmacaoTexto, setConfirmacaoTexto] = useState('')
-  const modalRef = useAccessibleModal(true, onCancelar)
-  const titleId = useId()
-  const inputId = useId()
-  const nomeEsperado = produto.nome.trim()
-  const confirmacaoCorreta = confirmacaoTexto.trim() === nomeEsperado
+const validateForm = (formState: FormState) => {
+  const errors: FormErrors = {}
 
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onMouseDown={() => {
-        if (!isPending) {
-          onCancelar()
-        }
-      }}
-    >
-      <div
-        ref={modalRef}
-        tabIndex={-1}
-        onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
-      >
-        {/* Cabeçalho vermelho */}
-        <div className="bg-red-600 px-6 py-4 flex items-center gap-3">
-          <span className="text-2xl">🗑️</span>
-          <div>
-            <h2 id={titleId} className="text-base font-semibold text-white">Excluir produto permanentemente</h2>
-            <p className="text-xs text-red-200 mt-0.5">Esta ação não pode ser desfeita</p>
-          </div>
-        </div>
+  if (!formState.nome.trim()) errors.nome = 'Nome e obrigatorio.'
+  if (!formState.fornecedor.trim()) errors.fornecedor = 'Fornecedor e obrigatorio.'
 
-        <div className="px-6 py-5 space-y-4">
-          {/* Info do produto */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 p-4 space-y-1">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{produto.nome}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Fornecedor: {produto.fornecedor}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Estoque atual: <span className={`font-semibold ${produto.estoque_atual > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-600 dark:text-gray-300'}`}>{produto.estoque_atual} unid.</span>
-            </p>
-          </div>
+  const precoUnitario = Number(formState.preco_unitario)
+  if (!formState.preco_unitario || Number.isNaN(precoUnitario) || precoUnitario <= 0) {
+    errors.preco_unitario = 'Preco unitario deve ser maior que zero.'
+  }
 
-          {/* Aviso de consequências */}
-          <div className="rounded-xl border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-1">
-            <p className="text-xs font-semibold text-red-800 dark:text-red-200">O que será removido:</p>
-            <ul className="text-xs text-red-700 dark:text-red-300 space-y-0.5 list-disc list-inside">
-              <li>Cadastro do produto</li>
-              <li>Todo o histórico de movimentações de estoque</li>
-              <li>Embeddings e dados de IA associados</li>
-            </ul>
-            {produto.estoque_atual > 0 && (
-              <p className="text-xs font-semibold text-red-800 dark:text-red-200 mt-2">
-                ⚠️ Atenção: este produto ainda tem {produto.estoque_atual} unid. em estoque!
-              </p>
-            )}
-          </div>
+  const precoLiquido = Number(formState.preco_liquido)
+  if (!formState.preco_liquido || Number.isNaN(precoLiquido) || precoLiquido <= 0) {
+    errors.preco_liquido = 'Preco liquido deve ser maior que zero.'
+  }
 
-          {/* Campo de confirmação digitando o nome */}
-          <div>
-            <label htmlFor={inputId} className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
-              Para confirmar, digite o nome do produto:
-              <span className="ml-1 font-semibold text-gray-900 dark:text-gray-100">"{nomeEsperado}"</span>
-            </label>
-            <input
-              id={inputId}
-              type="text"
-              value={confirmacaoTexto}
-              onChange={(e) => setConfirmacaoTexto(e.target.value)}
-              placeholder="Digite o nome exato do produto"
-              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors
-                ${confirmacaoCorreta
-                  ? 'border-red-400 dark:border-red-500 focus:ring-red-400 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-red-400'
-                }`}
-              autoComplete="off"
-            />
-            {confirmacaoTexto.length > 0 && !confirmacaoCorreta && (
-              <p className="mt-1 text-xs text-red-500">Nome não confere. Digite exatamente como mostrado acima.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="px-6 pb-5 flex gap-3 justify-end">
-          <button
-            type="button"
-            onClick={onCancelar}
-            disabled={isPending}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition disabled:opacity-60"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirmar}
-            disabled={!confirmacaoCorreta || isPending}
-            className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition disabled:opacity-40 flex items-center gap-2"
-          >
-            {isPending
-              ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Excluindo...</>
-              : '🗑️ Excluir permanentemente'
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  return errors
 }
+
+const initialAiResult: AiResult = { status: 'idle' }
 
 const Produtos = () => {
   const [searchInput, setSearchInput] = useState('')
@@ -262,17 +172,14 @@ const Produtos = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<ModalMode>('create')
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null)
+  const [produtoParaExcluir, setProdutoParaExcluir] = useState<Produto | null>(null)
   const [formState, setFormState] = useState<FormState>(emptyFormState)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [formError, setFormError] = useState('')
+  const [aiResult, setAiResult] = useState<AiResult>(initialAiResult)
 
-  // ── Estado de exclusão permanente ──
-  const [produtoParaExcluir, setProdutoParaExcluir] = useState<Produto | null>(null)
-
-  // ── Estado de IA ──
-  const [aiResult, setAiResult] = useState<AiResult>({ status: 'idle' })
   const aiDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastCheckedNomeRef = useRef<string>('')
+  const lastCheckedNomeRef = useRef('')
 
   const produtosQuery = useProdutos({
     page,
@@ -284,20 +191,88 @@ const Produtos = () => {
 
   const categoriasQuery = useCategoriasArvore()
   const checkDuplicateMutation = useCheckProdutoDuplicate()
-
-  const produtos = produtosQuery.data?.items ?? []
-  const totalPages = Math.max(1, produtosQuery.data?.pages ?? 1)
-
   const createMutation = useCreateProduto()
   const updateMutation = useUpdateProduto()
   const deactivateMutation = useDeactivateProduto()
   const reactivateMutation = useReactivateProduto()
   const deletePermanenteMutation = useDeleteProdutoPermanente()
 
+  const produtos = produtosQuery.data?.items ?? []
+  const totalPages = Math.max(1, produtosQuery.data?.pages ?? 1)
+  const totalRegistros = produtosQuery.data?.total ?? 0
+  const categoriaOptions = flattenCategorias(categoriasQuery.data ?? [])
   const isSaving = createMutation.isPending || updateMutation.isPending
-  const modalRef = useAccessibleModal(isModalOpen, closeModal)
 
-  // ── Verificação de IA com debounce ──
+  const resetAiState = () => {
+    setAiResult(initialAiResult)
+    lastCheckedNomeRef.current = ''
+    if (aiDebounceRef.current) {
+      clearTimeout(aiDebounceRef.current)
+      aiDebounceRef.current = null
+    }
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingProduto(null)
+    setFormState(emptyFormState)
+    setFormErrors({})
+    setFormError('')
+    resetAiState()
+  }
+
+  const openCreateModal = () => {
+    setModalMode('create')
+    setEditingProduto(null)
+    setFormState(emptyFormState)
+    setFormErrors({})
+    setFormError('')
+    resetAiState()
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (produto: Produto) => {
+    setModalMode('edit')
+    setEditingProduto(produto)
+    setFormState({
+      nome: produto.nome ?? '',
+      fornecedor: produto.fornecedor ?? '',
+      preco_unitario: String(produto.preco_unitario ?? ''),
+      preco_liquido: String(produto.preco_liquido ?? ''),
+      estoque_minimo: String(produto.estoque_minimo ?? 0),
+      quantidade_inicial: '0',
+      unidade: produto.unidade ?? '',
+      unidade_medida: produto.unidade_medida ?? 'UN',
+      codigo_ncm: produto.codigo_ncm ?? '',
+      descricao: produto.descricao ?? '',
+      categoria_id: produto.categoria_id ? String(produto.categoria_id) : '',
+      preco_custo: produto.preco_custo != null ? String(produto.preco_custo) : '',
+      preco_varejo: produto.preco_varejo != null ? String(produto.preco_varejo) : '',
+      preco_atacado: produto.preco_atacado != null ? String(produto.preco_atacado) : '',
+      qtd_minima_atacado: produto.qtd_minima_atacado != null ? String(produto.qtd_minima_atacado) : '',
+    })
+    setFormErrors({})
+    setFormError('')
+    resetAiState()
+    setIsModalOpen(true)
+  }
+
+  useEffect(() => {
+    const normalizedSearch = searchInput.trim()
+    const timeoutId = setTimeout(() => {
+      if (normalizedSearch !== searchTerm) {
+        setPage(1)
+        setSearchTerm(normalizedSearch)
+      }
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchInput, searchTerm])
+
+  const handleInputChange = (field: keyof FormState, value: string) => {
+    setFormState((prev) => ({ ...prev, [field]: value }))
+    if (field in formErrors) setFormErrors((prev) => ({ ...prev, [field]: undefined }))
+  }
+
   const checkAiDuplicate = async (nome: string) => {
     const nomeTrimmed = nome.trim()
     if (!nomeTrimmed || nomeTrimmed === lastCheckedNomeRef.current) return
@@ -307,7 +282,6 @@ const Produtos = () => {
 
     try {
       const data = await checkDuplicateMutation.mutateAsync(nomeTrimmed)
-
       if (data.candidatos.length === 0) {
         setAiResult({ status: 'ok' })
         return
@@ -327,140 +301,45 @@ const Produtos = () => {
         setAiResult({ status: 'similar', candidato: top })
       }
     } catch {
-      setAiResult({ status: 'idle' })
+      setAiResult(initialAiResult)
     }
   }
 
   const handleNomeChange = (value: string) => {
     handleInputChange('nome', value)
-    setAiResult({ status: 'idle' })
-    lastCheckedNomeRef.current = ''
-
-    if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current)
-
+    resetAiState()
     if (value.trim().length >= 3) {
       aiDebounceRef.current = setTimeout(() => checkAiDuplicate(value), 600)
     }
   }
 
-  useEffect(() => {
-    if (!isModalOpen && aiDebounceRef.current) clearTimeout(aiDebounceRef.current)
-  }, [isModalOpen])
-
-  const openCreateModal = () => {
-    setModalMode('create'); setEditingProduto(null); setFormState(emptyFormState)
-    setFormErrors({}); setFormError(''); setAiResult({ status: 'idle' }); lastCheckedNomeRef.current = ''
-    setIsModalOpen(true)
-  }
-
-  const openEditModal = (produto: Produto) => {
-    setModalMode('edit'); setEditingProduto(produto)
-    setFormState({
-      nome: produto.nome ?? '', fornecedor: produto.fornecedor ?? '',
-      preco_unitario: String(produto.preco_unitario ?? ''), preco_liquido: String(produto.preco_liquido ?? ''),
-      estoque_minimo: String(produto.estoque_minimo ?? 0), quantidade_inicial: '0',
-      unidade: produto.unidade ?? '', codigo_ncm: produto.codigo_ncm ?? '', descricao: produto.descricao ?? '',
-      unidade_medida: produto.unidade_medida ?? 'UN',
-      categoria_id: produto.categoria_id ? String(produto.categoria_id) : '',
-      preco_custo: produto.preco_custo != null ? String(produto.preco_custo) : '',
-      preco_varejo: produto.preco_varejo != null ? String(produto.preco_varejo) : '',
-      preco_atacado: produto.preco_atacado != null ? String(produto.preco_atacado) : '',
-      qtd_minima_atacado: produto.qtd_minima_atacado != null ? String(produto.qtd_minima_atacado) : ''
-    })
-    setFormErrors({}); setFormError(''); setAiResult({ status: 'idle' }); lastCheckedNomeRef.current = ''
-    setIsModalOpen(true)
-  }
-
-  function closeModal() {
-    setIsModalOpen(false); setEditingProduto(null); setFormState(emptyFormState)
-    setFormErrors({}); setFormError(''); setAiResult({ status: 'idle' }); lastCheckedNomeRef.current = ''
-    if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current)
-  }
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setPage(1); setSearchTerm(searchInput.trim())
-  }
-
-  useEffect(() => {
-    const normalizedSearch = searchInput.trim()
-    const timeoutId = setTimeout(() => {
-      if (normalizedSearch !== searchTerm) { setPage(1); setSearchTerm(normalizedSearch) }
-    }, 300)
-    return () => clearTimeout(timeoutId)
-  }, [searchInput, searchTerm])
-
-  const handleInputChange = (field: keyof FormState, value: string) => {
-    setFormState((prev) => ({ ...prev, [field]: value }))
-    if (field in formErrors) setFormErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
-
-  const validateForm = () => {
-    const errors: FormErrors = {}
-    if (!formState.nome.trim()) errors.nome = 'Nome é obrigatório.'
-    if (!formState.fornecedor.trim()) errors.fornecedor = 'Fornecedor é obrigatório.'
-    const precoUnitario = Number(formState.preco_unitario)
-    if (!formState.preco_unitario || Number.isNaN(precoUnitario) || precoUnitario <= 0)
-      errors.preco_unitario = 'Preço unitário deve ser maior que zero.'
-    const precoLiquido = Number(formState.preco_liquido)
-    if (!formState.preco_liquido || Number.isNaN(precoLiquido) || precoLiquido <= 0)
-      errors.preco_liquido = 'Preço líquido deve ser maior que zero.'
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const buildPayload = (): ProdutoFormPayload => {
-    const payload: ProdutoFormPayload = {
-      nome: formState.nome.trim(), fornecedor: formState.fornecedor.trim(),
-      preco_unitario: Number(formState.preco_unitario), preco_liquido: Number(formState.preco_liquido),
-      estoque_minimo: Math.max(0, Number(formState.estoque_minimo) || 0)
-    }
-    if (modalMode === 'create') payload.quantidade_inicial = Math.max(0, Number(formState.quantidade_inicial) || 0)
-    const unidade = formState.unidade.trim()
-    payload.unidade_medida = (formState.unidade_medida || 'UN').trim().toUpperCase()
-    if (unidade) payload.unidade = unidade
-    if (formState.codigo_ncm.trim()) payload.codigo_ncm = formState.codigo_ncm.trim()
-    if (formState.descricao.trim()) payload.descricao = formState.descricao.trim()
-    if (formState.categoria_id) payload.categoria_id = Number(formState.categoria_id)
-    if (formState.preco_custo !== '') payload.preco_custo = Number(formState.preco_custo)
-    if (formState.preco_varejo !== '') payload.preco_varejo = Number(formState.preco_varejo)
-    if (formState.preco_atacado !== '') payload.preco_atacado = Number(formState.preco_atacado)
-    if (formState.qtd_minima_atacado !== '') payload.qtd_minima_atacado = Number(formState.qtd_minima_atacado)
-    return payload
-  }
-
-  const flattenCategorias = (nodes: CategoriaTreeNode[], level = 0): Array<{ id: number; nome: string; level: number }> => {
-    return nodes.flatMap((node) => [
-      { id: node.id, nome: node.nome, level },
-      ...flattenCategorias(node.children ?? [], level + 1)
-    ])
-  }
-
-  const categoriaOptions = flattenCategorias(categoriasQuery.data ?? [])
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setFormError('')
-    if (!validateForm()) return
-    const payload = buildPayload()
+    event.preventDefault()
+    setFormError('')
+
+    const errors = validateForm(formState)
+    setFormErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
+    const payload = buildPayload(formState, modalMode)
 
     if (modalMode === 'create') {
       createMutation.mutate(payload, {
         onSuccess: ({ acao }) => {
           closeModal()
-          if (acao === 'estoque_somado') {
-            toast.success('Produto já existia — estoque somado com sucesso!')
-          } else {
-            toast.success('Produto criado com sucesso!')
-          }
+          toast.success(
+            acao === 'estoque_somado'
+              ? 'Produto ja existia e o estoque foi somado com sucesso.'
+              : 'Produto criado com sucesso.',
+          )
         },
-        onError: () => {
-          setFormError('Não foi possível criar o produto. Verifique os dados e tente novamente.')
-        },
+        onError: () => setFormError('Nao foi possivel criar o produto. Revise os dados e tente novamente.'),
       })
       return
     }
 
     if (!editingProduto) {
-      setFormError('Produto inválido para edição.')
+      setFormError('Produto invalido para edicao.')
       return
     }
 
@@ -469,11 +348,9 @@ const Produtos = () => {
       {
         onSuccess: () => {
           closeModal()
-          toast.success('Produto atualizado com sucesso!')
+          toast.success('Produto atualizado com sucesso.')
         },
-        onError: () => {
-          setFormError('Não foi possível atualizar o produto. Verifique os dados e tente novamente.')
-        },
+        onError: () => setFormError('Nao foi possivel atualizar o produto. Revise os dados e tente novamente.'),
       },
     )
   }
@@ -481,318 +358,244 @@ const Produtos = () => {
   const handleToggleStatus = (produto: Produto) => {
     if (produto.ativo) {
       if (!window.confirm(`Deseja desativar o produto "${produto.nome}"?`)) return
-      deactivateMutation.mutate(produto.id, {
-        onSuccess: () => {
-          toast.success('Produto desativado com sucesso!')
-        },
-      })
-    } else {
-      reactivateMutation.mutate(produto.id, {
-        onSuccess: () => {
-          toast.success('Produto reativado com sucesso!')
-        },
-      })
+      deactivateMutation.mutate(produto.id, { onSuccess: () => toast.success('Produto desativado com sucesso.') })
+      return
     }
-  }
-
-  const nomeInputBorderCls = () => {
-    if (aiResult.status === 'duplicata_exata') return 'border-sky-400 dark:border-sky-500 focus:ring-sky-500'
-    if (aiResult.status === 'similar' && aiResult.candidato?.nivel === 'duplicata') return 'border-red-400 dark:border-red-500 focus:ring-red-500'
-    if (aiResult.status === 'similar') return 'border-amber-400 dark:border-amber-500 focus:ring-amber-500'
-    return 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+    reactivateMutation.mutate(produto.id, { onSuccess: () => toast.success('Produto reativado com sucesso.') })
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="space-y-6">
+      <DeleteProdutoDialog
+        key={produtoParaExcluir?.id ?? 'delete-dialog'}
+        produto={produtoParaExcluir}
+        isPending={deletePermanenteMutation.isPending}
+        onClose={() => {
+          if (!deletePermanenteMutation.isPending) setProdutoParaExcluir(null)
+        }}
+        onConfirmar={(produtoId) =>
+          deletePermanenteMutation.mutate(produtoId, {
+            onSuccess: (data) => {
+              setProdutoParaExcluir(null)
+              toast.success(data.message ?? 'Produto removido permanentemente.')
+            },
+            onError: () => toast.error('Nao foi possivel remover o produto. Tente novamente.'),
+          })
+        }
+      />
 
-      {/* Modal de exclusão permanente */}
-      {produtoParaExcluir && (
-        <ModalExclusao
-          produto={produtoParaExcluir}
-          isPending={deletePermanenteMutation.isPending}
-          onConfirmar={() =>
-            deletePermanenteMutation.mutate(produtoParaExcluir.id, {
-              onSuccess: (data) => {
-                setProdutoParaExcluir(null)
-                toast.success(data.message ?? 'Produto removido permanentemente.')
-              },
-              onError: () => {
-                toast.error('Não foi possível remover o produto. Tente novamente.')
-              },
-            })
-          }
-          onCancelar={() => { if (!deletePermanenteMutation.isPending) setProdutoParaExcluir(null) }}
-        />
-      )}
-
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Produtos</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-2">
-            <input
-              type="text"
-              placeholder="Buscar por nome"
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-            <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">Buscar</button>
-          </form>
-
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox" checked={incluirInativos}
-              onChange={(event) => { setPage(1); setIncluirInativos(event.target.checked) }}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Mostrar inativos
-          </label>
-
-          <select
-            value={categoriaFiltro}
-            onChange={(event) => { setPage(1); setCategoriaFiltro(event.target.value) }}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todas categorias</option>
-            {categoriaOptions.map((c) => (
-              <option key={c.id} value={c.id}>{'— '.repeat(c.level)}{c.nome}</option>
-            ))}
-          </select>
-
-          <button type="button" onClick={openCreateModal} className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700">
-            + Novo Produto
-          </button>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Produtos</h1>
+          <p className="text-sm text-muted-foreground">Gerencie catalogo, precificacao e estoque minimo.</p>
         </div>
+        <Button type="button" onClick={openCreateModal}>
+          <Plus className="size-4" />
+          Novo produto
+        </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white dark:bg-gray-800 shadow">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              {['Nome', 'Fornecedor', 'Preço Unitário', 'Estoque Atual', 'Estoque Mín.', 'Status'].map(h => (
-                <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{h}</th>
-              ))}
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-            {produtosQuery.isLoading ? (
-              <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Carregando...</td></tr>
-            ) : produtosQuery.isError ? (
-              <tr><td colSpan={7} className="px-6 py-4 text-center text-red-600">Erro ao carregar produtos.</td></tr>
-            ) : produtos.length === 0 ? (
-              <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Nenhum produto encontrado.</td></tr>
-            ) : (
-              produtos.map((produto) => (
-                <tr key={produto.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{produto.nome}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{produto.fornecedor}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{moneyFormatter.format(produto.preco_unitario)}</td>
-                  <td className={`px-6 py-4 text-sm ${produto.estoque_baixo ? 'font-semibold text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {produto.estoque_atual}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{produto.estoque_minimo}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${produto.ativo ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
-                      {produto.ativo ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm">
-                    <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => openEditModal(produto)}
-                        className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-                        Editar
-                      </button>
-                      <button type="button" onClick={() => handleToggleStatus(produto)}
-                        disabled={deactivateMutation.isPending || reactivateMutation.isPending}
-                        className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60">
-                        {produto.ativo ? 'Desativar' : 'Reativar'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setProdutoParaExcluir(produto)}
-                        aria-label={`Excluir permanentemente ${produto.nome}`}
-                        title="Excluir permanentemente"
-                        className="rounded border border-red-200 dark:border-red-800 px-3 py-1 text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-900/30"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Página {produtosQuery.data?.page ?? page} de {totalPages} — mostrando {produtos.length} registros
-        </span>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || produtosQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40">
-            ← Anterior
-          </button>
-          <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages || produtosQuery.isFetching}
-            className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40">
-            Próxima →
-          </button>
-        </div>
-      </div>
-
-      {/* ── MODAL DE CRIAÇÃO/EDIÇÃO ── */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" onMouseDown={closeModal}>
-          <div ref={modalRef} tabIndex={-1} onMouseDown={(e) => e.stopPropagation()} className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                {modalMode === 'create' ? 'Novo produto' : 'Editar produto'}
-              </h2>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Busca e filtros</CardTitle>
+              <CardDescription>Refine a lista por nome, categoria e status do cadastro.</CardDescription>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">Pagina {produtosQuery.data?.page ?? page} de {totalPages}</Badge>
+              <Badge variant="outline">{totalRegistros} registros</Badge>
+              {incluirInativos && <Badge variant="secondary">Incluindo inativos</Badge>}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+          <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSearchTerm(searchInput.trim()) }} className="contents">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar por nome" className="pl-9" />
+            </div>
+            <Select value={categoriaFiltro || FILTER_ALL} onValueChange={(value) => { setPage(1); setCategoriaFiltro(value === FILTER_ALL ? '' : value) }}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todas categorias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FILTER_ALL}>Todas categorias</SelectItem>
+                {categoriaOptions.map((categoria) => (
+                  <SelectItem key={categoria.id} value={String(categoria.id)}>
+                    {categoriaLabel(categoria.nome, categoria.level)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" variant="outline">Buscar</Button>
+            <Button type="button" variant={incluirInativos ? 'secondary' : 'outline'} onClick={() => { setPage(1); setIncluirInativos((prev) => !prev) }}>
+              {incluirInativos ? 'Ocultar inativos' : 'Mostrar inativos'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col px-6 py-5">
-              <div className="space-y-4 overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {/* Campo Nome com IA */}
-                  <div className="md:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-nome">
-                      Nome *
-                      {aiResult.status === 'checking' && (
-                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-blue-500">
-                          <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                          verificando IA...
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      id="produto-nome" type="text" value={formState.nome}
-                      onChange={(e) => handleNomeChange(e.target.value)}
-                      className={`w-full rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 transition-colors ${nomeInputBorderCls()}`}
-                      placeholder="Nome do produto"
-                    />
-                    {formErrors.nome && <p className="mt-1 text-xs text-red-600">{formErrors.nome}</p>}
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Catalogo</CardTitle>
+              <CardDescription>
+                {produtosQuery.isFetching && !produtosQuery.isLoading ? 'Atualizando lista de produtos...' : 'Visao consolidada do cadastro atual.'}
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {searchTerm && <Badge variant="outline">Busca: {searchTerm}</Badge>}
+              {categoriaFiltro && <Badge variant="outline">Categoria: {categoriaOptions.find((categoria) => String(categoria.id) === categoriaFiltro)?.nome ?? categoriaFiltro}</Badge>}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead>Preco unitario</TableHead>
+                <TableHead>Estoque atual</TableHead>
+                <TableHead>Estoque minimo</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {produtosQuery.isLoading ? (
+                <ProductTableSkeleton />
+              ) : produtosQuery.isError ? (
+                <TableRow><TableCell colSpan={7}><Alert variant="destructive"><AlertTitle>Erro ao carregar produtos</AlertTitle><AlertDescription>Tente novamente em alguns instantes.</AlertDescription></Alert></TableCell></TableRow>
+              ) : produtos.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Nenhum produto encontrado.</TableCell></TableRow>
+              ) : (
+                produtos.map((produto) => (
+                  <TableRow key={produto.id}>
+                    <TableCell><div className="space-y-1"><div className="font-medium">{produto.nome}</div>{produto.codigo_ncm && <p className="text-xs text-muted-foreground">NCM: {produto.codigo_ncm}</p>}</div></TableCell>
+                    <TableCell className="text-muted-foreground">{produto.fornecedor}</TableCell>
+                    <TableCell className="text-muted-foreground">{moneyFormatter.format(produto.preco_unitario)}</TableCell>
+                    <TableCell><div className="flex items-center gap-2"><span className={cn(produto.estoque_baixo && 'font-semibold text-destructive')}>{produto.estoque_atual}</span>{produto.estoque_baixo && <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive">Baixo</Badge>}</div></TableCell>
+                    <TableCell className="text-muted-foreground">{produto.estoque_minimo}</TableCell>
+                    <TableCell><Badge variant={produto.ativo ? 'secondary' : 'outline'} className={cn(produto.ativo && 'bg-primary/10 text-primary', !produto.ativo && 'text-muted-foreground')}>{produto.ativo ? 'Ativo' : 'Inativo'}</Badge></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(produto)}><Pencil className="size-3.5" />Editar</Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleToggleStatus(produto)} disabled={deactivateMutation.isPending || reactivateMutation.isPending}>{produto.ativo ? 'Desativar' : 'Reativar'}</Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setProdutoParaExcluir(produto)} className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" />Excluir</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
+          <Separator />
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">Pagina {produtosQuery.data?.page ?? page} de {totalPages} - mostrando {produtos.length} registros nesta pagina</p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))} disabled={page <= 1 || produtosQuery.isFetching}>Anterior</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setPage((currentPage) => currentPage + 1)} disabled={page >= totalPages || produtosQuery.isFetching}>Proxima</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open && !isSaving) closeModal() }}>
+        <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-5xl" onEscapeKeyDown={(event) => { if (isSaving) event.preventDefault() }} onInteractOutside={(event) => { if (isSaving) event.preventDefault() }}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>{modalMode === 'create' ? 'Novo produto' : 'Editar produto'}</DialogTitle>
+            <DialogDescription>Atualize dados comerciais, estoque minimo e regras de precificacao.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <Card size="sm">
+                <CardHeader><CardTitle className="text-sm">Dados principais</CardTitle><CardDescription>Informacoes basicas do cadastro e verificacao de duplicidade.</CardDescription></CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="produto-nome">Nome *</Label>
+                    <Input id="produto-nome" value={formState.nome} onChange={(event) => handleNomeChange(event.target.value)} placeholder="Nome do produto" className={nomeInputToneClass(aiResult)} />
+                    {fieldError(formErrors.nome)}
                     <AiFeedback result={aiResult} />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="produto-fornecedor">Fornecedor *</Label>
+                    <Input id="produto-fornecedor" value={formState.fornecedor} onChange={(event) => handleInputChange('fornecedor', event.target.value)} placeholder="Nome do fornecedor" />
+                    {fieldError(formErrors.fornecedor)}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="produto-categoria">Categoria</Label>
+                    <Select value={formState.categoria_id || CATEGORY_NONE} onValueChange={(value) => handleInputChange('categoria_id', value === CATEGORY_NONE ? '' : value)}>
+                      <SelectTrigger id="produto-categoria" className="w-full"><SelectValue placeholder="Sem categoria" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CATEGORY_NONE}>Sem categoria</SelectItem>
+                        {categoriaOptions.map((categoria) => <SelectItem key={categoria.id} value={String(categoria.id)}>{categoriaLabel(categoria.nome, categoria.level)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
 
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-fornecedor">Fornecedor *</label>
-                    <input id="produto-fornecedor" type="text" value={formState.fornecedor} onChange={(e) => handleInputChange('fornecedor', e.target.value)} className={inputCls} placeholder="Nome do fornecedor" />
-                    {formErrors.fornecedor && <p className="mt-1 text-xs text-red-600">{formErrors.fornecedor}</p>}
+              <Card size="sm">
+                <CardHeader><CardTitle className="text-sm">Comercial e estoque</CardTitle><CardDescription>Precos principais, estoque minimo e unidade de venda.</CardDescription></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2"><Label htmlFor="produto-preco-unitario">Preco unitario *</Label><Input id="produto-preco-unitario" type="number" min="0.01" step="0.01" value={formState.preco_unitario} onChange={(event) => handleInputChange('preco_unitario', event.target.value)} />{fieldError(formErrors.preco_unitario)}</div>
+                    <div className="space-y-2"><Label htmlFor="produto-preco-liquido">Preco liquido *</Label><Input id="produto-preco-liquido" type="number" min="0.01" step="0.01" value={formState.preco_liquido} onChange={(event) => handleInputChange('preco_liquido', event.target.value)} />{fieldError(formErrors.preco_liquido)}</div>
+                    <div className="space-y-2"><Label htmlFor="produto-estoque-minimo">Estoque minimo</Label><Input id="produto-estoque-minimo" type="number" min="0" step="1" value={formState.estoque_minimo} onChange={(event) => handleInputChange('estoque_minimo', event.target.value)} /></div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-categoria">Categoria</label>
-                    <select id="produto-categoria" value={formState.categoria_id} onChange={(e) => handleInputChange('categoria_id', e.target.value)} className={inputCls}>
-                      <option value="">Sem categoria</option>
-                      {categoriaOptions.map((c) => (
-                        <option key={c.id} value={c.id}>{'— '.repeat(c.level)}{c.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-unitario">Preço Unitário *</label>
-                    <input id="produto-preco-unitario" type="number" min="0.01" step="0.01" value={formState.preco_unitario} onChange={(e) => handleInputChange('preco_unitario', e.target.value)} className={inputCls} />
-                    {formErrors.preco_unitario && <p className="mt-1 text-xs text-red-600">{formErrors.preco_unitario}</p>}
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-liquido">Preço Líquido *</label>
-                    <input id="produto-preco-liquido" type="number" min="0.01" step="0.01" value={formState.preco_liquido} onChange={(e) => handleInputChange('preco_liquido', e.target.value)} className={inputCls} />
-                    {formErrors.preco_liquido && <p className="mt-1 text-xs text-red-600">{formErrors.preco_liquido}</p>}
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-estoque-minimo">Estoque Mínimo</label>
-                    <input id="produto-estoque-minimo" type="number" min="0" step="1" value={formState.estoque_minimo} onChange={(e) => handleInputChange('estoque_minimo', e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-
-                <fieldset className="rounded-lg border border-gray-200 dark:border-gray-600 p-3">
-                  <legend className="px-1 text-sm font-medium text-gray-700 dark:text-gray-300">Precificação avançada</legend>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-custo">Preço de Custo</label>
-                      <input id="produto-preco-custo" type="number" min="0" step="0.01" value={formState.preco_custo} onChange={(e) => handleInputChange('preco_custo', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  {modalMode === 'create' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="produto-estoque-inicial">Estoque inicial{aiResult.status === 'duplicata_exata' && <span className="ml-2 text-xs font-normal text-sky-600 dark:text-sky-400">sera somado ao estoque existente</span>}</Label>
+                      <Input id="produto-estoque-inicial" type="number" min="0" step="1" value={formState.quantidade_inicial} onChange={(event) => handleInputChange('quantidade_inicial', event.target.value)} />
+                      <p className="text-xs text-muted-foreground">A quantidade sera registrada como entrada inicial.</p>
                     </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-varejo">Preço Varejo</label>
-                      <input id="produto-preco-varejo" type="number" min="0" step="0.01" value={formState.preco_varejo} onChange={(e) => handleInputChange('preco_varejo', e.target.value)} className={inputCls} placeholder="Opcional" />
+                  )}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="produto-unidade-medida">Unidade de medida</Label>
+                      <Select value={formState.unidade_medida} onValueChange={(value) => handleInputChange('unidade_medida', value)}>
+                        <SelectTrigger id="produto-unidade-medida" className="w-full"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>{['UN', 'CX', 'MT', 'KG', 'LT', 'PC', 'M2', 'M3'].map((unidade) => <SelectItem key={unidade} value={unidade}>{unidade}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-preco-atacado">Preço Atacado</label>
-                      <input id="produto-preco-atacado" type="number" min="0" step="0.01" value={formState.preco_atacado} onChange={(e) => handleInputChange('preco_atacado', e.target.value)} className={inputCls} placeholder="Opcional" />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-qtd-minima-atacado">Qtd. mínima para atacado</label>
-                      <input id="produto-qtd-minima-atacado" type="number" min="0" step="1" value={formState.qtd_minima_atacado} onChange={(e) => handleInputChange('qtd_minima_atacado', e.target.value)} className={inputCls} placeholder="Opcional" />
-                    </div>
+                    <div className="space-y-2"><Label htmlFor="produto-unidade">Sigla exibida</Label><Input id="produto-unidade" value={formState.unidade} onChange={(event) => handleInputChange('unidade', event.target.value)} placeholder="UN, KG, CX" /></div>
+                    <div className="space-y-2"><Label htmlFor="produto-codigo-ncm">Codigo NCM</Label><Input id="produto-codigo-ncm" value={formState.codigo_ncm} onChange={(event) => handleInputChange('codigo_ncm', event.target.value)} placeholder="Opcional" /></div>
                   </div>
-                </fieldset>
+                </CardContent>
+              </Card>
 
-                {modalMode === 'create' && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-estoque-inicial">
-                      Estoque Inicial
-                      {aiResult.status === 'duplicata_exata' && (
-                        <span className="ml-2 text-xs font-normal text-sky-600 dark:text-sky-400">(será somado ao estoque existente)</span>
-                      )}
-                    </label>
-                    <input id="produto-estoque-inicial" type="number" min="0" step="1" value={formState.quantidade_inicial} onChange={(e) => handleInputChange('quantidade_inicial', e.target.value)} className={inputCls} />
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Será registrado como entrada de estoque</p>
-                  </div>
-                )}
+              <Card size="sm">
+                <CardHeader><CardTitle className="text-sm">Precificacao avancada</CardTitle><CardDescription>Campos opcionais para custo, varejo e atacado.</CardDescription></CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2"><Label htmlFor="produto-preco-custo">Preco de custo</Label><Input id="produto-preco-custo" type="number" min="0" step="0.01" value={formState.preco_custo} onChange={(event) => handleInputChange('preco_custo', event.target.value)} placeholder="Opcional" /></div>
+                  <div className="space-y-2"><Label htmlFor="produto-preco-varejo">Preco varejo</Label><Input id="produto-preco-varejo" type="number" min="0" step="0.01" value={formState.preco_varejo} onChange={(event) => handleInputChange('preco_varejo', event.target.value)} placeholder="Opcional" /></div>
+                  <div className="space-y-2"><Label htmlFor="produto-preco-atacado">Preco atacado</Label><Input id="produto-preco-atacado" type="number" min="0" step="0.01" value={formState.preco_atacado} onChange={(event) => handleInputChange('preco_atacado', event.target.value)} placeholder="Opcional" /></div>
+                  <div className="space-y-2"><Label htmlFor="produto-qtd-minima-atacado">Qtd. minima para atacado</Label><Input id="produto-qtd-minima-atacado" type="number" min="0" step="1" value={formState.qtd_minima_atacado} onChange={(event) => handleInputChange('qtd_minima_atacado', event.target.value)} placeholder="Opcional" /></div>
+                </CardContent>
+              </Card>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-unidade-medida">Unidade de medida</label>
-                    <select id="produto-unidade-medida" value={formState.unidade_medida} onChange={(e) => handleInputChange('unidade_medida', e.target.value)} className={inputCls}>
-                      {['UN', 'CX', 'MT', 'KG', 'LT', 'PC', 'M2', 'M3'].map((u) => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-unidade">Sigla exibida</label>
-                    <input id="produto-unidade" type="text" value={formState.unidade} onChange={(e) => handleInputChange('unidade', e.target.value)} className={inputCls} placeholder="UN, KG, CX" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-codigo-ncm">Código NCM</label>
-                    <input id="produto-codigo-ncm" type="text" value={formState.codigo_ncm} onChange={(e) => handleInputChange('codigo_ncm', e.target.value)} className={inputCls} placeholder="Opcional" />
-                  </div>
-                </div>
+              <Card size="sm">
+                <CardHeader><CardTitle className="text-sm">Descricao</CardTitle><CardDescription>Contexto adicional exibido nas telas que consomem o produto.</CardDescription></CardHeader>
+                <CardContent className="space-y-2"><Label htmlFor="produto-descricao">Descricao</Label><textarea id="produto-descricao" value={formState.descricao} onChange={(event) => handleInputChange('descricao', event.target.value)} className={textareaClassName} placeholder="Descricao do produto" /></CardContent>
+              </Card>
+            </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="produto-descricao">Descrição</label>
-                  <textarea id="produto-descricao" value={formState.descricao} onChange={(e) => handleInputChange('descricao', e.target.value)} className={`min-h-24 ${inputCls}`} placeholder="Descrição do produto" />
-                </div>
-              </div>
+            {formError && <div className="px-6 pb-4"><Alert variant="destructive"><AlertTitle>Falha ao salvar</AlertTitle><AlertDescription>{formError}</AlertDescription></Alert></div>}
 
-              {formError && (
-                <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-900/30 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-400">
-                  {formError}
-                </div>
-              )}
-
-              <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
-                <button type="button" onClick={closeModal} disabled={isSaving}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={isSaving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700 disabled:opacity-60">
-                  {isSaving ? 'Salvando...' : modalMode === 'create' ? 'Criar produto' : 'Salvar alterações'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal} disabled={isSaving}>Cancelar</Button>
+              <Button type="submit" disabled={isSaving}>{modalMode === 'create' ? 'Criar produto' : 'Salvar alteracoes'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 export default Produtos
-
-

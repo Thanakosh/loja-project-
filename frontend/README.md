@@ -11,6 +11,26 @@ Aplicação React + Vite com TailwindCSS para interface do **Loja Project**.
 - React Query
 - React Router
 
+## Design System
+
+O frontend agora usa `shadcn/ui` como base do design system.
+
+- Documentacao de uso: `docs/design-system.md`
+- Imports padrao: `@/components/ui/<componente>`
+- Tema semantico: `src/index.css`
+- Tokens Tailwind: `tailwind.config.js`
+
+Para adicionar um novo componente:
+
+```bash
+cd frontend
+npx shadcn@latest add <componente>
+```
+
+Observacao: `react-hot-toast` continua ativo para fluxos existentes. O
+componente `sonner` foi instalado, mas a migracao de notificacoes deve ser
+tratada separadamente.
+
 ## Como executar (desenvolvimento)
 
 Antes de iniciar, configure a URL do backend:

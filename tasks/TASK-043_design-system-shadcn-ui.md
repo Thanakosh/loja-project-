@@ -1,7 +1,7 @@
 ---
 task_id: TASK-043
 title: "Implementar design system com componentes reutilizaveis (Shadcn/ui)"
-status: pendente
+status: concluida
 priority: baixa
 agent_chat_executable: "sim"
 depends_on: ["TASK-038"]

@@ -6,9 +6,15 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import type { CaixaDiario, MovimentacaoCaixa, TipoMovimentacaoCaixa } from '../types/caixa'
 
-const formatCurrency = (value: number) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
+const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const formatDatetime = (iso: string) => new Date(iso).toLocaleString('pt-BR')
 
 const formatUsuario = (nome?: string | null, id?: number | null) => {
@@ -26,6 +32,9 @@ const MOVIMENTACAO_LABELS: Record<TipoMovimentacaoCaixa, string> = {
   sangria: 'Sangria',
   suprimento: 'Suprimento',
 }
+
+const textareaClassName =
+  'flex min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
 const resetMovimentacaoState = (
   setTipo: (value: TipoMovimentacaoCaixa | null) => void,
@@ -140,335 +149,278 @@ export default function CaixaDiarioPage() {
   const exigeObservacao = diferencaPreview != null && Math.abs(diferencaPreview) > 0.009 && !obsFechamento.trim()
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Controle de Caixa</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Sangrias, suprimentos e saldo esperado calculado no backend.
-        </p>
+        <h1 className="text-2xl font-semibold">Controle de caixa</h1>
+        <p className="text-sm text-muted-foreground">Sangrias, suprimentos e saldo esperado calculado no backend.</p>
       </div>
 
       {loadingAtual ? (
-        <div className="text-gray-500 dark:text-gray-400">Carregando status do caixa...</div>
+        <p className="text-sm text-muted-foreground">Carregando status do caixa...</p>
       ) : caixaAtual ? (
         <div className="space-y-6">
-          <section className="space-y-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 dark:border-emerald-700 dark:bg-emerald-900/20">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
-                  <span className="font-semibold text-emerald-800 dark:text-emerald-300">
-                    Caixa aberto desde {formatDatetime(caixaAtual.data_abertura)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-emerald-700/80 dark:text-emerald-200/80">
-                  Aberto por {formatUsuario(caixaAtual.usuario_abertura_nome, caixaAtual.usuario_abertura_id)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-emerald-200 bg-white/80 px-4 py-3 text-right dark:border-emerald-800 dark:bg-emerald-950/40">
-                <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                  Saldo Esperado
-                </p>
-                <p className="text-2xl font-semibold text-emerald-900 dark:text-emerald-100">
-                  {formatCurrency(caixaAtual.saldo_esperado)}
-                </p>
-              </div>
-            </div>
+          <Alert>
+            <AlertTitle>Caixa aberto</AlertTitle>
+            <AlertDescription>
+              Aberto desde {formatDatetime(caixaAtual.data_abertura)} por {formatUsuario(caixaAtual.usuario_abertura_nome, caixaAtual.usuario_abertura_id)}.
+            </AlertDescription>
+          </Alert>
 
-            <div className="grid gap-3 md:grid-cols-4">
-              {[
-                ['Valor de abertura', caixaAtual.valor_abertura, 'text-gray-900 dark:text-gray-100'],
-                ['Vendas em dinheiro', caixaAtual.valor_em_dinheiro_vendas, 'text-gray-900 dark:text-gray-100'],
-                ['Total de suprimentos', caixaAtual.total_suprimentos, 'text-sky-700 dark:text-sky-300'],
-                ['Total de sangrias', caixaAtual.total_sangrias, 'text-rose-700 dark:text-rose-300'],
-              ].map(([label, value, tone]) => (
-                <div key={label} className="rounded-xl border border-white/70 bg-white/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-                  <p className={`mt-2 text-lg font-semibold ${tone}`}>{formatCurrency(value as number)}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              ['Saldo esperado', formatCurrency(caixaAtual.saldo_esperado)],
+              ['Valor de abertura', formatCurrency(caixaAtual.valor_abertura)],
+              ['Vendas em dinheiro', formatCurrency(caixaAtual.valor_em_dinheiro_vendas)],
+              ['Total de suprimentos', formatCurrency(caixaAtual.total_suprimentos)],
+            ].map(([label, value]) => (
+              <Card size="sm" key={label}>
+                <CardHeader>
+                  <CardDescription>{label}</CardDescription>
+                  <CardTitle>{value}</CardTitle>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-            <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Movimentacoes</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Retiradas e reforcos do caixa aberto.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
-                    onClick={() => setTipoMovimentacao('sangria')}
-                  >
-                    Registrar Sangria
-                  </button>
-                  <button
-                    className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
-                    onClick={() => setTipoMovimentacao('suprimento')}
-                  >
-                    Registrar Suprimento
-                  </button>
-                </div>
-              </div>
-
-              {tipoMovimentacao ? (
-                <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/40">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                    {MOVIMENTACAO_LABELS[tipoMovimentacao]}
-                  </p>
-                  <div className="grid gap-3 md:grid-cols-[180px,1fr]">
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={valorMovimentacao}
-                      onChange={(event) => setValorMovimentacao(event.target.value)}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                      aria-label="Valor da movimentacao"
-                    />
-                    <input
-                      type="text"
-                      value={motivoMovimentacao}
-                      onChange={(event) => setMotivoMovimentacao(event.target.value)}
-                      placeholder="Motivo"
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                      aria-label="Motivo da movimentacao"
-                    />
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <Card>
+              <CardHeader className="gap-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle>Movimentacoes</CardTitle>
+                    <CardDescription>Retiradas e reforcos realizados enquanto o caixa permanece aberto.</CardDescription>
                   </div>
-                  <input
-                    type="text"
-                    value={obsMovimentacao}
-                    onChange={(event) => setObsMovimentacao(event.target.value)}
-                    placeholder="Observacao opcional"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                    aria-label="Observacao da movimentacao"
-                  />
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                      onClick={() => movimentacaoMutation.mutate()}
-                      disabled={
-                        movimentacaoMutation.isPending ||
-                        !tipoMovimentacao ||
-                        (parseFloat(valorMovimentacao) || 0) <= 0 ||
-                        !motivoMovimentacao.trim()
-                      }
-                    >
-                      {movimentacaoMutation.isPending ? 'Registrando...' : 'Salvar Movimentacao'}
-                    </button>
-                    <button
-                      className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-100"
-                      onClick={() =>
-                        resetMovimentacaoState(setTipoMovimentacao, setValorMovimentacao, setMotivoMovimentacao, setObsMovimentacao)
-                      }
-                    >
-                      Cancelar
-                    </button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setTipoMovimentacao('sangria')}>
+                      Registrar sangria
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setTipoMovimentacao('suprimento')}>
+                      Registrar suprimento
+                    </Button>
                   </div>
                 </div>
-              ) : null}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {tipoMovimentacao && (
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardTitle className="text-sm">{MOVIMENTACAO_LABELS[tipoMovimentacao]}</CardTitle>
+                      <CardDescription>Informe valor, motivo e observacao opcional.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+                        <div className="space-y-2">
+                          <Label htmlFor="caixa-movimentacao-valor">Valor</Label>
+                          <Input id="caixa-movimentacao-valor" type="number" min="0.01" step="0.01" value={valorMovimentacao} onChange={(event) => setValorMovimentacao(event.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="caixa-movimentacao-motivo">Motivo</Label>
+                          <Input id="caixa-movimentacao-motivo" value={motivoMovimentacao} onChange={(event) => setMotivoMovimentacao(event.target.value)} placeholder="Motivo" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="caixa-movimentacao-observacao">Observacao</Label>
+                        <textarea id="caixa-movimentacao-observacao" value={obsMovimentacao} onChange={(event) => setObsMovimentacao(event.target.value)} className={textareaClassName} rows={3} placeholder="Observacao opcional" />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => movimentacaoMutation.mutate()}
+                          disabled={movimentacaoMutation.isPending || !tipoMovimentacao || (parseFloat(valorMovimentacao) || 0) <= 0 || !motivoMovimentacao.trim()}
+                        >
+                          {movimentacaoMutation.isPending ? 'Registrando...' : 'Salvar movimentacao'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => resetMovimentacaoState(setTipoMovimentacao, setValorMovimentacao, setMotivoMovimentacao, setObsMovimentacao)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {loadingMovimentacoes ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">Carregando movimentacoes...</p>
-              ) : movimentacoes.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  Nenhuma movimentacao registrada para este caixa.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-xs uppercase text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Horario</th>
-                        <th className="px-4 py-3 text-left">Tipo</th>
-                        <th className="px-4 py-3 text-left">Motivo</th>
-                        <th className="px-4 py-3 text-left">Usuario</th>
-                        <th className="px-4 py-3 text-left">Observacao</th>
-                        <th className="px-4 py-3 text-right">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {loadingMovimentacoes ? (
+                  <p className="text-sm text-muted-foreground">Carregando movimentacoes...</p>
+                ) : movimentacoes.length === 0 ? (
+                  <Alert>
+                    <AlertTitle>Nenhuma movimentacao registrada</AlertTitle>
+                    <AlertDescription>Este caixa ainda nao possui sangrias ou suprimentos registrados.</AlertDescription>
+                  </Alert>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Horario</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Motivo</TableHead>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Observacao</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {movimentacoes.map((movimentacao) => (
-                        <tr key={movimentacao.id} className="text-gray-700 dark:text-gray-300">
-                          <td className="px-4 py-3">{formatDatetime(movimentacao.created_at)}</td>
-                          <td className="px-4 py-3">{MOVIMENTACAO_LABELS[movimentacao.tipo]}</td>
-                          <td className="px-4 py-3">{movimentacao.motivo}</td>
-                          <td className="px-4 py-3">{formatUsuario(movimentacao.usuario_nome, movimentacao.usuario_id)}</td>
-                          <td className="px-4 py-3">{movimentacao.observacao || '-'}</td>
-                          <td className="px-4 py-3 text-right font-medium">{formatCurrency(movimentacao.valor)}</td>
-                        </tr>
+                        <TableRow key={movimentacao.id}>
+                          <TableCell className="text-muted-foreground">{formatDatetime(movimentacao.created_at)}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={movimentacao.tipo === 'sangria' ? 'bg-destructive/10 text-destructive' : 'bg-sky-500/10 text-sky-700 dark:text-sky-300'}>
+                              {MOVIMENTACAO_LABELS[movimentacao.tipo]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{movimentacao.motivo}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatUsuario(movimentacao.usuario_nome, movimentacao.usuario_id)}</TableCell>
+                          <TableCell className="text-muted-foreground">{movimentacao.observacao || '-'}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(movimentacao.valor)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
 
-            <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Fechamento</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Diferencas usam o saldo esperado calculado pelo backend.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/40">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Esperado</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {formatCurrency(caixaAtual.saldo_esperado)}
-                  </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Fechamento</CardTitle>
+                <CardDescription>Diferencas usam o saldo esperado calculado pelo backend.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Esperado</CardDescription>
+                      <CardTitle>{formatCurrency(caixaAtual.saldo_esperado)}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card size="sm">
+                    <CardHeader>
+                      <CardDescription>Diferenca prevista</CardDescription>
+                      <CardTitle>
+                        {diferencaPreview == null ? '-' : `${diferencaPreview >= 0 ? '+' : ''}${formatCurrency(diferencaPreview)}`}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/40">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Diferenca prevista</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {diferencaPreview == null ? '-' : `${diferencaPreview >= 0 ? '+' : ''}${formatCurrency(diferencaPreview)}`}
-                  </p>
-                </div>
-              </div>
 
-              {!confirmFechamento ? (
-                <button className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white" onClick={() => setConfirmFechamento(true)}>
-                  Fechar Caixa
-                </button>
-              ) : (
-                <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/40">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={valorFechamento}
-                    onChange={(event) => setValorFechamento(event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                    aria-label="Valor contado no fechamento"
-                  />
-                  <input
-                    type="text"
-                    value={obsFechamento}
-                    onChange={(event) => setObsFechamento(event.target.value)}
-                    placeholder="Observacao do fechamento"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                    aria-label="Observacao do fechamento"
-                  />
-                  {exigeObservacao ? (
-                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                      Diferenca diferente de zero detectada. Informe observacao antes de confirmar.
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                      onClick={() => fecharMutation.mutate()}
-                      disabled={fecharMutation.isPending}
-                    >
-                      {fecharMutation.isPending ? 'Fechando...' : 'Confirmar Fechamento'}
-                    </button>
-                    <button
-                      className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-100"
-                      onClick={() => setConfirmFechamento(false)}
-                    >
-                      Cancelar
-                    </button>
+                {!confirmFechamento ? (
+                  <Button type="button" variant="destructive" onClick={() => setConfirmFechamento(true)}>
+                    Fechar caixa
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="caixa-valor-fechamento">Valor contado no fechamento</Label>
+                      <Input id="caixa-valor-fechamento" type="number" min="0" step="0.01" value={valorFechamento} onChange={(event) => setValorFechamento(event.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="caixa-obs-fechamento">Observacao do fechamento</Label>
+                      <Input id="caixa-obs-fechamento" value={obsFechamento} onChange={(event) => setObsFechamento(event.target.value)} />
+                    </div>
+                    {exigeObservacao && (
+                      <Alert>
+                        <AlertTitle>Diferenca detectada</AlertTitle>
+                        <AlertDescription>Informe observacao antes de confirmar o fechamento com diferenca.</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="destructive" onClick={() => fecharMutation.mutate()} disabled={fecharMutation.isPending}>
+                        {fecharMutation.isPending ? 'Fechando...' : 'Confirmar fechamento'}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setConfirmFechamento(false)}>
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </section>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       ) : (
-        <div className="space-y-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-700 dark:bg-amber-900/20">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
-            <span className="font-semibold text-amber-800 dark:text-amber-300">
-              Nenhum caixa aberto. O PDV permanece bloqueado ate a abertura.
-            </span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-[180px,1fr]">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={valorAbertura}
-              onChange={(event) => setValorAbertura(event.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-              aria-label="Valor de abertura"
-            />
-            <input
-              type="text"
-              value={obsAbertura}
-              onChange={(event) => setObsAbertura(event.target.value)}
-              placeholder="Observacao da abertura"
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-              aria-label="Observacao da abertura"
-            />
-          </div>
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" onClick={() => abrirMutation.mutate()} disabled={abrirMutation.isPending}>
-            {abrirMutation.isPending ? 'Abrindo...' : 'Abrir Caixa'}
-          </button>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Nenhum caixa aberto</CardTitle>
+            <CardDescription>O PDV permanece bloqueado ate a abertura do caixa do dia.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+              <div className="space-y-2">
+                <Label htmlFor="caixa-valor-abertura">Valor de abertura</Label>
+                <Input id="caixa-valor-abertura" type="number" min="0" step="0.01" value={valorAbertura} onChange={(event) => setValorAbertura(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="caixa-obs-abertura">Observacao da abertura</Label>
+                <Input id="caixa-obs-abertura" value={obsAbertura} onChange={(event) => setObsAbertura(event.target.value)} />
+              </div>
+            </div>
+            <Button type="button" onClick={() => abrirMutation.mutate()} disabled={abrirMutation.isPending}>
+              {abrirMutation.isPending ? 'Abrindo...' : 'Abrir caixa'}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      <section>
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Historico de Caixas</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Resumo de abertura, vendas em dinheiro, movimentacoes e resultado do fechamento.
-          </p>
-        </div>
-        {loadingHistorico ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Carregando...</p>
-        ) : historico.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum caixa registrado.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-                  <th className="px-4 py-3 text-left">Abertura</th>
-                  <th className="px-4 py-3 text-left">Fechamento</th>
-                  <th className="px-4 py-3 text-left">Aberto por</th>
-                  <th className="px-4 py-3 text-left">Fechado por</th>
-                  <th className="px-4 py-3 text-right">Abertura</th>
-                  <th className="px-4 py-3 text-right">Vendas dinheiro</th>
-                  <th className="px-4 py-3 text-right">Suprimentos</th>
-                  <th className="px-4 py-3 text-right">Sangrias</th>
-                  <th className="px-4 py-3 text-right">Esperado</th>
-                  <th className="px-4 py-3 text-right">Contado</th>
-                  <th className="px-4 py-3 text-right">Diferenca</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+      <Card>
+        <CardHeader>
+          <CardTitle>Historico de caixas</CardTitle>
+          <CardDescription>Resumo de abertura, vendas em dinheiro, movimentacoes e resultado do fechamento.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingHistorico ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : historico.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum caixa registrado.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Abertura</TableHead>
+                  <TableHead>Fechamento</TableHead>
+                  <TableHead>Aberto por</TableHead>
+                  <TableHead>Fechado por</TableHead>
+                  <TableHead className="text-right">Abertura</TableHead>
+                  <TableHead className="text-right">Vendas dinheiro</TableHead>
+                  <TableHead className="text-right">Suprimentos</TableHead>
+                  <TableHead className="text-right">Sangrias</TableHead>
+                  <TableHead className="text-right">Esperado</TableHead>
+                  <TableHead className="text-right">Contado</TableHead>
+                  <TableHead className="text-right">Diferenca</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {historico.map((caixa) => (
-                  <tr key={caixa.id} className="text-gray-700 dark:text-gray-300">
-                    <td className="px-4 py-3">{caixa.id}</td>
-                    <td className="px-4 py-3">{formatDatetime(caixa.data_abertura)}</td>
-                    <td className="px-4 py-3">{caixa.data_fechamento ? formatDatetime(caixa.data_fechamento) : '-'}</td>
-                    <td className="px-4 py-3">{formatUsuario(caixa.usuario_abertura_nome, caixa.usuario_abertura_id)}</td>
-                    <td className="px-4 py-3">{formatUsuario(caixa.usuario_fechamento_nome, caixa.usuario_fechamento_id)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(caixa.valor_abertura)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(caixa.valor_em_dinheiro_vendas)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(caixa.total_suprimentos)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(caixa.total_sangrias)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(caixa.saldo_esperado)}</td>
-                    <td className="px-4 py-3 text-right">{caixa.valor_fechamento != null ? formatCurrency(caixa.valor_fechamento) : '-'}</td>
-                    <td className="px-4 py-3 text-right font-medium">
+                  <TableRow key={caixa.id}>
+                    <TableCell>{caixa.id}</TableCell>
+                    <TableCell>{formatDatetime(caixa.data_abertura)}</TableCell>
+                    <TableCell>{caixa.data_fechamento ? formatDatetime(caixa.data_fechamento) : '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatUsuario(caixa.usuario_abertura_nome, caixa.usuario_abertura_id)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatUsuario(caixa.usuario_fechamento_nome, caixa.usuario_fechamento_id)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(caixa.valor_abertura)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(caixa.valor_em_dinheiro_vendas)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(caixa.total_suprimentos)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(caixa.total_sangrias)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(caixa.saldo_esperado)}</TableCell>
+                    <TableCell className="text-right">{caixa.valor_fechamento != null ? formatCurrency(caixa.valor_fechamento) : '-'}</TableCell>
+                    <TableCell className="text-right font-medium">
                       {caixa.diferenca != null ? `${caixa.diferenca >= 0 ? '+' : ''}${formatCurrency(caixa.diferenca)}` : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${caixa.status === 'aberto' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={caixa.status === 'aberto' ? 'secondary' : 'outline'} className={caixa.status === 'aberto' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}>
                         {caixa.status === 'aberto' ? 'Aberto' : 'Fechado'}
-                      </span>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
