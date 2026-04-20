@@ -14,6 +14,10 @@ if getattr(sys, 'frozen', False):
     sys.path.insert(0, base_dir)
 
     # Configurar fallbacks apenas no binario empacotado.
+    os.environ.setdefault("LOJA_DESKTOP_MODE", "1")
+    os.environ.setdefault("LOJA_RUNTIME_BASE_DIR", base_dir)
+    os.environ.setdefault("LOJA_RESOURCE_BASE_DIR", base_dir)
+    os.environ.setdefault("LOJA_APP_DATA_DIR", os.path.join(base_dir, "data"))
     os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(os.getcwd(), 'loja.db')}")
     os.environ.setdefault("JWT_SECRET", "demo-secret-key-apenas-para-demonstracao-2026")
     os.environ.setdefault("ENVIRONMENT", "development")

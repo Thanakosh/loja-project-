@@ -30,6 +30,7 @@ test-results
 
 # Build outputs
 out/
+.desktop-build/
 *.log
 err.log
 vite-err.log

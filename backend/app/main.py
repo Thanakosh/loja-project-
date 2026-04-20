@@ -28,6 +28,7 @@ from app.api.v1.configuracoes import router as configuracoes_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.health_async import router as health_router
 from app.api.endpoints.ncm import router as ncm_router
+from app.core.desktop_bootstrap import bootstrap_desktop_database
 from app.core.limiter import limiter
 
 from .core.config import settings
@@ -44,6 +45,7 @@ _trace_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", 
 async def lifespan(app: FastAPI):
     # — startup —
     environment = settings.ENVIRONMENT.lower()
+    app.state.desktop_initial_admin = await bootstrap_desktop_database()
 
     if "*" in settings.CORS_ORIGINS:
         logger.warning("CORS wildcard ativo — não usar em produção")

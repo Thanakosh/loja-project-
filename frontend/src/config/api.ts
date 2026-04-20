@@ -1,8 +1,22 @@
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '')
 
+const resolveDesktopApiBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  const desktopApiBaseUrl = window.desktop?.runtime.apiBaseUrl?.trim()
+  return desktopApiBaseUrl ? trimTrailingSlash(desktopApiBaseUrl) : ''
+}
+
 const resolveDefaultApiBaseUrl = () => {
   if (typeof window === 'undefined') {
     return ''
+  }
+
+  const desktopApiBaseUrl = resolveDesktopApiBaseUrl()
+  if (desktopApiBaseUrl) {
+    return desktopApiBaseUrl
   }
 
   return trimTrailingSlash(window.location.origin)

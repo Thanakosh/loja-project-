@@ -42,6 +42,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 ## [Unreleased]
 
 ###  Alterado
+- Frontend/Desktop: Electron agora resolve `API_BASE_URL` via runtime desktop e inicia o backend local empacotado com bridge exposta em `preload`.
 - Backend (OCR/XML): endpoint de upload agora inclui `payload_fiscal_normalizado` versionado (`versao_payload`) para consumo interno por auditoria, precificacao e risco.
 - Backend (OCR/XML): parser de NFe evoluido para extrair por item os campos fiscais `CFOP`, `CST/CSOSN`, `vBC/pICMS/vICMS` e rateio de frete por item, mantendo compatibilidade com o payload atual.
 - Backend: `TransacaoEstoque` e `caixa_service` agora gravam `datetime` UTC ingenuo compativel com o schema atual, corrigindo falha do `asyncpg` em PostgreSQL real.
@@ -60,6 +61,7 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Frontend: design system com `shadcn/ui` inicializado, tema semantico emerald configurado e migracao visual inicial das telas de Login e Dashboard.
 
 ###  Adicionado
+- Desktop local: bootstrap de banco SQLite com migracoes Alembic, criacao do admin inicial, script de build do backend empacotado e inclusao automatica do backend no `electron-forge make`.
 - Backend: engine deterministico de custo e preco minimo (`app/fiscal/cost_calculator.py`) com regra explicita de bloqueio para sugestoes abaixo do preco minimo absoluto e auditoria por `versao_motor`.
 - Backend: novo endpoint autenticado `POST /api/v1/fiscal-ai/suggest-price/{product_id}` para sugestao de faixa de preco com minimo garantido por regra deterministica.
 - Backend: novo normalizador fiscal canonico em `app/fiscal/normalizer.py` e schema interno versionado em `app/schemas/fiscal_payload.py`.
