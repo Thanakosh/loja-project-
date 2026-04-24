@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, test, type Page } from '@playwright/test'
 
 import {
+  createSeededProduct,
   createSeededUser,
   fetchProductByName,
   fetchSupplierByCnpj,
@@ -19,6 +20,7 @@ interface XmlFixtureOptions {
   supplierName: string
   supplierCnpj: string
   noteNumber: string
+  barcode?: string
 }
 
 const buildUniqueDigits = (seed: string, totalLength: number): string => {
@@ -29,11 +31,16 @@ const buildUniqueDigits = (seed: string, totalLength: number): string => {
 const buildXmlFixture = (options: XmlFixtureOptions): string => {
   const fixture = readFileSync(nfeFixturePath, 'utf-8')
 
+  const productBlock = options.barcode
+    ? `<cProd>001</cProd>\n          <cEAN>${options.barcode}</cEAN>\n          <cEANTrib>${options.barcode}</cEANTrib>`
+    : '<cProd>001</cProd>'
+
   return fixture
     .replace('Produto de Teste', options.productName)
     .replace('Fornecedor Exemplo LTDA', options.supplierName)
     .replaceAll('12345678000123', options.supplierCnpj)
     .replace('<nNF>123</nNF>', `<nNF>${options.noteNumber}</nNF>`)
+    .replace('<cProd>001</cProd>', productBlock)
 }
 
 const processXmlThroughUi = async (
@@ -148,6 +155,44 @@ test('Importacao de nota integrada reaproveita fornecedor existente e soma estoq
     const importedProduct = await fetchProductByName(request, user.token, productName)
     return importedProduct?.estoque_atual ?? null
   }).toBe(4)
+})
+
+test('Importacao de nota integrada preenche codigo de barras em produto existente sem GTIN', async ({ page, request }) => {
+  const suffix = `xml-barcode-${Date.now()}`
+  const supplierName = `Fornecedor XML ${suffix}`
+  const supplierCnpj = buildUniqueDigits(suffix, 14)
+  const barcode = buildUniqueDigits(`789${suffix}`, 13)
+  const user = await createSeededUser(request, suffix)
+  const existingProduct = await createSeededProduct(request, user.token, suffix)
+
+  const productBeforeImport = await fetchProductByName(request, user.token, existingProduct.nome)
+  expect(productBeforeImport).not.toBeNull()
+  expect(productBeforeImport?.codigo_barras ?? null).toBeNull()
+  expect(productBeforeImport?.estoque_atual).toBe(5)
+
+  await loginThroughUi(page, user)
+
+  await processXmlThroughUi(page, {
+    fileName: `nota-${suffix}.xml`,
+    productName: existingProduct.nome,
+    supplierName,
+    supplierCnpj,
+    noteNumber: buildUniqueDigits(`${suffix}3`, 6),
+    barcode,
+  })
+
+  await expect(page.getByText('Novo fornecedor cadastrado')).toBeVisible()
+  await expect(page.getByText(/1 ja no estoque/i)).toBeVisible()
+  await expect(page.getByText('Soma estoque')).toBeVisible()
+  await confirmImportThroughUi(page)
+
+  await expect.poll(async () => {
+    const importedProduct = await fetchProductByName(request, user.token, existingProduct.nome)
+    return importedProduct?.estoque_atual ?? null
+  }).toBe(7)
+
+  const productAfterImport = await fetchProductByName(request, user.token, existingProduct.nome)
+  expect(productAfterImport?.codigo_barras).toBe(barcode)
 })
 
 test('Importacao de nota integrada rejeita arquivo invalido com mensagem de erro', async ({ page, request }) => {
