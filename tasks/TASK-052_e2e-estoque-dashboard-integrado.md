@@ -1,7 +1,7 @@
 ---
 task_id: TASK-052
 title: "E2E integrado de Estoque operacional e alertas do Dashboard"
-status: pendente
+status: concluida
 priority: media
 agent_chat_executable: "sim"
 depends_on: ["TASK-040"]
