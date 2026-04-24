@@ -35,8 +35,8 @@ Entregue:
 - suites de backend para modulos criticos
 - gate de CI para backend
 - smoke tests E2E de frontend
-- fluxos integrados reais de PDV, orcamentos e importacao de nota com
-  backend e PostgreSQL
+- fluxos integrados reais de PDV, caixa, produtos, orcamentos e importacao de
+  nota com backend e PostgreSQL
 
 ### 2) Seguranca de autenticacao e CORS
 **Status atual:** concluido.
@@ -175,7 +175,8 @@ Entregue:
 
 Lacunas ainda abertas no frontend:
 
-- ampliar E2E integrado real para Produtos/Estoque e demais fluxos criticos
+- ampliar E2E integrado real para Estoque operacional, alertas do Dashboard e
+  demais fluxos ainda cobertos apenas por smoke/mock
 - consolidar design system reutilizavel
 - continuar refatoracao de telas grandes quando necessario
 
@@ -183,10 +184,10 @@ Lacunas ainda abertas no frontend:
 
 ## Proximas prioridades recomendadas
 
-### 1) Expandir testes E2E integrados reais
-**Por que:** os fluxos de PDV, orcamentos e importacao de nota ja possuem
-cobertura integrada real. A proxima lacuna de maior retorno e Produtos/Estoque,
-incluindo cadastro, estoque inicial, transacoes e alertas.
+### 1) Completar lacunas E2E integradas restantes
+**Por que:** os fluxos de PDV, caixa, produtos, orcamentos e importacao de nota
+ja possuem cobertura integrada real. A proxima lacuna de maior retorno e
+Estoque operacional e alertas do Dashboard com backend real.
 
 ### 2) Consolidar design system no frontend
 **Por que:** reduzir duplicacao visual e aumentar consistencia entre telas.
