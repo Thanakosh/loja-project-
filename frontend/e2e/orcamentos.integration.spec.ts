@@ -93,6 +93,16 @@ test('Orcamentos integrados permitem criar pela UI, filtrar e gerar PDF', async 
   const dialog = page.getByRole('dialog', { name: /Novo orcamento/i })
   await expect(dialog).toBeVisible()
 
+  const createScrollArea = page.getByTestId('orcamento-create-scroll-area')
+  await expect(createScrollArea).toBeVisible()
+  await expect.poll(async () => createScrollArea.evaluate((element) => {
+    const originalScrollTop = element.scrollTop
+    element.scrollTop = element.scrollHeight
+    const canScroll = element.scrollTop > originalScrollTop
+    element.scrollTop = originalScrollTop
+    return canScroll
+  })).toBe(true)
+
   await dialog.locator('#orcamento-cliente').fill(clientName)
   await dialog.locator('#orcamento-validade').fill('2026-12-31')
   await dialog.locator('#orcamento-desconto-geral').fill('2')
