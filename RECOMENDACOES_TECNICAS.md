@@ -175,46 +175,47 @@ Entregue:
 - [x] **Configuracoes da Loja**
 - [x] **Importacao de Nota**
 
-Lacunas ainda abertas no frontend:
+Estado atual do frontend:
 
-- ampliar E2E integrado real para Estoque operacional, alertas do Dashboard e
-  demais fluxos ainda cobertos apenas por smoke/mock
-- consolidar design system reutilizavel
-- continuar refatoracao de telas grandes quando necessario
+- E2E integrado real cobre os fluxos principais de PDV, caixa, produtos,
+  orcamentos, importacao de nota, Estoque operacional e alertas do Dashboard.
+- O design system com `shadcn/ui` esta inicializado, documentado e adotado nas
+  principais telas.
+- A refatoracao de telas grandes segue como manutencao incremental quando
+  houver mudanca funcional ou retrabalho visual relevante.
 
 ---
 
 ## Proximas prioridades recomendadas
 
-### 1) Completar lacunas E2E integradas restantes (`TASK-052`)
-**Por que:** os fluxos de PDV, caixa, produtos, orcamentos e importacao de nota
-ja possuem cobertura integrada real. A proxima lacuna de maior retorno e
-Estoque operacional e alertas do Dashboard com backend real.
-
-### 2) Consolidar design system no frontend
-**Por que:** reduzir duplicacao visual e aumentar consistencia entre telas.
-
-### 3) Validacao operacional do WhatsApp para orcamentos
-**Por que:** a base tecnica ja foi entregue, mas ainda falta parear um numero
-dedicado, enviar um PDF real e registrar evidencia operacional.
-
-### 4) Promocao gradual de modulos para `/api/v2`
+### 1) Promocao gradual de modulos para `/api/v2`
 **Por que:** a politica existe, mas a adocao completa ainda e parcial.
+
+### 2) Evolucao fiscal e financeira
+**Por que:** emissao de NF-e/NFC-e e contas a pagar continuam fora do escopo
+entregue.
+
+### 3) Refinamento incremental de UX e componentes
+**Por que:** o design system ja existe; agora o retorno esta em aplicar os
+componentes padronizados quando telas forem alteradas, sem abrir uma frente
+grande so de refatoracao visual.
+
+### 4) Validacao operacional do WhatsApp para orcamentos
+**Por que:** a base tecnica ja foi entregue, mas ainda falta parear um numero
+dedicado, enviar um PDF real e registrar evidencia operacional. Pode aguardar
+ate haver credenciais e numero dedicado.
 
 ### 5) Retomar OCR de imagem/PDF com arquitetura robusta
 **Por que:** o caminho antigo foi desativado corretamente; a volta deve ocorrer
-com fila persistente e observabilidade.
-
-### 6) Evolucao fiscal e financeira
-**Por que:** emissao de NF-e/NFC-e e contas a pagar continuam fora do escopo
-entregue.
+com fila persistente e observabilidade. Deve permanecer adiado enquanto o XML
+de NFe atender ao fluxo fiscal oficial.
 
 ---
 
 ## Criterios de sucesso (KPIs)
 
-- Cobertura robusta dos modulos criticos e aumento da cobertura integrada real
+- Cobertura robusta dos modulos criticos e manutencao da cobertura integrada real
 - Zero configuracao insegura de CORS com credenciais em producao
 - Bootstrap Alembic confiavel em PostgreSQL vazio
 - Releases desktop reproduziveis com checklist e evidencias
-- Menor retrabalho visual no frontend apos introducao do design system
+- Menor retrabalho visual no frontend com evolucao incremental do design system

@@ -87,20 +87,21 @@ As melhorias de infraestrutura que seguem relevantes sao:
 
 ## 4. Proximas frentes prioritarias
 
-1. **Expandir E2E integrado real do frontend**
-   - Cobrir produtos, orcamentos e importacao de nota alem do fluxo atual de
-     PDV.
-
-2. **Consolidar design system**
-   - Padronizar componentes reutilizaveis no frontend e reduzir divergencia
-     visual entre telas.
-
-3. **Expandir versionamento v2 da API**
+1. **Expandir versionamento v2 da API**
    - Promover novos modulos para `/api/v2` sem reabrir contratos antigos em
      `v1`.
 
+2. **Evoluir a frente fiscal e financeira**
+   - Planejar emissao de NF-e/NFC-e e contas a pagar como proximos blocos de
+     produto, sem acoplar isso ao fluxo atual de XML de NFe.
+
+3. **Refinar UX e componentes de forma incremental**
+   - O design system ja foi inicializado; novas telas e alteracoes relevantes
+     devem reaproveitar os componentes padronizados.
+
 4. **Integracao WhatsApp para orcamentos**
-   - Prioridade de negocio para envio operacional de propostas e comunicacoes.
+   - Manter como frente posterior, dependente de numero dedicado, credenciais e
+     validacao operacional real.
 
 5. **Retomar OCR/PDF apenas com arquitetura robusta**
    - Fila persistente, observabilidade, retries e estado de tarefa fora da

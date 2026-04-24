@@ -124,13 +124,12 @@ full-stack de gestao comercial. Hoje o repositorio concentra:
 
 As principais frentes restantes hoje sao:
 
-- expandir os testes E2E integrados reais para produtos, orcamentos e
-  importacao de nota
-- consolidar um design system reutilizavel no frontend
-- integrar envio de orcamentos por WhatsApp
 - continuar a promocao gradual de novos modulos para `/api/v2`
-- retomar OCR de imagens e PDFs apenas com arquitetura de fila persistente
 - evoluir a frente fiscal para emissao de NF-e/NFC-e e contas a pagar
+- refinar UX e componentes de forma incremental sobre o design system existente
+- integrar envio de orcamentos por WhatsApp quando houver numero dedicado e
+  credenciais
+- retomar OCR de imagens e PDFs apenas com arquitetura de fila persistente
 
 ---
 
