@@ -648,14 +648,14 @@ const Orcamentos = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-        <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
           <DialogHeader className="border-b px-6 py-5">
             <DialogTitle>Novo orcamento</DialogTitle>
             <DialogDescription>Monte a proposta comercial, selecione cliente e adicione os itens desejados.</DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="space-y-5 overflow-y-auto px-6 py-5">
+          <form onSubmit={handleCreateSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div data-testid="orcamento-create-scroll-area" className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               <Card size="sm">
                 <CardHeader>
                   <CardTitle className="text-sm">Cabecalho</CardTitle>
@@ -829,7 +829,7 @@ const Orcamentos = () => {
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mx-0 mb-0 shrink-0 px-6 py-4">
               <Button type="button" variant="outline" onClick={closeCreateModal}>
                 Cancelar
               </Button>
