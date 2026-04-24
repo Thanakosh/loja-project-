@@ -18,3 +18,4 @@ from .movimentacao_caixa import MovimentacaoCaixa
 from .politica_desconto import PoliticaDescontoProduto
 from .fiscal_feedback import FiscalFeedback
 from .configuracao_loja import ConfiguracaoLoja
+from .whatsapp import WhatsAppAccount, WhatsAppAccountStatus, WhatsAppMessage, WhatsAppMessageStatus

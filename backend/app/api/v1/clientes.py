@@ -101,6 +101,9 @@ async def create_cliente(
         uf=cliente_in.uf,
         cep=cliente_in.cep,
         telefone=cliente_in.telefone,
+        telefone_whatsapp=cliente_in.telefone_whatsapp,
+        whatsapp_opt_in_at=cliente_in.whatsapp_opt_in_at,
+        whatsapp_opt_out_at=cliente_in.whatsapp_opt_out_at,
         email=cliente_in.email,
         observacao=cliente_in.observacao,
         historico_observacoes=_prepend_historico(None, cliente_in.observacao) if cliente_in.observacao else None,
@@ -135,6 +138,9 @@ async def update_cliente(
     cliente.uf = cliente_in.uf
     cliente.cep = cliente_in.cep
     cliente.telefone = cliente_in.telefone
+    cliente.telefone_whatsapp = cliente_in.telefone_whatsapp
+    cliente.whatsapp_opt_in_at = cliente_in.whatsapp_opt_in_at
+    cliente.whatsapp_opt_out_at = cliente_in.whatsapp_opt_out_at
     cliente.email = cliente_in.email
     cliente.inscricao_estadual = cliente_in.inscricao_estadual
 

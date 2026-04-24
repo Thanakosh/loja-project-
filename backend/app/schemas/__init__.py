@@ -7,6 +7,7 @@ from .pagination import PaginatedResponse
 from .transacao_estoque import TransacaoEstoqueRead, TransacaoEstoqueCreate
 from .fornecedor import FornecedorRead, FornecedorCreate, FornecedorUpdate
 from .nota_fiscal import NotaFiscalRead, NotaFiscalItemRead
+from .whatsapp import WhatsAppAccountRead, WhatsAppMessageRead
 
 __all__ = [
     "User",
@@ -30,4 +31,6 @@ __all__ = [
     "FornecedorUpdate",
     "NotaFiscalRead",
     "NotaFiscalItemRead",
+    "WhatsAppAccountRead",
+    "WhatsAppMessageRead",
 ]

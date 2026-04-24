@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AxiosError } from 'axios'
-import { Building2, MapPinned, ReceiptText } from 'lucide-react'
+import { Building2, MapPinned, MessageCircle, Power, QrCode, ReceiptText, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { useAtualizarConfiguracaoLoja, useConfiguracaoLoja } from '../hooks/useConfiguracoes'
+import { useConnectWhatsApp, useDisconnectWhatsApp, useWhatsAppStatus } from '../hooks/useWhatsApp'
 import type { ConfiguracaoLojaPayload } from '../types/configuracoes'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -37,10 +38,25 @@ const formInicial: ConfiguracaoLojaPayload = {
 const PORTE_NONE = '__none__'
 
 const asFieldValue = (valor: string | null) => valor ?? ''
+const whatsappStatusLabel = {
+  disconnected: 'Desconectado',
+  connecting: 'Aguardando QR',
+  connected: 'Conectado',
+  error: 'Com erro',
+} as const
+const whatsappStatusClassName = {
+  disconnected: 'border-border text-muted-foreground',
+  connecting: 'border-amber-500/40 text-amber-700',
+  connected: 'border-primary/30 text-primary',
+  error: 'border-destructive/30 text-destructive',
+} as const
 
 const ConfiguracoesLoja = () => {
   const { data, isLoading, isError } = useConfiguracaoLoja()
   const atualizarMutation = useAtualizarConfiguracaoLoja()
+  const whatsappStatusQuery = useWhatsAppStatus()
+  const connectWhatsAppMutation = useConnectWhatsApp()
+  const disconnectWhatsAppMutation = useDisconnectWhatsApp()
   const [form, setForm] = useState<ConfiguracaoLojaPayload>(formInicial)
   const [cepLoading, setCepLoading] = useState(false)
 
@@ -391,6 +407,135 @@ const ConfiguracoesLoja = () => {
         </form>
 
         <div className="space-y-4">
+          <Card size="sm">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <MessageCircle className="size-4" />
+                    Canal WhatsApp
+                  </CardTitle>
+                  <CardDescription>Gateway separado com sessao QR, no estilo OpenClaw.</CardDescription>
+                </div>
+                {whatsappStatusQuery.data && (
+                  <Badge
+                    variant="outline"
+                    className={whatsappStatusClassName[whatsappStatusQuery.data.status]}
+                  >
+                    {whatsappStatusLabel[whatsappStatusQuery.data.status]}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {whatsappStatusQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando status do gateway...</p>
+              ) : whatsappStatusQuery.isError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Falha ao consultar WhatsApp</AlertTitle>
+                  <AlertDescription>Verifique se o backend e o gateway estao ativos.</AlertDescription>
+                </Alert>
+              ) : whatsappStatusQuery.data ? (
+                <>
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">
+                      Numero vinculado:{' '}
+                      <span className="font-normal text-muted-foreground">
+                        {whatsappStatusQuery.data.linked_phone ?? 'Nenhum numero conectado'}
+                      </span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      Conta: {whatsappStatusQuery.data.account_key} | Provider: {whatsappStatusQuery.data.provider}
+                    </p>
+                    {whatsappStatusQuery.data.last_connected_at && (
+                      <p className="text-muted-foreground">
+                        Ultima conexao: {new Date(whatsappStatusQuery.data.last_connected_at).toLocaleString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+
+                  {whatsappStatusQuery.data.qr_code_data_url && (
+                    <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <QrCode className="size-4" />
+                        QR disponivel para pareamento
+                      </div>
+                      <img
+                        src={whatsappStatusQuery.data.qr_code_data_url}
+                        alt="QR Code do WhatsApp"
+                        className="mx-auto size-48 rounded-lg border border-border bg-white p-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Escaneie com o WhatsApp Business do numero dedicado.
+                      </p>
+                    </div>
+                  )}
+
+                  {whatsappStatusQuery.data.last_error && (
+                    <Alert variant="destructive">
+                      <AlertTitle>Ultimo erro da sessao</AlertTitle>
+                      <AlertDescription>{whatsappStatusQuery.data.last_error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        connectWhatsAppMutation.mutate(
+                          { force_refresh: false },
+                          {
+                            onSuccess: () => toast.success('Fluxo de pareamento iniciado.'),
+                            onError: (error: AxiosError<{ detail?: string }>) =>
+                              toast.error(error.response?.data?.detail ?? 'Nao foi possivel iniciar o pareamento.'),
+                          },
+                        )
+                      }
+                      disabled={connectWhatsAppMutation.isPending}
+                    >
+                      <MessageCircle className="size-4" />
+                      {connectWhatsAppMutation.isPending ? 'Conectando...' : 'Conectar'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        connectWhatsAppMutation.mutate(
+                          { force_refresh: true },
+                          {
+                            onSuccess: () => toast.success('QR atualizado.'),
+                            onError: (error: AxiosError<{ detail?: string }>) =>
+                              toast.error(error.response?.data?.detail ?? 'Nao foi possivel atualizar o QR.'),
+                          },
+                        )
+                      }
+                      disabled={connectWhatsAppMutation.isPending}
+                    >
+                      <RefreshCw className="size-4" />
+                      Atualizar QR
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        disconnectWhatsAppMutation.mutate(undefined, {
+                          onSuccess: () => toast.success('Sessao WhatsApp encerrada.'),
+                          onError: (error: AxiosError<{ detail?: string }>) =>
+                            toast.error(error.response?.data?.detail ?? 'Nao foi possivel desconectar a sessao.'),
+                        })
+                      }
+                      disabled={disconnectWhatsAppMutation.isPending}
+                    >
+                      <Power className="size-4" />
+                      {disconnectWhatsAppMutation.isPending ? 'Desconectando...' : 'Desconectar'}
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <Card size="sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
