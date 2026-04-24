@@ -15,6 +15,13 @@ interface SeededProduct {
   nome: string
 }
 
+interface StockTransactionPayload {
+  produto_id: number
+  tipo: 'entrada' | 'saida' | 'ajuste' | 'devolucao'
+  quantidade: number
+  motivo: string
+}
+
 export interface BackendProduct {
   id: number
   nome: string
@@ -176,6 +183,20 @@ export const fetchProductStock = async (
 
   const stock = await stockResponse.json()
   return Number(stock.quantidade_atual)
+}
+
+export const createStockTransaction = async (
+  request: APIRequestContext,
+  token: string,
+  payload: StockTransactionPayload,
+): Promise<void> => {
+  const transactionResponse = await request.post(buildUrl('/api/v2/estoque/transacao'), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    data: payload,
+  })
+  expect(transactionResponse.ok()).toBeTruthy()
 }
 
 export const fetchProductByName = async (
