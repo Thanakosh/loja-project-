@@ -19,6 +19,7 @@ export interface BackendProduct {
   id: number
   nome: string
   fornecedor: string
+  codigo_barras?: string | null
   preco_unitario: number
   preco_liquido: number
   estoque_atual: number
