@@ -32,6 +32,7 @@ class NotaFiscalPayloadNormalizado(BaseModel):
     fornecedor_nome: str
     fornecedor_nome_fantasia: Optional[str] = None
     fornecedor_cnpj: Optional[str] = None
+    fornecedor_uf: Optional[str] = None
     numero_nota: Optional[str] = None
     data_emissao: Optional[date] = None
     valor_total_nota: Decimal

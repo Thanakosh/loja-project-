@@ -49,6 +49,7 @@ class TestOcrFiscalValidation:
 
         result = body["result"]
         assert "auditoria_fiscal" in result
+        assert "validacao_entrada" in result
         assert "validacao_cruzada" in result
 
     def test_auditoria_fiscal_tem_campos_obrigatorios(self, client: TestClient, auth_headers: dict):
@@ -119,6 +120,27 @@ class TestOcrFiscalValidation:
 
         cross = body["result"]["validacao_cruzada"]
         assert isinstance(cross, list)
+
+    def test_validacao_entrada_tem_status_operacional(self, client: TestClient, auth_headers: dict):
+        """Upload de XML deve retornar status operacional da validacao de entrada."""
+        xml_content = _load_fixture_bytes("nfe_minima.xml")
+
+        upload_resp = client.post(
+            "/api/v1/ocr/upload-arquivo",
+            files={"file": ("nfe_entrada.xml", xml_content, "application/xml")},
+            headers=auth_headers,
+        )
+        assert upload_resp.status_code == 200
+        task_id = upload_resp.json()["task_id"]
+
+        status_resp = client.get(f"/api/v1/ocr/status/{task_id}", headers=auth_headers)
+        body = status_resp.json()
+
+        validacao = body["result"]["validacao_entrada"]
+        assert validacao["status"] in {"aprovada", "revisar", "reprovada"}
+        assert "score_risco" in validacao
+        assert "resumo" in validacao
+        assert "findings" in validacao
 
     def test_payload_fiscal_normalizado_continua_presente(self, client: TestClient, auth_headers: dict):
         """A adição da auditoria não deve ter removido o payload_fiscal_normalizado."""

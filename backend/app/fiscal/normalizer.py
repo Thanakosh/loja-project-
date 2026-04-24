@@ -57,6 +57,7 @@ def normalizar_nota_fiscal(nota: NotaFiscalExtraida) -> NotaFiscalPayloadNormali
         fornecedor_nome=nota.fornecedor,
         fornecedor_nome_fantasia=nota.nome_fantasia_fornecedor,
         fornecedor_cnpj=nota.cnpj_fornecedor,
+        fornecedor_uf=nota.uf_fornecedor,
         numero_nota=nota.numero_nota,
         data_emissao=_parse_data(nota.data_emissao),
         valor_total_nota=_to_decimal(nota.valor_total),

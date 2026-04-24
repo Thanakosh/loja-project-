@@ -20,6 +20,7 @@ def test_normalizar_nota_fiscal_gera_payload_canonico_versionado():
     assert payload.versao_payload == VERSAO_PAYLOAD_FISCAL
     assert payload.fornecedor_nome == "Fornecedor Exemplo LTDA"
     assert payload.fornecedor_cnpj == "12.345.678/0001-23"
+    assert payload.fornecedor_uf is None
     assert payload.numero_nota == "123"
     assert str(payload.data_emissao) == "2024-06-01"
     assert payload.valor_total_nota == Decimal("21.0")
