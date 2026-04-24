@@ -293,6 +293,7 @@ async def upload_arquivo_nota_fiscal(
             entrada_result = validar_nota_entrada(
                 nota_normalizada,
                 loja_uf=configuracao_loja.uf,
+                regime_tributario=configuracao_loja.regime_tributario,
             )
             all_findings = [*cross_findings, *entrada_result.findings]
 

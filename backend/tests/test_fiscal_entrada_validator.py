@@ -81,3 +81,61 @@ def test_validacao_entrada_alerta_codigo_icms_e_ncm_ausentes():
     regras = {finding.regra for finding in resultado.findings}
     assert "ncm_ausente" in regras
     assert "codigo_icms_ausente" in regras
+
+
+def test_validacao_entrada_simples_aceita_cst_de_fornecedor_regime_normal():
+    resultado = validar_nota_entrada(
+        _nota(),
+        loja_uf="SP",
+        regime_tributario="simples_nacional",
+    )
+
+    assert resultado.status == "aprovada"
+
+
+def test_validacao_entrada_simples_alerta_cfop_st_sem_codigo_st():
+    nota = _nota(
+        fornecedor_uf="SP",
+        itens=[_item(cfop="5405", cst=None, csosn="102")],
+    )
+
+    resultado = validar_nota_entrada(
+        nota,
+        loja_uf="SP",
+        regime_tributario="simples_nacional",
+    )
+
+    assert resultado.status == "revisar"
+    assert any(
+        finding.regra == "simples_cfop_st_codigo_icms_incompativel"
+        for finding in resultado.findings
+    )
+
+
+def test_validacao_entrada_simples_alerta_codigo_st_sem_cfop_st():
+    nota = _nota(itens=[_item(cst="60")])
+
+    resultado = validar_nota_entrada(
+        nota,
+        loja_uf="SP",
+        regime_tributario="simples_nacional",
+    )
+
+    assert resultado.status == "revisar"
+    assert any(
+        finding.regra == "simples_codigo_icms_st_sem_cfop_st"
+        for finding in resultado.findings
+    )
+
+
+def test_validacao_entrada_reprova_cst_e_csosn_no_mesmo_item():
+    nota = _nota(itens=[_item(cst="00", csosn="102")])
+
+    resultado = validar_nota_entrada(
+        nota,
+        loja_uf="SP",
+        regime_tributario="simples_nacional",
+    )
+
+    assert resultado.status == "reprovada"
+    assert any(finding.regra == "codigo_icms_duplicado" for finding in resultado.findings)

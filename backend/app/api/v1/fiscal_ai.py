@@ -158,9 +158,11 @@ async def validate_note(
     if nota_normalizada is None:
         raise HTTPException(status_code=422, detail="Payload de nota fiscal invÃ¡lido")
 
+    regime_tributario = payload.regime_tributario or configuracao_loja.regime_tributario
+
     result = auditar_nota_fiscal(
         nota_normalizada,
-        regime_tributario=payload.regime_tributario or configuracao_loja.regime_tributario,
+        regime_tributario=regime_tributario,
         uf_emitente=payload.uf_emitente or configuracao_loja.uf,
         tipo_operacao=payload.tipo_operacao,
         loja_cnpj=configuracao_loja.cnpj,
@@ -173,6 +175,7 @@ async def validate_note(
         validacao_entrada = validar_nota_entrada(
             nota_normalizada,
             loja_uf=configuracao_loja.uf,
+            regime_tributario=regime_tributario,
         ).model_dump()
 
     return FiscalAuditResponse(

@@ -32,6 +32,9 @@ achados focados em tributacao.
    - validacao de NCM ausente
    - validacao de CST/CSOSN ausente
    - conferencia de valor de ICMS por item: base x aliquota = valor
+   - primeira camada de consistencia para loja no Simples Nacional, sem exigir
+     CSOSN quando o XML recebido for de fornecedor do regime normal
+   - alerta de incoerencia entre CFOP de ST e CST/CSOSN com tratamento de ST
 
 2. Integracao:
    - `/api/v1/ocr/upload-arquivo` passa a retornar `validacao_entrada`
@@ -56,6 +59,7 @@ achados focados em tributacao.
 - Consulta online a SEFAZ.
 - Validacao juridica completa da NF-e.
 - Regras estaduais especificas por produto alem das tabelas internas atuais.
+- Validacao completa para regimes fora do Simples Nacional.
 - Emissao fiscal.
 - Escrituração SPED.
 

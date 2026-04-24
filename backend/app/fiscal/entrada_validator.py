@@ -11,12 +11,18 @@ from decimal import Decimal
 from typing import Literal
 
 from ..schemas.fiscal_payload import FiscalItemPayload, NotaFiscalPayloadNormalizado
-from .tables.cfop import cfop_direction, cfop_scope, is_valid_cfop
+from .tables.cfop import cfop_direction, cfop_is_st, cfop_scope, is_valid_cfop
+from .tables.csosn import is_valid_csosn
+from .tables.cst_icms import is_valid_cst_icms
 
 VERSAO_VALIDACAO_ENTRADA = "1.0.0"
 
 Severity = Literal["erro", "alerta", "info"]
 ValidationStatus = Literal["aprovada", "revisar", "reprovada"]
+RegimeTributario = Literal["simples_nacional", "regime_normal"]
+
+_CST_ICMS_ST = {"10", "30", "60", "70"}
+_CSOSN_ST = {"201", "202", "203", "500"}
 
 
 @dataclass(frozen=True)
@@ -179,6 +185,86 @@ def _validar_codigo_fiscal_item(item: FiscalItemPayload) -> list[EntradaFinding]
                 descricao=f"Item {item.sequencia}: CST/CSOSN ausente; revise a tributacao de ICMS informada pelo fornecedor.",
             )
         )
+    if item.cst and item.csosn:
+        findings.append(
+            EntradaFinding(
+                regra="codigo_icms_duplicado",
+                severidade="erro",
+                item_sequencia=item.sequencia,
+                descricao=(
+                    f"Item {item.sequencia}: CST e CSOSN coexistem; use apenas um codigo conforme o regime do emitente."
+                ),
+            )
+        )
+    if item.cst and not is_valid_cst_icms(item.cst):
+        findings.append(
+            EntradaFinding(
+                regra="cst_icms_invalido",
+                severidade="erro",
+                item_sequencia=item.sequencia,
+                descricao=f"Item {item.sequencia}: CST ICMS '{item.cst}' nao consta na tabela fiscal conhecida.",
+            )
+        )
+    if item.csosn and not is_valid_csosn(item.csosn):
+        findings.append(
+            EntradaFinding(
+                regra="csosn_invalido",
+                severidade="erro",
+                item_sequencia=item.sequencia,
+                descricao=f"Item {item.sequencia}: CSOSN '{item.csosn}' nao consta na tabela do Simples Nacional.",
+            )
+        )
+    return findings
+
+
+def _codigo_icms_indica_st(item: FiscalItemPayload) -> bool:
+    if item.cst in _CST_ICMS_ST:
+        return True
+    if item.csosn in _CSOSN_ST:
+        return True
+    return False
+
+
+def _validar_simples_nacional_item(
+    item: FiscalItemPayload,
+    regime_tributario: RegimeTributario | None,
+) -> list[EntradaFinding]:
+    if regime_tributario != "simples_nacional":
+        return []
+    if not item.cfop or not is_valid_cfop(item.cfop):
+        return []
+    if not item.cst and not item.csosn:
+        return []
+
+    findings: list[EntradaFinding] = []
+    cfop_st = cfop_is_st(item.cfop)
+    codigo_st = _codigo_icms_indica_st(item)
+
+    if cfop_st and not codigo_st:
+        findings.append(
+            EntradaFinding(
+                regra="simples_cfop_st_codigo_icms_incompativel",
+                severidade="alerta",
+                item_sequencia=item.sequencia,
+                descricao=(
+                    f"Item {item.sequencia}: CFOP {item.cfop} indica substituicao tributaria, "
+                    "mas CST/CSOSN nao indica tratamento de ST. Revise antes de aceitar o custo da entrada."
+                ),
+            )
+        )
+    if not cfop_st and codigo_st:
+        findings.append(
+            EntradaFinding(
+                regra="simples_codigo_icms_st_sem_cfop_st",
+                severidade="alerta",
+                item_sequencia=item.sequencia,
+                descricao=(
+                    f"Item {item.sequencia}: CST/CSOSN indica substituicao tributaria, "
+                    f"mas o CFOP {item.cfop} nao esta em faixa tipica de ST."
+                ),
+            )
+        )
+
     return findings
 
 
@@ -282,11 +368,13 @@ def _validar_item(
     item: FiscalItemPayload,
     loja_uf: str | None,
     fornecedor_uf: str | None,
+    regime_tributario: RegimeTributario | None,
 ) -> list[EntradaFinding]:
     findings: list[EntradaFinding] = []
     findings.extend(_validar_codigo_fiscal_item(item))
     findings.extend(_validar_cfop_xml_fornecedor(item, loja_uf, fornecedor_uf))
     findings.extend(_validar_calculo_icms_item(item))
+    findings.extend(_validar_simples_nacional_item(item, regime_tributario))
     return findings
 
 
@@ -318,6 +406,7 @@ def _classificar(findings: list[EntradaFinding]) -> tuple[ValidationStatus, floa
 def validar_nota_entrada(
     nota: NotaFiscalPayloadNormalizado,
     loja_uf: str | None = None,
+    regime_tributario: RegimeTributario | None = None,
 ) -> EntradaValidationResult:
     """Valida dados criticos de uma nota de entrada recebida de fornecedor."""
     findings: list[EntradaFinding] = []
@@ -326,7 +415,7 @@ def validar_nota_entrada(
     findings.extend(_validar_cnpj_fornecedor(nota))
     findings.extend(_validar_dados_obrigatorios(nota))
     for item in nota.itens:
-        findings.extend(_validar_item(item, loja_uf, fornecedor_uf))
+        findings.extend(_validar_item(item, loja_uf, fornecedor_uf, regime_tributario))
 
     ordem = {"erro": 0, "alerta": 1, "info": 2}
     findings.sort(key=lambda finding: (ordem[finding.severidade], finding.item_sequencia or 0, finding.regra))
