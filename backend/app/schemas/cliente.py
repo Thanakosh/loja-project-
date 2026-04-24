@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
@@ -9,6 +10,9 @@ class ClienteBase(BaseModel):
     uf: Optional[str] = None
     cep: Optional[str] = None
     telefone: Optional[str] = None
+    telefone_whatsapp: Optional[str] = None
+    whatsapp_opt_in_at: Optional[datetime] = None
+    whatsapp_opt_out_at: Optional[datetime] = None
     email: Optional[str] = None
     observacao: Optional[str] = None
     historico_observacoes: Optional[str] = None

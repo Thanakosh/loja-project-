@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -16,12 +16,15 @@ class Cliente(Base):
     uf = Column(String(2))
     cep = Column(String(10))
     telefone = Column(String(20))
+    telefone_whatsapp = Column(String(20))
     email = Column(String(120))
     observacao = Column(String(255))
     historico_observacoes = Column(Text)
     historico_autorizacoes = Column(Text)
     inscricao_estadual = Column(String(20))
     ativo = Column(Boolean, default=True, nullable=False)
+    whatsapp_opt_in_at = Column(DateTime)
+    whatsapp_opt_out_at = Column(DateTime)
 
     # Relationships
     vendas = relationship("Venda", back_populates="cliente")

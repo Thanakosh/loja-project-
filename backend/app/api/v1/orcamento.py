@@ -25,8 +25,10 @@ from ...models.user import User
 from ...schemas.orcamento import OrcamentoCreate, OrcamentoRead, OrcamentoUpdate
 from ...schemas.pagination import PaginatedResponse
 from ...schemas.pdv import VendaPDVCreate, VendaPDVItemCreate, VendaPDVRead
+from ...schemas.whatsapp import WhatsAppMessageRead, WhatsAppShareOrcamentoRequest
 from ...services import pdv_service
 from ...services.pdf_service import gerar_pdf_orcamento
+from ...services.whatsapp_service import share_orcamento_via_whatsapp
 
 router = APIRouter(tags=["Orcamento"])
 logger = logging.getLogger(__name__)
@@ -276,3 +278,26 @@ async def converter_orcamento_em_venda(
     )
 
     return venda
+
+
+@router.post("/{orcamento_id}/compartilhar-whatsapp", response_model=WhatsAppMessageRead)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def compartilhar_orcamento_whatsapp(
+    payload: WhatsAppShareOrcamentoRequest,
+    request: Request,
+    response: Response,
+    orcamento_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user_async),
+):
+    orcamento = await _buscar_orcamento_com_itens(db, orcamento_id)
+    if not orcamento:
+        raise OrcamentoNaoEncontradoError()
+
+    return await share_orcamento_via_whatsapp(
+        db,
+        orcamento=orcamento,
+        current_user_id=current_user.id,
+        telefone_override=payload.telefone,
+        mensagem_override=payload.mensagem,
+    )

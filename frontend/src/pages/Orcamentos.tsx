@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, Plus } from 'lucide-react'
+import { FileText, MessageCircle, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import api from '../services/api'
@@ -153,6 +153,9 @@ const Orcamentos = () => {
   const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null)
   const [convertModal, setConvertModal] = useState<{ orcamentoId: number } | null>(null)
   const [convertError, setConvertError] = useState('')
+  const [shareWhatsAppModal, setShareWhatsAppModal] = useState<{ orcamentoId: number; clienteNome: string | null } | null>(null)
+  const [shareWhatsAppForm, setShareWhatsAppForm] = useState({ telefone: '', mensagem: '' })
+  const [shareWhatsAppError, setShareWhatsAppError] = useState('')
   const [convertForm, setConvertForm] = useState<{ forma_pagamento: FormaPagamentoValue; parcelas: number }>({
     forma_pagamento: FormaPagamento.PIX,
     parcelas: 1,
@@ -223,6 +226,31 @@ const Orcamentos = () => {
       setConvertModal(null)
       setConvertError('')
       toast.success('Orcamento convertido em venda com sucesso!')
+    },
+  })
+
+  const shareWhatsAppMutation = useMutation({
+    mutationFn: async ({ orcamentoId, telefone, mensagem }: { orcamentoId: number; telefone: string; mensagem: string }) => {
+      await api.post(`/orcamentos/${orcamentoId}/compartilhar-whatsapp`, {
+        telefone: telefone.trim() || undefined,
+        mensagem: mensagem.trim() || undefined,
+      })
+    },
+    onError: (error) => {
+      let message = 'Nao foi possivel compartilhar o orcamento via WhatsApp.'
+      if (isAxiosError(error)) {
+        const detail = (error.response?.data as { detail?: string } | undefined)?.detail
+        if (typeof detail === 'string' && detail.trim()) {
+          message = detail
+        }
+      }
+      setShareWhatsAppError(message)
+    },
+    onSuccess: () => {
+      setShareWhatsAppModal(null)
+      setShareWhatsAppForm({ telefone: '', mensagem: '' })
+      setShareWhatsAppError('')
+      toast.success('Orcamento enviado para a fila do WhatsApp.')
     },
   })
 
@@ -342,6 +370,12 @@ const Orcamentos = () => {
     }
   }
 
+  const closeShareWhatsAppModal = () => {
+    setShareWhatsAppModal(null)
+    setShareWhatsAppForm({ telefone: '', mensagem: '' })
+    setShareWhatsAppError('')
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -455,6 +489,22 @@ const Orcamentos = () => {
                         >
                           Converter
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShareWhatsAppModal({
+                              orcamentoId: orcamento.id,
+                              clienteNome: orcamento.cliente_nome ?? null,
+                            })
+                            setShareWhatsAppForm({ telefone: '', mensagem: '' })
+                            setShareWhatsAppError('')
+                          }}
+                        >
+                          <MessageCircle className="size-3.5" />
+                          WhatsApp
+                        </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => void handleExportarPdf(orcamento)} disabled={downloadingPdfId === orcamento.id}>
                           <FileText className="size-3.5" />
                           {downloadingPdfId === orcamento.id ? 'Gerando...' : 'PDF'}
@@ -535,6 +585,64 @@ const Orcamentos = () => {
               disabled={convertMutation.isPending}
             >
               {convertMutation.isPending ? 'Convertendo...' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(shareWhatsAppModal)} onOpenChange={(open) => !open && closeShareWhatsAppModal()}>
+        <DialogContent className="p-0 sm:max-w-md" showCloseButton={false}>
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle>Compartilhar via WhatsApp</DialogTitle>
+            <DialogDescription>
+              Envie o PDF do orcamento para {shareWhatsAppModal?.clienteNome ?? 'o cliente'}.
+              Deixe o telefone em branco para usar o cadastro do cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-5">
+            <div className="space-y-2">
+              <Label htmlFor="orcamento-whatsapp-telefone">Telefone</Label>
+              <Input
+                id="orcamento-whatsapp-telefone"
+                value={shareWhatsAppForm.telefone}
+                onChange={(event) => setShareWhatsAppForm((prev) => ({ ...prev, telefone: event.target.value }))}
+                placeholder="+55 11 99999-9999"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="orcamento-whatsapp-mensagem">Mensagem</Label>
+              <textarea
+                id="orcamento-whatsapp-mensagem"
+                value={shareWhatsAppForm.mensagem}
+                onChange={(event) => setShareWhatsAppForm((prev) => ({ ...prev, mensagem: event.target.value }))}
+                className={textareaClassName}
+                rows={4}
+                placeholder="Opcional. Se vazio, o backend monta a mensagem padrao."
+              />
+            </div>
+            {shareWhatsAppError && (
+              <Alert variant="destructive">
+                <AlertTitle>Falha no envio</AlertTitle>
+                <AlertDescription>{shareWhatsAppError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeShareWhatsAppModal}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() =>
+                shareWhatsAppModal &&
+                shareWhatsAppMutation.mutate({
+                  orcamentoId: shareWhatsAppModal.orcamentoId,
+                  telefone: shareWhatsAppForm.telefone,
+                  mensagem: shareWhatsAppForm.mensagem,
+                })
+              }
+              disabled={shareWhatsAppMutation.isPending}
+            >
+              {shareWhatsAppMutation.isPending ? 'Enviando...' : 'Enviar WhatsApp'}
             </Button>
           </DialogFooter>
         </DialogContent>

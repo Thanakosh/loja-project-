@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     # Optional configurations
     WHATSAPP_TOKEN: Optional[str] = None
+    WHATSAPP_GATEWAY_URL: Optional[str] = None
+    WHATSAPP_GATEWAY_INTERNAL_TOKEN: Optional[str] = None
+    WHATSAPP_ACCOUNT_KEY: str = "default"
+    WHATSAPP_DEFAULT_COUNTRY: str = "55"
 
     # IA/LLM — reservado para versão futura (Groq API como provider principal)
 
@@ -51,6 +55,13 @@ class Settings(BaseSettings):
     # CORS - Em produção, deve ser uma lista restrita de URLs
     # Se for ["*"], allow_credentials deve ser False no main.py
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def normalize_debug_flag(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "release":
+            return False
+        return v
 
     @field_validator("DATABASE_URL")
     @classmethod

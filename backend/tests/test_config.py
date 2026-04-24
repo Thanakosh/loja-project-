@@ -52,6 +52,18 @@ def test_access_token_expire_minutes_120_is_allowed_in_production():
     assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 120
 
 
+def test_debug_release_is_normalized_to_false():
+    settings = Settings(
+        DATABASE_URL="sqlite:///:memory:",
+        JWT_SECRET="test-secret-key-with-minimum-length-ok",
+        ENVIRONMENT="development",
+        CORS_ORIGINS=["http://localhost:3000"],
+        DEBUG="release",
+    )
+
+    assert settings.DEBUG is False
+
+
 def test_jwt_secret_validator_remains_active_for_insecure_values():
     with pytest.raises(ValidationError) as exc_info:
         Settings(

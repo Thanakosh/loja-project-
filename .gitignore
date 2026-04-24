@@ -96,3 +96,4 @@ temp-*.ps1
 vite_test.out.log
 vite_test.err.log
 tmp/
+whatsapp-gateway/.sessions/

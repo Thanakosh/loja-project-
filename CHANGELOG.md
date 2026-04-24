@@ -67,6 +67,10 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 - Frontend: configuracao dedicada `playwright.integration.config.ts`, helper de seed via API real e spec integrada do PDV cobrindo login, venda e baixa de estoque sem mocks.
 - Backend: suporte a categorias hierarquicas de produtos com CRUD em `/api/v1/categorias`, endpoint de arvore (`/api/v1/categorias/arvore`) e vinculo opcional `categoria_id` em produtos.
 - Frontend: tela de Produtos com selecao em arvore de categoria no cadastro/edicao e filtro por categoria (incluindo subcategorias) na listagem.
+- Backend/Frontend: base de integracao WhatsApp estilo OpenClaw adicionada com gateway separado via Baileys, status de sessao/QR em configuracoes e envio inicial de PDF de orcamento.
+- Backend/WhatsApp: timestamps recebidos do gateway agora sao normalizados para UTC sem timezone antes da persistencia, e clientes com opt-out ativo sao bloqueados no envio de orcamento.
+- Backend/Config: valor local `DEBUG=release` passa a ser interpretado como `False`, evitando falhas de inicializacao em comandos locais.
+- Gateway WhatsApp: adicionado lockfile npm e override de `protobufjs` para remover vulnerabilidade critica reportada no audit.
 
 - Backend: novos endpoints de Notas Fiscais (`GET /api/v1/notas-fiscais/` e `GET /api/v1/notas-fiscais/{nota_id}`) com filtros por cliente e periodo, incluindo retorno de itens.
 - Frontend: nova pagina "Notas Fiscais" com filtros por data, paginacao, resumo de totais e modal de itens da NF.
