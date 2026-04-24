@@ -165,6 +165,8 @@ class TestFiscalAuditEndpoint:
         data = response.json()
         assert {"classificacao", "confianca", "score", "explicacao", "fatores"}.issubset(data.keys())
         assert isinstance(data["fatores"], list)
+        assert data["validacao_entrada"] is not None
+        assert data["validacao_entrada"]["status"] in {"aprovada", "revisar", "reprovada"}
 
     def test_endpoint_nota_fiscal_id_inexistente_retorna_404(self, client: TestClient, auth_headers: dict):
         response = client.post(self.endpoint, json={"nota_fiscal_id": 999999}, headers=auth_headers)

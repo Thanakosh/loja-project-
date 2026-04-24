@@ -149,6 +149,8 @@ Entregue:
 - [x] **Relatorios:** estoque baixo e vendas por periodo
 - [x] **Dashboard:** alertas operacionais e visao fiscal
 - [x] **Notas Fiscais:** listagem, filtros e detalhamento
+- [x] **Validacao Fiscal de Entrada:** auditoria operacional de tributacao,
+  CFOP, CST/CSOSN, NCM, CNPJ do fornecedor e conferencia de ICMS (`TASK-053`)
 - [x] **Configuracao da Loja:** leitura e atualizacao por API e frontend
 - [x] **WhatsApp para Orcamentos:** gateway separado, pareamento por QR,
   status de sessao e envio de PDF de orcamento. Validacao operacional com

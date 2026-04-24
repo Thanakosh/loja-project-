@@ -44,6 +44,28 @@ class FiscalAuditFactorResponse(BaseModel):
     detalhe: str
 
 
+class FiscalEntradaFindingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    regra: str
+    severidade: Literal["erro", "alerta", "info"]
+    item_sequencia: Optional[int] = None
+    descricao: str
+
+
+class FiscalEntradaValidationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    status: Literal["aprovada", "revisar", "reprovada"]
+    score_risco: float
+    resumo: str
+    erros: int
+    alertas: int
+    infos: int
+    versao: str
+    findings: List[FiscalEntradaFindingResponse]
+
+
 class FiscalAuditValidateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -68,6 +90,7 @@ class FiscalAuditResponse(BaseModel):
     score: float
     explicacao: str
     fatores: List[FiscalAuditFactorResponse]
+    validacao_entrada: Optional[FiscalEntradaValidationResponse] = None
 
 
 class NCMClassifyRequest(BaseModel):

@@ -66,6 +66,16 @@ interface ValidacaoCruzadaItem {
     descricao: string
 }
 
+interface ValidacaoEntrada {
+    status: 'aprovada' | 'revisar' | 'reprovada'
+    score_risco: number
+    resumo: string
+    erros: number
+    alertas: number
+    infos: number
+    versao: string
+}
+
 interface OCRTaskResponse { task_id: string; status: string; message: string }
 interface OCRTaskStatus {
     task_id: string
@@ -79,6 +89,7 @@ interface OCRTaskStatus {
             valor_total: number; fornecedor_status?: 'novo' | 'existente' | null; fornecedor_id?: number | null
         }
         auditoria_fiscal?: AuditoriaFiscal | null
+        validacao_entrada?: ValidacaoEntrada | null
         validacao_cruzada?: ValidacaoCruzadaItem[]
         produtos?: string[]; quantidade?: number[]; valor?: number[]
     }
@@ -128,15 +139,23 @@ const SEVERIDADE_CONFIG = {
 
 interface PainelAuditoriaFiscalProps {
     auditoria: AuditoriaFiscal | null
+    validacaoEntrada: ValidacaoEntrada | null
     validacaoCruzada: ValidacaoCruzadaItem[]
 }
 
-const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaFiscalProps) => {
+const VALIDACAO_ENTRADA_CONFIG = {
+    aprovada: { label: 'Nota aprovada', text: 'text-emerald-800 dark:text-emerald-200', bg: 'bg-emerald-100/80 dark:bg-emerald-900/30', border: 'border-emerald-200 dark:border-emerald-700' },
+    revisar: { label: 'Revisar tributacao', text: 'text-amber-800 dark:text-amber-200', bg: 'bg-amber-100/80 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-700' },
+    reprovada: { label: 'Bloquear importacao ate revisar', text: 'text-red-800 dark:text-red-200', bg: 'bg-red-100/80 dark:bg-red-900/30', border: 'border-red-200 dark:border-red-700' },
+} as const
+
+const PainelAuditoriaFiscal = ({ auditoria, validacaoEntrada, validacaoCruzada }: PainelAuditoriaFiscalProps) => {
     const [expandido, setExpandido] = useState(false)
 
-    if (!auditoria && validacaoCruzada.length === 0) return null
+    if (!auditoria && !validacaoEntrada && validacaoCruzada.length === 0) return null
 
     const config = auditoria ? CLASSIFICACAO_CONFIG[auditoria.classificacao] : CLASSIFICACAO_CONFIG.baixo
+    const entradaConfig = validacaoEntrada ? VALIDACAO_ENTRADA_CONFIG[validacaoEntrada.status] : null
     const erros = validacaoCruzada.filter(v => v.severidade === 'erro')
     const alertas = validacaoCruzada.filter(v => v.severidade === 'alerta')
     const infos = validacaoCruzada.filter(v => v.severidade === 'info')
@@ -158,6 +177,11 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
                             Score: {auditoria?.score ?? 0}/100 - Confianca: {Math.round((auditoria?.confianca ?? 0) * 100)}%
                             {validacaoCruzada.length > 0 && ` - ${validacaoCruzada.length} verificacoes`}
                         </p>
+                        {validacaoEntrada && entradaConfig && (
+                            <p className={`mt-1 text-xs font-medium ${entradaConfig.text}`}>
+                                {entradaConfig.label} - risco operacional {validacaoEntrada.score_risco}/100
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -170,6 +194,16 @@ const PainelAuditoriaFiscal = ({ auditoria, validacaoCruzada }: PainelAuditoriaF
             {/* Conteudo expandido */}
             {expandido && (
                 <div className="px-5 pb-4 space-y-3 border-t border-gray-200/50 dark:border-gray-700/50 pt-3">
+                    {validacaoEntrada && entradaConfig && (
+                        <div className={`rounded-lg border px-3 py-2 text-sm ${entradaConfig.bg} ${entradaConfig.border}`}>
+                            <p className={`font-semibold ${entradaConfig.text}`}>{entradaConfig.label}</p>
+                            <p className={`mt-1 ${entradaConfig.text}`}>{validacaoEntrada.resumo}</p>
+                            <p className={`mt-1 text-xs ${entradaConfig.text}`}>
+                                {validacaoEntrada.erros} erro(s), {validacaoEntrada.alertas} alerta(s), {validacaoEntrada.infos} informativo(s)
+                            </p>
+                        </div>
+                    )}
+
                     {/* Fatores de risco do engine */}
                     {fatoresFalha.length > 0 && (
                         <div>
@@ -264,6 +298,7 @@ const TabImportar = () => {
 
     // Auditoria fiscal
     const [auditoriaFiscal, setAuditoriaFiscal] = useState<AuditoriaFiscal | null>(null)
+    const [validacaoEntrada, setValidacaoEntrada] = useState<ValidacaoEntrada | null>(null)
     const [validacaoCruzada, setValidacaoCruzada] = useState<ValidacaoCruzadaItem[]>([])
 
     // Modal de duplicatas similares
@@ -299,6 +334,7 @@ const TabImportar = () => {
         if (data.result.auditoria_fiscal) {
             setAuditoriaFiscal(data.result.auditoria_fiscal)
         }
+        setValidacaoEntrada(data.result.validacao_entrada ?? null)
         if (data.result.validacao_cruzada) {
             setValidacaoCruzada(data.result.validacao_cruzada)
         }
@@ -601,7 +637,7 @@ const TabImportar = () => {
         setCnpjFornecedor(''); setNumeroNota(''); setDataEmissaoNota(''); setValorTotalNota(0)
         setFornecedorStatus(null); setStep('upload'); setAiChecking(false)
         setShowModal(false); setModalItens([]); pendingImportRef.current = []
-        setAuditoriaFiscal(null); setValidacaoCruzada([])
+        setAuditoriaFiscal(null); setValidacaoEntrada(null); setValidacaoCruzada([])
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
@@ -750,7 +786,7 @@ const TabImportar = () => {
                     </div>
 
                     {/* Painel de Auditoria Fiscal */}
-                    <PainelAuditoriaFiscal auditoria={auditoriaFiscal} validacaoCruzada={validacaoCruzada} />
+                    <PainelAuditoriaFiscal auditoria={auditoriaFiscal} validacaoEntrada={validacaoEntrada} validacaoCruzada={validacaoCruzada} />
 
                     {/* Banner de alerta de IA */}
                     {!aiChecking && (aiExatos > 0 || aiSimilares > 0) && (
