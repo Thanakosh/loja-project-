@@ -184,7 +184,7 @@ Lacunas ainda abertas no frontend:
 
 ## Proximas prioridades recomendadas
 
-### 1) Completar lacunas E2E integradas restantes
+### 1) Completar lacunas E2E integradas restantes (`TASK-052`)
 **Por que:** os fluxos de PDV, caixa, produtos, orcamentos e importacao de nota
 ja possuem cobertura integrada real. A proxima lacuna de maior retorno e
 Estoque operacional e alertas do Dashboard com backend real.
