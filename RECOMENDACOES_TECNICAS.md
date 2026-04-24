@@ -35,7 +35,8 @@ Entregue:
 - suites de backend para modulos criticos
 - gate de CI para backend
 - smoke tests E2E de frontend
-- primeiro fluxo integrado real de PDV com backend e PostgreSQL
+- fluxos integrados reais de PDV, orcamentos e importacao de nota com
+  backend e PostgreSQL
 
 ### 2) Seguranca de autenticacao e CORS
 **Status atual:** concluido.
@@ -149,6 +150,9 @@ Entregue:
 - [x] **Dashboard:** alertas operacionais e visao fiscal
 - [x] **Notas Fiscais:** listagem, filtros e detalhamento
 - [x] **Configuracao da Loja:** leitura e atualizacao por API e frontend
+- [x] **WhatsApp para Orcamentos:** gateway separado, pareamento por QR,
+  status de sessao e envio de PDF de orcamento. Validacao operacional com
+  numero real permanece pendente.
 
 ---
 
@@ -171,7 +175,7 @@ Entregue:
 
 Lacunas ainda abertas no frontend:
 
-- ampliar E2E integrado real alem do PDV
+- ampliar E2E integrado real para Produtos/Estoque e demais fluxos criticos
 - consolidar design system reutilizavel
 - continuar refatoracao de telas grandes quando necessario
 
@@ -180,14 +184,16 @@ Lacunas ainda abertas no frontend:
 ## Proximas prioridades recomendadas
 
 ### 1) Expandir testes E2E integrados reais
-**Por que:** hoje o fluxo real ja existe para PDV, mas ainda faltam produto,
-orcamento e importacao de nota.
+**Por que:** os fluxos de PDV, orcamentos e importacao de nota ja possuem
+cobertura integrada real. A proxima lacuna de maior retorno e Produtos/Estoque,
+incluindo cadastro, estoque inicial, transacoes e alertas.
 
 ### 2) Consolidar design system no frontend
 **Por que:** reduzir duplicacao visual e aumentar consistencia entre telas.
 
-### 3) Integracao WhatsApp para orcamentos
-**Por que:** e uma necessidade de negocio ainda pendente.
+### 3) Validacao operacional do WhatsApp para orcamentos
+**Por que:** a base tecnica ja foi entregue, mas ainda falta parear um numero
+dedicado, enviar um PDF real e registrar evidencia operacional.
 
 ### 4) Promocao gradual de modulos para `/api/v2`
 **Por que:** a politica existe, mas a adocao completa ainda e parcial.
